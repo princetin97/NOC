@@ -82,6 +82,13 @@ inventory ESXi host/VM, giám sát tương tự `vmware_exporter`; model khớp 
 migration đã áp dụng từ trước `20260821120000_vcenter_monitoring` và
 `20260821130000_vcenter_host_metrics` — không tạo migration mới khi thêm model).
 
+`VirtualizationHost.deviceId` (v0.4.0, migration `20260827000000_vcenter_device_link`)
+liên kết 1-1 tới `Device`: mỗi lần đồng bộ, `poller/vcenter.ts` tạo/cập nhật một
+`Device` thật cho từng ESXi host, gom vào `DeviceGroup` tự tạo tên "vCenter Device"
+(theo site của manager), đặt `disabled=true` để vòng poll ping/SNMP/discovery
+thường không quét đè (dữ liệu CPU/RAM/status lấy từ vCenter). Xoá host khỏi vCenter
+hoặc xoá manager sẽ xoá luôn `Device` tương ứng (dọn cả metric/alert lịch sử).
+
 Migrations nằm ở `backend/prisma/migrations/*`, đặt tên theo timestamp + mô tả.
 
 ## 3. UI (`UI/`)

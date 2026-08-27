@@ -62,6 +62,13 @@ vcenterRouter.delete('/managers/:id', async (req: AuthedRequest, res) => {
     res.status(404).json({ error: 'Không tìm thấy vCenter' });
     return;
   }
+  // Manager delete cascades VirtualizationHost rows, but not the mirrored Device
+  // rows they link to (FK is on the host side) — clean those up explicitly first.
+  const hosts = await prisma.virtualizationHost.findMany({ where: { managerId: manager.id }, select: { deviceId: true } });
+  const deviceIds = hosts.map((h) => h.deviceId).filter((id): id is string => Boolean(id));
+  if (deviceIds.length > 0) {
+    await prisma.device.deleteMany({ where: { id: { in: deviceIds } } });
+  }
   await prisma.virtualizationManager.delete({ where: { id: manager.id } });
   res.status(204).end();
 });

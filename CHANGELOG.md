@@ -17,6 +17,23 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-27
+
+### Added
+- Mỗi ESXi host đồng bộ từ vCenter giờ được tạo thành một `Device` thật, gom vào
+  nhóm tự động **"vCenter Device"** (mục Thiết bị) — không còn tách rời khỏi danh
+  sách thiết bị SNMP. Bấm vào host sẽ mở đúng giao diện chi tiết thiết bị dùng
+  chung (CPU/RAM/uptime/vendor/model/OS/sysDescr...) như mọi thiết bị khác.
+- `backend/src/lib/vsphere.ts`: lấy thêm IP quản trị (VMkernel `vmk0`) của host.
+- `backend/src/poller/vcenter.ts`: mỗi vòng đồng bộ tạo/cập nhật `Device` liên kết
+  1-1 với `VirtualizationHost` (cột `deviceId` mới), tự tạo nhóm thiết bị theo site,
+  tự tránh trùng `hostname`, map trạng thái (`ok/warning/critical` → `up/warning/down`,
+  bảo trì → `maintenance`), và xoá `Device` tương ứng khi host bị gỡ khỏi vCenter
+  hoặc xoá cả vCenter manager. Các thiết bị này đặt `disabled=true` để không bị
+  vòng poll ping/SNMP/discovery thông thường quét chồng lên (dữ liệu lấy từ vCenter).
+- Migration mới `20260827000000_vcenter_device_link` thêm cột
+  `VirtualizationHost.deviceId` (FK 1-1 tới `Device`, `ON DELETE SET NULL`).
+
 ## [0.3.0] - 2026-08-27
 
 ### Added

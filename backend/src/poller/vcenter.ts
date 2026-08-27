@@ -2,9 +2,51 @@ import { prisma } from '../lib/db';
 import { logger } from '../lib/logger';
 import * as vsphere from '../lib/vsphere';
 
+const VCENTER_DEVICE_GROUP_NAME = 'vCenter Device';
+
 function pctOf(numerator?: number, denominator?: number): number | undefined {
   if (numerator === undefined || denominator === undefined || denominator <= 0) return undefined;
   return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+function isIpLike(value?: string): boolean {
+  return !!value && /^\d{1,3}(\.\d{1,3}){3}$/.test(value);
+}
+
+// One shared "vCenter Device" group per site (or the global scope when the manager
+// isn't tied to a site) so synced ESXi hosts show up next to other equipment.
+// DeviceGroup's @@unique([siteId, name]) doesn't dedupe NULL siteId rows in
+// Postgres, so this looks up by findFirst instead of relying on upsert.
+async function resolveDeviceGroupId(siteId: string | null): Promise<string> {
+  const existing = await prisma.deviceGroup.findFirst({ where: { name: VCENTER_DEVICE_GROUP_NAME, siteId } });
+  if (existing) return existing.id;
+  const created = await prisma.deviceGroup.create({
+    data: {
+      name: VCENTER_DEVICE_GROUP_NAME,
+      siteId,
+      description: 'ESXi host được đồng bộ tự động từ vCenter',
+      color: '#a855f7',
+    },
+  });
+  return created.id;
+}
+
+// Device.hostname is globally unique; append a numeric suffix on collision with an
+// unrelated device (currentDeviceId excludes the host's own already-linked device).
+async function resolveHostname(candidate: string, currentDeviceId: string | null): Promise<string> {
+  let hostname = candidate;
+  for (let suffix = 2; ; suffix++) {
+    const conflict = await prisma.device.findUnique({ where: { hostname }, select: { id: true } });
+    if (!conflict || conflict.id === currentDeviceId) return hostname;
+    hostname = `${candidate}-${suffix}`;
+  }
+}
+
+function deviceStatusFor(h: vsphere.VSphereHostInfo, alertState: 'ok' | 'warning' | 'critical'): 'up' | 'down' | 'warning' | 'maintenance' {
+  if (h.inMaintenanceMode) return 'maintenance';
+  if (alertState === 'critical') return 'down';
+  if (alertState === 'warning') return 'warning';
+  return 'up';
 }
 
 function buildInventorySummary(h: vsphere.VSphereHostInfo, datastoreSummary?: string): string {
@@ -62,6 +104,7 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
   try {
     session = await vsphere.connect({ endpoint: manager.endpoint, username: manager.username, password: manager.password });
     const hosts = await vsphere.retrieveHosts(session);
+    const groupId = hosts.length > 0 ? await resolveDeviceGroupId(manager.siteId) : undefined;
 
     const allDatastoreRefs = Array.from(new Set(hosts.flatMap((h) => h.datastoreRefs ?? [])));
     const datastores = allDatastoreRefs.length > 0 ? await vsphere.retrieveDatastores(session, allDatastoreRefs) : [];
@@ -102,6 +145,39 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
         update: data,
       });
       hostRows.push({ id: row.id, externalId: row.externalId });
+
+      if (groupId) {
+        const hostname = await resolveHostname(h.name, row.deviceId);
+        const ip = h.managementIp ?? (isIpLike(h.name) ? h.name : '0.0.0.0');
+        const uptimeSeconds = h.bootTime ? Math.max(0, Math.floor((now.getTime() - new Date(h.bootTime).getTime()) / 1000)) : 0;
+        const deviceData = {
+          name: h.name,
+          hostname,
+          ip,
+          type: 'server',
+          vendor: h.vendor,
+          model: h.model,
+          os: 'VMware ESXi',
+          osVersion: h.productVersion,
+          sysDescr: data.inventorySummary,
+          status: deviceStatusFor(h, data.alertState),
+          uptimeSeconds,
+          cpuUsage: cpuUsage ?? 0,
+          cpuCount: h.cpuCores,
+          memoryUsage: memUsage ?? 0,
+          totalMemoryBytes: h.memoryBytes,
+          disabled: true, // synced from vCenter, not polled directly via ping/SNMP
+          lastPolled: now,
+          groupId,
+          siteId: manager.siteId,
+        };
+        if (row.deviceId) {
+          await prisma.device.update({ where: { id: row.deviceId }, data: deviceData });
+        } else {
+          const device = await prisma.device.create({ data: deviceData });
+          await prisma.virtualizationHost.update({ where: { id: row.id }, data: { deviceId: device.id } });
+        }
+      }
     }
 
     const hostIdByRef = new Map(hostRows.map((r) => [r.externalId, r.id]));
@@ -124,8 +200,17 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
       });
     }
 
-    // Remove hosts/VMs that vCenter no longer reports (decommissioned/removed).
+    // Remove hosts/VMs that vCenter no longer reports (decommissioned/removed), along
+    // with the Device row mirroring each removed host (also drops its metric history).
     const seenHostIds = hostRows.map((r) => r.id);
+    const removedHosts = await prisma.virtualizationHost.findMany({
+      where: { managerId, id: { notIn: seenHostIds.length > 0 ? seenHostIds : ['__none__'] } },
+      select: { deviceId: true },
+    });
+    const removedDeviceIds = removedHosts.map((r) => r.deviceId).filter((id): id is string => Boolean(id));
+    if (removedDeviceIds.length > 0) {
+      await prisma.device.deleteMany({ where: { id: { in: removedDeviceIds } } });
+    }
     await prisma.virtualizationHost.deleteMany({
       where: { managerId, id: { notIn: seenHostIds.length > 0 ? seenHostIds : ['__none__'] } },
     });

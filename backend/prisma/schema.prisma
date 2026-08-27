@@ -151,6 +151,11 @@ model VirtualizationHost {
 
   vms VirtualMachine[]
 
+  // Mirrors this ESXi host as a first-class Device row (group "vCenter Device") so
+  // it shows up alongside SNMP-managed equipment in the Devices list, added v0.4.0.
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  deviceId String? @unique
+
   @@unique([managerId, externalId])
   @@index([managerId])
 }
@@ -242,6 +247,7 @@ model Device {
   alertRules    AlertRule[]
   vlans         Vlan[]
   mapNode       MapNode?
+  virtualizationHost VirtualizationHost?
 
   @@index([status])
   @@index([groupId])

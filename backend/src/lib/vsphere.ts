@@ -39,6 +39,7 @@ export interface VSphereHostInfo {
   dnsDomain?: string;
   defaultGateway?: string;
   pnics?: string[];
+  managementIp?: string;
   datastoreRefs?: string[];
   vmRefs?: string[];
 }
@@ -73,7 +74,7 @@ export interface VSphereSession {
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  isArray: (name) => ['returnval', 'propSet', 'ManagedObjectReference', 'HostPhysicalNic'].includes(name),
+  isArray: (name) => ['returnval', 'propSet', 'ManagedObjectReference', 'HostPhysicalNic', 'HostVirtualNic'].includes(name),
 });
 
 function escapeXml(value: string): string {
@@ -139,6 +140,16 @@ function extractPnicDeviceNames(val: any): string[] {
   return toArray(val.HostPhysicalNic)
     .map((item: any) => strOf(item?.device))
     .filter((d): d is string => Boolean(d));
+}
+
+// Prefer the management VMkernel adapter (vmk0 by convention) so the host has a
+// reachable IP shown alongside the other synced Devices; falls back to whichever
+// vnic reports first if vmk0 isn't found.
+function extractManagementIp(val: any): string | undefined {
+  if (!val) return undefined;
+  const nics = toArray(val.HostVirtualNic);
+  const managementNic = nics.find((n: any) => strOf(n?.device) === 'vmk0') ?? nics[0];
+  return strOf(managementNic?.spec?.ip?.ipAddress);
 }
 
 function buildAgent(endpoint: string): https.Agent | http.Agent {
@@ -332,6 +343,7 @@ export async function retrieveHosts(session: VSphereSession): Promise<VSphereHos
     'config.network.dnsConfig.domainName',
     'config.network.ipRouteConfig.defaultGateway',
     'config.network.pnic',
+    'config.network.vnic',
     'datastore',
     'vm',
   ];
@@ -365,6 +377,7 @@ export async function retrieveHosts(session: VSphereSession): Promise<VSphereHos
       dnsDomain: strOf(p['config.network.dnsConfig.domainName']),
       defaultGateway: strOf(p['config.network.ipRouteConfig.defaultGateway']),
       pnics: extractPnicDeviceNames(p['config.network.pnic']),
+      managementIp: extractManagementIp(p['config.network.vnic']),
       datastoreRefs: extractMoRefs(p['datastore']),
       vmRefs: extractMoRefs(p['vm']),
     };
