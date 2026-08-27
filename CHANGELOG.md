@@ -17,6 +17,18 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-27
+
+### Added
+- Quy tắc cảnh báo theo phạm vi "Theo nhóm" (cả rule theo thiết bị lẫn rule theo
+  cảm biến/đối tượng) giờ cho phép chọn **nhiều nhóm thiết bị cùng lúc** bằng
+  cách tích vào danh sách checkbox, thay vì chỉ chọn được một nhóm duy nhất qua
+  dropdown như trước. Thêm cột `AlertRule.groupIds` (String[], mặc định rỗng)
+  song song với `groupId` cũ để tương thích ngược — theo đúng pattern đã dùng
+  cho `deviceIds`/`portIds`/`sensorIds`/`serviceIds`. Logic đánh giá cảnh báo
+  (poller) và tính năng sao chép/áp dụng rule sang nhiều site đều đã cập nhật
+  để nhận diện `groupIds`.
+
 ## [0.6.2] - 2026-08-27
 
 ### Fixed

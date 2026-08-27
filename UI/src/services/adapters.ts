@@ -147,6 +147,8 @@ export interface RawAlertRule {
   serviceIds?: string[] | null;
   portId?: string | null;
   groupId?: string | null;
+  groupIds?: string[] | null;
+  groupNames?: string[] | null;
   siteId?: string | null;
   portIds?: string[] | null;
   sensorId?: string | null;
@@ -369,6 +371,7 @@ export function mapAlertRule(raw: RawAlertRule): AlertRule {
     serviceIds: raw.serviceIds ?? [],
     portId: raw.portId ?? null,
     groupId: raw.groupId ?? null,
+    groupIds: raw.groupIds ?? [],
     siteId: raw.siteId ?? null,
     portIds: raw.portIds ?? [],
     sensorId: raw.sensorId ?? null,
@@ -379,6 +382,7 @@ export function mapAlertRule(raw: RawAlertRule): AlertRule {
     deviceName: raw.device?.name ?? null,
     portName: raw.port?.ifName ?? null,
     groupName: raw.group?.name ?? null,
+    groupNames: raw.groupNames ?? [],
     sensorLabel: raw.sensor?.description ?? null,
     serviceName: raw.service?.name ?? null,
     serviceTarget: raw.service?.target ?? null,

@@ -104,6 +104,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
       rule.deviceId ?? '',
       (rule.deviceIds ?? []).join(','),
       rule.groupId ?? '',
+      (rule.groupIds ?? []).join(','),
       rule.portId ?? '',
       (rule.portIds ?? []).join(','),
       rule.serviceId ?? '',
@@ -157,6 +158,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
         rule.metric,
         rule.scope ?? 'device',
         rule.groupName ?? '',
+        (rule.groupNames ?? []).join(' '),
         rule.deviceName ?? '',
         rule.serviceName ?? '',
         rule.serviceTarget ?? '',
@@ -633,7 +635,11 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                           ? rule.serviceName
                             ? `${rule.serviceName}${rule.serviceTarget ? ` (${rule.serviceTarget})` : ''}`
                             : 'Mọi dịch vụ'
-                          : rule.groupName ? `Nhóm ${rule.groupName}` : rule.deviceName ?? 'Mọi thiết bị'}
+                          : rule.groupNames && rule.groupNames.length > 0
+                          ? `Nhóm ${rule.groupNames.join(', ')}`
+                          : rule.groupName
+                          ? `Nhóm ${rule.groupName}`
+                          : rule.deviceName ?? 'Mọi thiết bị'}
                         {rule.scope === 'interface' && (rule.portIds && rule.portIds.length > 0
                           ? ` / ${rule.portIds.length} cổng`
                           : rule.portName
@@ -976,10 +982,20 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
 
   // Targeting: all devices, a group, or one specific device (with optional ports).
   const [targetKind, setTargetKind] = useState<'all' | 'group' | 'device'>(
-    existingRule?.groupId ? 'group' : existingRule?.deviceId || prefillDeviceId ? 'device' : 'all',
+    existingRule?.groupId || (existingRule?.groupIds && existingRule.groupIds.length > 0)
+      ? 'group'
+      : existingRule?.deviceId || prefillDeviceId
+      ? 'device'
+      : 'all',
   );
   const [deviceId, setDeviceId] = useState(existingRule?.deviceId ?? prefillDeviceId ?? '');
-  const [groupId, setGroupId] = useState(existingRule?.groupId ?? '');
+  const [groupIds, setGroupIds] = useState<string[]>(
+    existingRule?.groupIds && existingRule.groupIds.length > 0
+      ? existingRule.groupIds
+      : existingRule?.groupId
+      ? [existingRule.groupId]
+      : [],
+  );
   const [serviceTargetKind, setServiceTargetKind] = useState<'all' | 'service'>(existingRule?.serviceId ? 'service' : 'all');
   const [serviceId, setServiceId] = useState(existingRule?.serviceId ?? '');
   const [portIds, setPortIds] = useState<string[]>(
@@ -994,7 +1010,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
   const [showPortPicker, setShowPortPicker] = useState(false);
   // Object rule targeting: 'device' = one specific device, 'group' = all devices in a group.
   const [objectTargetKind, setObjectTargetKind] = useState<'device' | 'group'>(
-    existingRule?.groupId ? 'group' : 'device',
+    existingRule?.groupId || (existingRule?.groupIds && existingRule.groupIds.length > 0) ? 'group' : 'device',
   );
   // Per-object (sensor) targeting: several same-unit sensors + the device's sensor list.
   const [sensorIds, setSensorIds] = useState<string[]>(
@@ -1058,6 +1074,11 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     setSensorIds([...sensorIds, s.id]);
   };
 
+  // Toggle a group in/out of the multi-group selection.
+  const toggleGroup = (id: string) => {
+    setGroupIds(groupIds.includes(id) ? groupIds.filter((x) => x !== id) : [...groupIds, id]);
+  };
+
   // Apply a sensor type's suggested condition/threshold (used by the fleet-by-OS mode).
   const applyTypePreset = (t: string) => {
     const meta = SENSOR_TYPE_META[t];
@@ -1118,7 +1139,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     if (!name) return;
     if (isService && serviceTargetKind === 'service' && !serviceId) return;
     if (isObject && objectMode === 'specific' && objectTargetKind === 'device' && (!deviceId || sensorIds.length === 0)) return;
-    if (isObject && objectMode === 'specific' && objectTargetKind === 'group' && (!groupId || sensorIds.length === 0)) return;
+    if (isObject && objectMode === 'specific' && objectTargetKind === 'group' && (groupIds.length === 0 || sensorIds.length === 0)) return;
     if (isObject && objectMode === 'fleet' && !sensorType) return;
     const effCondition = isState && config.states ? config.states[stateIndex].condition : condition;
     const effThreshold = isState && config.states ? config.states[stateIndex].threshold : threshold;
@@ -1136,7 +1157,8 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
       scope: isService ? 'service' : isObject ? 'sensor' : isInterface ? 'interface' : 'device',
       deviceId: isService ? null : isFleet ? null : isObject ? (objectTargetKind === 'device' ? deviceId || null : null) : targetKind === 'device' ? deviceId || null : null,
       deviceIds: [],
-      groupId: isService ? null : isFleet ? null : isObject ? (objectTargetKind === 'group' ? groupId || null : null) : (!isObject && targetKind === 'group' ? groupId || null : null),
+      groupId: isService ? null : isFleet ? null : isObject ? (objectTargetKind === 'group' ? groupIds[0] || null : null) : (!isObject && targetKind === 'group' ? groupIds[0] || null : null),
+      groupIds: isService ? [] : isFleet ? [] : isObject ? (objectTargetKind === 'group' ? groupIds : []) : (!isObject && targetKind === 'group' ? groupIds : []),
       siteId: siteId || null,
       serviceId: isService && serviceTargetKind === 'service' ? serviceId || null : null,
       serviceIds: [],
@@ -1340,13 +1362,27 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
 
           {targetKind === 'group' && (
             <div>
-              <label className="block text-slate-400 mb-1">Nhóm thiết bị:</label>
-              <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className={inputCls} required>
-                <option value="">-- Chọn nhóm --</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name} ({g.deviceCount ?? 0} thiết bị)</option>
-                ))}
-              </select>
+              <label className="block text-slate-400 mb-1">Nhóm thiết bị (chọn nhiều nhóm):</label>
+              {groups.length === 0 ? (
+                <p className="text-[11px] text-amber-400">Chưa có nhóm thiết bị nào.</p>
+              ) : (
+                <div className={`max-h-40 overflow-y-auto rounded-lg border divide-y p-2 space-y-1 ${darkMode ? 'border-slate-700 divide-slate-800' : 'border-slate-300 divide-slate-200'}`}>
+                  {groups.map((g) => (
+                    <label
+                      key={g.id}
+                      className="flex items-center gap-2 text-[11px] px-1 py-0.5 rounded cursor-pointer hover:bg-slate-700/30"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={groupIds.includes(g.id)}
+                        onChange={() => toggleGroup(g.id)}
+                        className="accent-emerald-500 shrink-0"
+                      />
+                      <span className="truncate flex-1">{g.name} ({g.deviceCount ?? 0} thiết bị)</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1468,13 +1504,27 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-slate-400 mb-1">Nhóm thiết bị:</label>
-                      <select value={groupId} onChange={(e) => { setGroupId(e.target.value); setSensorIds([]); }} className={inputCls} required>
-                        <option value="">-- Chọn nhóm --</option>
-                        {groups.map((g) => (
-                          <option key={g.id} value={g.id}>{g.name} ({g.deviceCount ?? 0} thiết bị)</option>
-                        ))}
-                      </select>
+                      <label className="block text-slate-400 mb-1">Nhóm thiết bị (chọn nhiều nhóm):</label>
+                      {groups.length === 0 ? (
+                        <p className="text-[11px] text-amber-400">Chưa có nhóm thiết bị nào.</p>
+                      ) : (
+                        <div className={`max-h-40 overflow-y-auto rounded-lg border divide-y p-2 space-y-1 ${darkMode ? 'border-slate-700 divide-slate-800' : 'border-slate-300 divide-slate-200'}`}>
+                          {groups.map((g) => (
+                            <label
+                              key={g.id}
+                              className="flex items-center gap-2 text-[11px] px-1 py-0.5 rounded cursor-pointer hover:bg-slate-700/30"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={groupIds.includes(g.id)}
+                                onChange={() => { toggleGroup(g.id); setSensorIds([]); }}
+                                className="accent-emerald-500 shrink-0"
+                              />
+                              <span className="truncate flex-1">{g.name} ({g.deviceCount ?? 0} thiết bị)</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-[11px] text-slate-500 mt-1">Quy tắc áp dụng cho tất cả thiết bị trong nhóm có cùng loại đối tượng.</p>
                     </div>
                   )}

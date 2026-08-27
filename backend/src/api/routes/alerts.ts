@@ -255,6 +255,7 @@ const ruleSchema = z.object({
   deviceId: z.string().nullish(),
   portId: z.string().nullish(),
   groupId: z.string().nullish(),
+  groupIds: z.array(z.string()).optional(),
   serviceId: z.string().nullish(),
   serviceIds: z.array(z.string()).optional(),
   sensorId: z.string().nullish(),
@@ -297,6 +298,7 @@ function isSameRuleSignature(
     scope: string;
     deviceId: string | null;
     groupId: string | null;
+    groupIds: string[];
     portId: string | null;
     serviceId: string | null;
     sensorId: string | null;
@@ -316,6 +318,7 @@ function isSameRuleSignature(
     scope: string;
     deviceId: string | null;
     groupId: string | null;
+    groupIds: string[];
     portId: string | null;
     serviceId: string | null;
     sensorId: string | null;
@@ -344,13 +347,15 @@ function isSameRuleSignature(
     sameStringArray(rule.deviceIds, data.deviceIds) &&
     sameStringArray(rule.portIds, data.portIds) &&
     sameStringArray(rule.serviceIds, data.serviceIds) &&
-    sameStringArray(rule.sensorIds, data.sensorIds)
+    sameStringArray(rule.sensorIds, data.sensorIds) &&
+    sameStringArray(rule.groupIds, data.groupIds)
   );
 }
 
 // Keep the scalar sensorId in sync with sensorIds[0] so the `sensor` include still
 // hydrates a representative label and older single-object rules keep working.
-// Similarly keep deviceId in sync with deviceIds[0] for the relation.
+// Similarly keep deviceId in sync with deviceIds[0] for the relation, and groupId
+// in sync with groupIds[0] for the `group` include.
 function withRuleTargets<T extends {
   sensorIds?: string[];
   sensorId?: string | null;
@@ -358,11 +363,14 @@ function withRuleTargets<T extends {
   deviceId?: string | null;
   serviceIds?: string[];
   serviceId?: string | null;
+  groupIds?: string[];
+  groupId?: string | null;
 }>(data: T): T {
   let result = data;
   if (result.sensorIds && result.sensorIds.length > 0) result = { ...result, sensorId: result.sensorIds[0] };
   if (result.deviceIds && result.deviceIds.length > 0) result = { ...result, deviceId: result.deviceIds[0] };
   if (result.serviceIds && result.serviceIds.length > 0) result = { ...result, serviceId: result.serviceIds[0] };
+  if (result.groupIds && result.groupIds.length > 0) result = { ...result, groupId: result.groupIds[0] };
   return result;
 }
 
@@ -405,7 +413,18 @@ alertRulesRouter.get('/', async (req: AuthedRequest, res) => {
       sensor: { select: { description: true, unit: true, type: true } },
     },
   });
-  res.json(rules);
+
+  // groupIds is a plain scalar array (no Prisma relation to eager-load), so resolve
+  // display names for the multi-group picker in one batched query across all rules.
+  const allGroupIds = [...new Set(rules.flatMap((r) => r.groupIds))];
+  const groupNameById = allGroupIds.length > 0
+    ? new Map((await prisma.deviceGroup.findMany({ where: { id: { in: allGroupIds } }, select: { id: true, name: true } })).map((g) => [g.id, g.name]))
+    : new Map<string, string>();
+  const rulesWithGroupNames = rules.map((r) => ({
+    ...r,
+    groupNames: r.groupIds.map((id) => groupNameById.get(id) ?? id),
+  }));
+  res.json(rulesWithGroupNames);
 });
 
 alertRulesRouter.post('/', async (req: AuthedRequest, res) => {
@@ -494,6 +513,7 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
       portId: parsed.data.copyTargets ? source.portId : null,
       portIds: parsed.data.copyTargets ? source.portIds : [],
       groupId: parsed.data.copyTargets ? source.groupId : null,
+      groupIds: parsed.data.copyTargets ? source.groupIds : [],
       serviceId: parsed.data.copyTargets ? source.serviceId : null,
       serviceIds: parsed.data.copyTargets ? source.serviceIds : [],
       sensorId: parsed.data.copyTargets ? source.sensorId : null,
@@ -519,6 +539,7 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
         scope: true,
         deviceId: true,
         groupId: true,
+        groupIds: true,
         portId: true,
         serviceId: true,
         sensorId: true,
@@ -541,6 +562,7 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
         scope: copyData.scope,
         deviceId: copyData.deviceId ?? null,
         groupId: copyData.groupId ?? null,
+        groupIds: copyData.groupIds ?? [],
         portId: copyData.portId ?? null,
         serviceId: copyData.serviceId ?? null,
         sensorId: copyData.sensorId ?? null,
@@ -637,6 +659,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
       portId: parsed.data.copyTargets ? source.portId : null,
       portIds: parsed.data.copyTargets ? source.portIds : [],
       groupId: parsed.data.copyTargets ? source.groupId : null,
+      groupIds: parsed.data.copyTargets ? source.groupIds : [],
       serviceId: parsed.data.copyTargets ? source.serviceId : null,
       serviceIds: parsed.data.copyTargets ? source.serviceIds : [],
       sensorId: parsed.data.copyTargets ? source.sensorId : null,
@@ -663,6 +686,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
         scope: true,
         deviceId: true,
         groupId: true,
+        groupIds: true,
         portId: true,
         serviceId: true,
         sensorId: true,
@@ -685,6 +709,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
         scope: copyData.scope,
         deviceId: copyData.deviceId ?? null,
         groupId: copyData.groupId ?? null,
+        groupIds: copyData.groupIds ?? [],
         portId: copyData.portId ?? null,
         serviceId: copyData.serviceId ?? null,
         sensorId: copyData.sensorId ?? null,
@@ -741,6 +766,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
       scope: true,
       deviceId: true,
       groupId: true,
+      groupIds: true,
       portId: true,
       serviceId: true,
       sensorId: true,
@@ -767,6 +793,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
         scope: expected.scope,
         deviceId: expected.deviceId ?? null,
         groupId: expected.groupId ?? null,
+        groupIds: expected.groupIds ?? [],
         portId: expected.portId ?? null,
         serviceId: expected.serviceId ?? null,
         sensorId: expected.sensorId ?? null,

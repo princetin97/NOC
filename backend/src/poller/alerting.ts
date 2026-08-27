@@ -15,6 +15,7 @@ type RuleRow = {
   deviceIds: string[];
   portId: string | null;
   groupId: string | null;
+  groupIds: string[];
   siteId: string | null;
   serviceId: string | null;
   serviceIds: string[];
@@ -146,7 +147,9 @@ export async function evaluateAlertsForDevice(deviceId: string): Promise<void> {
       continue;
     }
     if (rule.siteId && rule.siteId !== device.siteId) continue;
-    if (rule.groupId && device.groupId !== rule.groupId) continue;
+    if (rule.groupIds && rule.groupIds.length > 0) {
+      if (!device.groupId || !rule.groupIds.includes(device.groupId)) continue;
+    } else if (rule.groupId && device.groupId !== rule.groupId) continue;
     if (rule.osFilter && !(device.os ?? '').toLowerCase().includes(rule.osFilter.toLowerCase())) continue;
 
     if (isSensorRule(rule)) {
@@ -321,7 +324,7 @@ async function evaluateSensorRule(
     // Group/multi-device rules store sensor IDs from one reference device. For other
     // devices, match by type+index so identical sensors on same-model devices are evaluated.
     const isOtherDevice = rule.deviceId !== device.id;
-    if (isOtherDevice && (rule.groupId || rule.deviceIds.length > 1)) {
+    if (isOtherDevice && (rule.groupId || rule.groupIds.length > 0 || rule.deviceIds.length > 1)) {
       const refSensors = await prisma.sensor.findMany({
         where: { id: { in: ids } },
         select: { type: true, index: true },

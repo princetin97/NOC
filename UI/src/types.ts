@@ -322,6 +322,7 @@ export interface AlertRule {
   serviceIds?: string[];
   portId?: string | null;
   groupId?: string | null;
+  groupIds?: string[];
   siteId?: string | null;
   portIds?: string[];
   sensorId?: string | null;
@@ -332,6 +333,7 @@ export interface AlertRule {
   deviceName?: string | null;
   portName?: string | null;
   groupName?: string | null;
+  groupNames?: string[];
   sensorLabel?: string | null;
   serviceName?: string | null;
   serviceTarget?: string | null;
@@ -353,6 +355,7 @@ export interface AlertRuleInput {
   serviceIds?: string[];
   portId?: string | null;
   groupId?: string | null;
+  groupIds?: string[];
   siteId?: string | null;
   portIds?: string[];
   sensorId?: string | null;
