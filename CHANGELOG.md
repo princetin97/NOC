@@ -17,6 +17,18 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-27
+
+### Changed
+- Chuẩn hóa thông tin host VMware ESXi trong trang Thiết bị (khớp với sysDescr
+  đồng bộ từ vCenter): ô **Firmware** giờ hiển thị "VMware ESXi \<version\>"
+  (ví dụ "VMware ESXi 7.0.3") thay vì phiên bản BIOS máy chủ vật lý. Thêm 3 ô
+  mới chỉ hiện với host ESXi: **CPU Model**, **NIC vật lý**, **Kho lưu trữ
+  (Inventory)** — lấy từ chuỗi inventorySummary/sysDescr dạng
+  `key=value • key=value`. Logic parse chuỗi này được tách ra dùng chung
+  (`UI/src/utils/inventorySummary.ts`) giữa trang Thiết bị và trang VMware
+  vCenter thay vì trùng lặp code.
+
 ## [0.7.0] - 2026-08-27
 
 ### Added

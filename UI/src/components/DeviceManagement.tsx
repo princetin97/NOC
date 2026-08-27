@@ -8,6 +8,7 @@ import { SensorHistoryPanel } from './SensorHistoryPanel';
 import { PortDetail } from './PortDetail';
 import { AlertRuleForm } from './AlertConsole';
 import { api } from '../services/api';
+import { parseInventorySummary } from '../utils/inventorySummary';
 
 // Every interface (including VLAN/virtual), naturally sorted.
 const getAllPorts = (device: NetworkDevice): NetworkInterface[] =>
@@ -689,6 +690,16 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
     const fingerprint = `${selectedDevice.vendor ?? ''} ${selectedDevice.model ?? ''} ${selectedDevice.os ?? ''} ${selectedDevice.sysDescr ?? ''}`.toLowerCase();
     return /\bc1000\b|catalyst|\bws-c\d+|\b2960\b|\bswitch\b|cisco ios/.test(fingerprint);
+  }, [selectedDevice]);
+
+  // vCenter-synced ESXi hosts carry a "key=value • key=value" inventory dump in
+  // sysDescr (see poller/vcenter.ts buildInventorySummary) — parse it to show
+  // hypervisor-specific fields (CPU model, physical NICs, datastore) instead of
+  // the generic hardware tiles.
+  const esxiInventory = useMemo(() => {
+    if (!selectedDevice) return null;
+    const map = parseInventorySummary(selectedDevice.sysDescr);
+    return map.esxi ? map : null;
   }, [selectedDevice]);
 
   useEffect(() => {
@@ -1827,7 +1838,9 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     </div>
                     <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider">Firmware</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.firmware}>{selectedDevice.firmware || '—'}</p>
+                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware}>
+                        {esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware || '—'}
+                      </p>
                     </div>
                     <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider">Số Serial</span>
@@ -1841,6 +1854,24 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hệ điều hành</span>
                       <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.osVersion || selectedDevice.os}>{selectedDevice.osVersion || selectedDevice.os || '—'}</p>
                     </div>
+                    {esxiInventory && (
+                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">CPU Model</span>
+                        <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.cpu_model}>{esxiInventory.cpu_model || '—'}</p>
+                      </div>
+                    )}
+                    {esxiInventory && (
+                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">NIC vật lý</span>
+                        <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.physical_nics}>{esxiInventory.physical_nics || '—'}</p>
+                      </div>
+                    )}
+                    {esxiInventory && (
+                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">Kho lưu trữ (Inventory)</span>
+                        <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.datastore_summary}>{esxiInventory.datastore_summary || '—'}</p>
+                      </div>
+                    )}
                     <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mô tả hệ thống (sysDescr)</span>
                       <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.sysDescr}>{selectedDevice.sysDescr || '—'}</p>
