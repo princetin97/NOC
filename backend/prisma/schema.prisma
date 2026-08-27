@@ -1,0 +1,638 @@
+// Prisma schema for the Device Monitor platform (LibreNMS-inspired architecture).
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DeviceStatus {
+  up
+  down
+  warning
+  maintenance
+}
+
+enum SnmpVersion {
+  v1
+  v2c
+  v3
+}
+
+enum AlertSeverity {
+  critical
+  high
+  medium
+  low
+}
+
+enum AlertStatus {
+  active
+  acknowledged
+  resolved
+}
+
+enum ServiceType {
+  PING
+  HTTP
+  HTTPS
+  DNS
+  SSH
+  MYSQL
+  BGP
+  TCP
+}
+
+enum EventFacility {
+  syslog
+  snmp_trap
+  system
+  auth
+}
+
+enum NotificationChannelType {
+  email
+  telegram
+  webhook
+  slack
+}
+
+enum NeighborProtocol {
+  lldp
+  cdp
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+
+  siteMemberships UserSite[]
+}
+
+model Site {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String?  @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  devices         Device[]
+  deviceGroups    DeviceGroup[]
+  services        ServiceCheck[]
+  alertRules      AlertRule[]
+  notificationChannels NotificationChannel[]
+  dashboards      Dashboard[]
+  mapNodes        MapNode[]
+  userMemberships UserSite[]
+}
+
+model UserSite {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, siteId])
+  @@index([siteId])
+}
+
+model Device {
+  id            String       @id @default(uuid())
+  name          String
+  hostname      String       @unique
+  ip            String
+  type          String       @default("server")
+  vendor        String?
+  model         String?
+  os            String?
+  osVersion     String?
+  firmware      String?
+  serial        String?
+  sysDescr      String?
+  sysObjectId   String?
+  location      String?
+  rack          String?
+  status        DeviceStatus @default(down)
+  uptimeSeconds Int          @default(0)
+
+  snmpVersion     SnmpVersion @default(v2c)
+  snmpCommunity   String? // v1/v2c
+  snmpV3User      String?
+  snmpV3AuthProto String?
+  snmpV3AuthPass  String?
+  snmpV3PrivProto String?
+  snmpV3PrivPass  String?
+  snmpPort        Int         @default(161)
+
+  // SSH access for config backup (network devices).
+  sshPort           Int     @default(22)
+  sshUsername       String?
+  sshPassword       String?
+  sshEnablePassword String?
+
+  cpuUsage         Float  @default(0)
+  cpuCount         Int?
+  memoryUsage      Float  @default(0)
+  totalMemoryBytes Float?
+  temperature      Float?
+  pingLatencyMs    Float?
+  packetLoss       Float  @default(0)
+
+  disabled   Boolean   @default(false)
+  lastPolled DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  group   DeviceGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupId String?
+  site    Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId  String?
+
+  ports         Port[]
+  metrics       DeviceMetric[]
+  sensors       Sensor[]
+  hardwareComponents HardwareComponent[]
+  processors    Processor[]
+  alerts        Alert[]
+  events        EventLog[]
+  neighbors     DeviceNeighbor[]
+  configBackups ConfigBackup[]
+  alertRules    AlertRule[]
+  vlans         Vlan[]
+  mapNode       MapNode?
+
+  @@index([status])
+  @@index([groupId])
+  @@index([siteId])
+}
+
+// Hardware/component inventory discovered from ENTITY-MIB tables (modules, PSUs,
+// fan trays, line cards, transceivers...). Used by the Inventory tab and automatic
+// hardware health alerts when a component reports an unhealthy state.
+model HardwareComponent {
+  id                String   @id @default(uuid())
+  device            Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId          String
+  entityIndex       Int
+  parentEntityIndex Int?
+  name              String
+  description       String
+  class             String
+  model             String?
+  serial            String?
+  hardwareRev       String?
+  softwareRev       String?
+  isFru             Boolean  @default(false)
+  operStatus        String?
+  adminStatus       String?
+  alarmStatus       String?
+  healthStatus      String   @default("unknown") // ok | warning | critical | unknown
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([deviceId, entityIndex])
+  @@index([deviceId])
+  @@index([deviceId, healthStatus])
+}
+
+// Logical grouping of devices (by site, role, tenant, ...) for filtering & rollups.
+model DeviceGroup {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  parent      DeviceGroup?  @relation("DeviceGroupTree", fields: [parentId], references: [id], onDelete: SetNull)
+  parentId    String?
+  site        Site?         @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId      String?
+  children    DeviceGroup[] @relation("DeviceGroupTree")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  devices    Device[]
+  alertRules AlertRule[]
+
+  @@index([parentId])
+  @@index([siteId])
+  @@unique([siteId, name])
+}
+
+// Link-layer neighbor learned via LLDP-MIB / CISCO-CDP-MIB, used to build topology.
+model DeviceNeighbor {
+  id              String           @id @default(uuid())
+  device          Device           @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId        String
+  protocol        NeighborProtocol
+  localPortName   String
+  remoteSysName   String?
+  remoteChassisId String?
+  remotePortId    String?
+  remotePortDescr String?
+  remoteMgmtAddr  String?
+  lastSeen        DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+
+  @@unique([deviceId, localPortName, remoteChassisId, remotePortId])
+  @@index([deviceId])
+}
+
+// Point-in-time device configuration snapshot retrieved over SSH.
+model ConfigBackup {
+  id           String   @id @default(uuid())
+  device       Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId     String
+  content      String
+  sizeBytes    Int      @default(0)
+  retrievedVia String   @default("ssh")
+  status       String   @default("success")
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([deviceId, createdAt])
+}
+
+model Port {
+  id            String  @id @default(uuid())
+  device        Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId      String
+  ifIndex       Int
+  ifName        String
+  ifAlias       String?
+  ifDescr       String?
+  ifType        String?
+  ifSpeed       BigInt  @default(0)
+  ifPhysAddress String?
+  ifAdminStatus String  @default("down")
+  ifOperStatus  String  @default("down")
+
+  inOctets    BigInt @default(0)
+  outOctets   BigInt @default(0)
+  inErrors    BigInt @default(0)
+  outErrors   BigInt @default(0)
+  inDiscards  BigInt @default(0)
+  outDiscards BigInt @default(0)
+
+  inRateBps   Float @default(0)
+  outRateBps  Float @default(0)
+  utilization Float @default(0)
+
+  lastPolled DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  metrics    PortMetric[]
+  alertRules AlertRule[]
+  vlans      PortVlan[]
+
+  @@unique([deviceId, ifIndex])
+  @@index([deviceId])
+}
+
+// A VLAN discovered on a switch via Q-BRIDGE-MIB (dot1qVlanStaticName), LibreNMS-style.
+model Vlan {
+  id        String   @id @default(uuid())
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId  String
+  vlanId    Int
+  name      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ports PortVlan[]
+
+  @@unique([deviceId, vlanId])
+  @@index([deviceId])
+}
+
+// Port <-> VLAN membership (a port can belong to several VLANs; `untagged` marks the
+// port's native/access VLAN, matching dot1qVlanStaticUntaggedPorts).
+model PortVlan {
+  id       String  @id @default(uuid())
+  vlan     Vlan    @relation(fields: [vlanId], references: [id], onDelete: Cascade)
+  vlanId   String
+  port     Port    @relation(fields: [portId], references: [id], onDelete: Cascade)
+  portId   String
+  untagged Boolean @default(false)
+
+  @@unique([vlanId, portId])
+  @@index([portId])
+}
+
+model DeviceMetric {
+  id            String   @id @default(uuid())
+  device        Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId      String
+  timestamp     DateTime @default(now())
+  cpuUsage      Float
+  memoryUsage   Float
+  temperature   Float?
+  pingLatencyMs Float?
+  packetLoss    Float
+
+  @@index([deviceId, timestamp])
+  @@index([timestamp])
+}
+
+// A single physical/logical processor discovered on a device (e.g. "Routing Engine 0",
+// "SPU 0/0", "CPU 1"). LibreNMS-style: one device can expose many processors, each with
+// its own historical utilisation trend stored in ProcessorMetric.
+model Processor {
+  id          String    @id @default(uuid())
+  device      Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId    String
+  index       String // stable per-device key from the source table (e.g. "hr-2", "jnx-9.1.0.0")
+  description String // human label ("node0 Routing", "CPU (unit 1)", ...)
+  usage       Float     @default(0) // last polled utilisation percentage
+  lastPolled  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  metrics ProcessorMetric[]
+
+  @@unique([deviceId, index])
+  @@index([deviceId])
+}
+
+// Time-series utilisation samples for one processor (drives the per-processor trend graph).
+model ProcessorMetric {
+  id          String    @id @default(uuid())
+  processor   Processor @relation(fields: [processorId], references: [id], onDelete: Cascade)
+  processorId String
+  timestamp   DateTime  @default(now())
+  usage       Float
+
+  @@index([processorId, timestamp])
+  @@index([timestamp])
+}
+
+// Individual health sensor discovered on a device (temperature, fan, voltage,
+// current, power, humidity, per-component CPU/memory/state) — LibreNMS-style.
+model Sensor {
+  id          String    @id @default(uuid())
+  device      Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId    String
+  type        String // temperature | fan | voltage | current | power | humidity | cpu | memory | disk | state
+  index       String // stable per-(device,type) key from the source table
+  description String
+  value       Float?
+  unit        String    @default("")
+  status      String    @default("ok") // ok | warning | critical | unknown
+  lastPolled  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  alertRules AlertRule[]
+
+  @@unique([deviceId, type, index])
+  @@index([deviceId])
+}
+
+model PortMetric {
+  id          String   @id @default(uuid())
+  port        Port     @relation(fields: [portId], references: [id], onDelete: Cascade)
+  portId      String
+  timestamp   DateTime @default(now())
+  inRateBps   Float
+  outRateBps  Float
+  inErrors    BigInt
+  outErrors   BigInt
+  inDiscards  BigInt   @default(0)
+  outDiscards BigInt   @default(0)
+  utilization Float
+
+  @@index([portId, timestamp])
+  @@index([timestamp])
+}
+
+model AlertRule {
+  id          String        @id @default(uuid())
+  name        String
+  metric      String
+  condition   String
+  threshold   Float
+  unit        String        @default("")
+  severity    AlertSeverity @default(medium)
+  enabled     Boolean       @default(true)
+  description String?
+  createdAt   DateTime      @default(now())
+
+  // Scope: "device" (evaluate against every device) or "interface" (per-port).
+  scope           String       @default("device")
+  device          Device?      @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId        String?
+  // Multi-device target: rule applies to these specific devices (e.g. same model).
+  deviceIds       String[]     @default([])
+  port            Port?        @relation(fields: [portId], references: [id], onDelete: Cascade)
+  portId          String?
+  // Optional group target: rule applies to every device in this group.
+  group           DeviceGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupId         String?
+  site            Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId          String?
+  // Multi-port target for interface rules; empty means all ports of the device.
+  portIds         String[]     @default([])
+  // Optional per-object target: rule applies to a single discovered sensor/component
+  // (scope = "sensor"), letting admins set a custom threshold on a specific object
+  // that falls outside the device-wide/interface rules.
+  sensor          Sensor?      @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  sensorId        String?
+  // Multi-object target: several sensors of the SAME unit on one device share one rule
+  // (e.g. all disk % objects). Empty falls back to the single sensorId above.
+  sensorIds       String[]     @default([])
+  // Dynamic fleet target: when set, the rule matches EVERY sensor of this type
+  // (e.g. "disk") on every device, optionally narrowed by osFilter (e.g. "Windows"
+  // / "Linux", case-insensitive substring of Device.os). Overrides sensorId/sensorIds.
+  sensorType      String?
+  osFilter        String?
+  // Optional service target: rule applies to one or more Service Checks.
+  service         ServiceCheck? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId       String?
+  serviceIds      String[]      @default([])
+  // Re-notify interval (minutes) to re-send Telegram/Slack while an alert stays active
+  // and unacknowledged. 0 = notify once only. Admin-configurable per rule/threshold.
+  renotifyMinutes Int          @default(0)
+
+  alerts Alert[]
+
+  @@index([deviceId])
+  @@index([portId])
+  @@index([groupId])
+  @@index([sensorId])
+  @@index([serviceId])
+  @@index([siteId])
+  @@index([enabled])
+}
+
+// Global per-severity re-notify defaults, used by a rule when its own renotifyMinutes
+// is 0 (unset). Single row keyed by a fixed id, admin-editable from Settings.
+model AlertRenotifySettings {
+  id       String @id @default("singleton")
+  critical Int    @default(5)
+  high     Int    @default(10)
+  medium   Int    @default(30)
+  low      Int    @default(0)
+}
+
+// Delivery targets for alert notifications. `config` holds channel-specific
+// settings as a JSON string (SMTP creds, Telegram bot token/chat id, webhook URL).
+model NotificationChannel {
+  id          String                  @id @default(uuid())
+  name        String
+  type        NotificationChannelType
+  enabled     Boolean                 @default(true)
+  minSeverity AlertSeverity           @default(medium)
+  config      String
+  site        Site?                    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId      String?
+  // Alert category filter (e.g. "temperature", "service", "cpu"...). Empty = all
+  // categories, letting one Telegram group route alert types to different topics
+  // via several channels sharing the same chatId but different message thread IDs.
+  categories  String[]                @default([])
+  lastError   String?
+  lastSentAt  DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([siteId])
+}
+
+model Alert {
+  id             String        @id @default(uuid())
+  device         Device?       @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId       String?
+  service        ServiceCheck? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId      String?
+  rule           AlertRule?    @relation(fields: [ruleId], references: [id])
+  ruleId         String?
+  interfaceName  String?
+  message        String
+  severity       AlertSeverity
+  status         AlertStatus   @default(active)
+  metricValue    String?
+  timestamp      DateTime      @default(now())
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  // Last time a notification was sent for this alert (drives the re-notify interval).
+  lastNotifiedAt DateTime?
+
+  @@index([deviceId, status])
+  @@index([serviceId, status])
+  @@index([deviceId, ruleId, status])
+  @@index([serviceId, ruleId, status])
+}
+
+model EventLog {
+  id        String        @id @default(uuid())
+  device    Device?       @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId  String?
+  timestamp DateTime      @default(now())
+  facility  EventFacility
+  severity  String
+  message   String
+  rawSource String?
+
+  @@index([deviceId, timestamp])
+  @@index([timestamp])
+}
+
+model ServiceCheck {
+  id             String      @id @default(uuid())
+  name           String
+  type           ServiceType
+  target         String
+  port           Int?
+  status         String      @default("down")
+  responseTimeMs Float       @default(0)
+  uptimePercent  Float       @default(100)
+  lastCheck      DateTime?
+  enabled        Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  site           Site?       @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId         String?
+
+  history    ServiceCheckHistory[]
+  alerts     Alert[]
+  alertRules AlertRule[]
+
+  @@index([siteId])
+}
+
+model ServiceCheckHistory {
+  id             String       @id @default(uuid())
+  service        ServiceCheck @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId      String
+  timestamp      DateTime     @default(now())
+  status         String
+  responseTimeMs Float
+
+  @@index([serviceId, timestamp])
+}
+
+// Admin-drawn network map: which devices are placed on the canvas and where.
+// A node may also be a reference-only object with no monitored device behind it
+// (e.g. an "Internet" cloud or another site) used purely for diagram context.
+model MapNode {
+  id        String   @id @default(uuid())
+  device    Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId  String?  @unique
+  site      Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId    String?
+  kind      String   @default("device") // "device" | "cloud" | "site" | "note"
+  label     String?
+  icon      String?
+  x         Float    @default(120)
+  y         Float    @default(120)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  linksOut MapLink[] @relation("MapLinkSource")
+  linksIn  MapLink[] @relation("MapLinkTarget")
+
+  @@index([siteId])
+}
+
+// Admin-drawn connection between two map objects (devices or reference objects).
+// Each end may reference a specific interface (Port) so the link can display that
+// port's live in/out traffic. Multiple links between the same pair are allowed.
+model MapLink {
+  id           String   @id @default(uuid())
+  sourceNode   MapNode  @relation("MapLinkSource", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  sourceNodeId String
+  sourcePortId String?
+  targetNode   MapNode  @relation("MapLinkTarget", fields: [targetNodeId], references: [id], onDelete: Cascade)
+  targetNodeId String
+  targetPortId String?
+  label        String?
+  createdAt    DateTime @default(now())
+
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+}
+
+// Admin-customizable NOC dashboard. `layout` is a JSON string holding the widget
+// array (each widget carries its grid position x/y/w/h, type and per-widget config),
+// so new widget types don't require a schema change. Multiple dashboards let each
+// TV monitor show its own independent view.
+model Dashboard {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  layout      String   @default("[]")
+  site        Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([siteId])
+}

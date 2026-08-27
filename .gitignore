@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# env files (never commit secrets)
+.env
+.env.local
+!.env.example
+
+# OS/editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+
+# prisma
+backend/prisma/dev.db
+
+# misc
+*.tsbuildinfo
+coverage/

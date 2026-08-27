@@ -1,0 +1,56 @@
+{
+  "name": "device-monitor-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "dev:api": "tsx watch src/api/server.ts",
+    "dev:poller": "tsx watch src/poller/index.ts",
+    "dev:syslog": "tsx watch src/collectors/syslog.ts",
+    "dev:trap": "tsx watch src/collectors/trap.ts",
+    "start:api": "node dist/api/server.js",
+    "start:poller": "node dist/poller/index.js",
+    "start:syslog": "node dist/collectors/syslog.js",
+    "start:trap": "node dist/collectors/trap.js",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.34.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "net-snmp": "^3.20.0",
+    "nodemailer": "^6.10.1",
+    "ping": "^0.4.4",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "socket.io": "^4.8.1",
+    "ssh2": "^1.17.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.9.0",
+    "@types/nodemailer": "^6.4.24",
+    "@types/ping": "^0.4.4",
+    "@types/ssh2": "^1.15.5",
+    "pino-pretty": "^11.3.0",
+    "prisma": "^5.20.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

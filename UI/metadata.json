@@ -1,0 +1,6 @@
+{
+  "name": "LibreNMS Network Monitoring System",
+  "description": "Hệ thống giám sát mạng thời gian thực với biểu đồ lưu lượng SNMP, bảng điều khiển NOC, cảnh báo tức thì, sơ đồ mạng và quản lý giao diện.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

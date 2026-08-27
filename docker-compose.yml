@@ -1,0 +1,147 @@
+networks:
+  monitor-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-monitor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-monitor}
+      POSTGRES_DB: ${POSTGRES_DB:-device_monitor}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c" 
+      - "max_parallel_workers_per_gather=0"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-monitor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [monitor-net]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [monitor-net]
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public&connection_limit=15
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      API_PORT: 4000
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      NAGSTAMON_USER: ${NAGSTAMON_USER:-}
+      NAGSTAMON_PASSWORD: ${NAGSTAMON_PASSWORD:-}
+      NAGSTAMON_INCLUDE_ACKNOWLEDGED: ${NAGSTAMON_INCLUDE_ACKNOWLEDGED:-false}
+      NAGSTAMON_SOURCE_WINDOW: ${NAGSTAMON_SOURCE_WINDOW:-500}
+      RUN_MIGRATIONS: "true"
+    command: ["node", "dist/api/server.js"]
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [monitor-net]
+
+  poller:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public&connection_limit=8
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
+      DISCOVERY_INTERVAL_SECONDS: ${DISCOVERY_INTERVAL_SECONDS:-3600}
+      POLL_WORKER_CONCURRENCY: ${POLL_WORKER_CONCURRENCY:-16}
+      DISCOVERY_WORKER_CONCURRENCY: ${DISCOVERY_WORKER_CONCURRENCY:-4}
+      SERVICE_WORKER_CONCURRENCY: ${SERVICE_WORKER_CONCURRENCY:-8}
+      POLL_QUEUE_BUFFER_MULTIPLIER: ${POLL_QUEUE_BUFFER_MULTIPLIER:-3}
+      POLL_FAST_INTERVAL_SECONDS: ${POLL_FAST_INTERVAL_SECONDS:-15}
+      POLL_FAST_BATCH_SIZE: ${POLL_FAST_BATCH_SIZE:-60}
+      POLL_TRANSITION_BOOST_WINDOW_SECONDS: ${POLL_TRANSITION_BOOST_WINDOW_SECONDS:-180}
+      POLL_TRANSITION_BOOST_STEP_SECONDS: ${POLL_TRANSITION_BOOST_STEP_SECONDS:-20}
+      POLL_TRANSITION_BOOST_MAX_JOBS: ${POLL_TRANSITION_BOOST_MAX_JOBS:-9}
+      SNMP_TIMEOUT_MS: ${SNMP_TIMEOUT_MS:-3000}
+      SNMP_RETRIES: ${SNMP_RETRIES:-1}
+      SERVICE_CHECK_INTERVAL_SECONDS: ${SERVICE_CHECK_INTERVAL_SECONDS:-20}
+      SERVICE_CHECK_FAST_INTERVAL_SECONDS: ${SERVICE_CHECK_FAST_INTERVAL_SECONDS:-8}
+      RUN_MIGRATIONS: "false"
+    command: ["node", "dist/poller/index.js"]
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [monitor-net]
+
+  syslog-collector:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      SYSLOG_UDP_PORT: 514
+      RUN_MIGRATIONS: "false"
+    command: ["node", "dist/collectors/syslog.js"]
+    ports:
+      - "514:514/udp"
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [monitor-net]
+
+  trap-collector:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      SNMPTRAP_UDP_PORT: 162
+      RUN_MIGRATIONS: "false"
+    command: ["node", "dist/collectors/trap.js"]
+    ports:
+      - "162:162/udp"
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [monitor-net]
+
+  ui:
+    build: ./UI
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      NODE_ENV: production
+      API_PROXY_TARGET: http://api:4000
+    ports:
+      - "8080:3000"
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [monitor-net]
