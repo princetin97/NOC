@@ -1781,128 +1781,138 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               {/* ==== TAB: Trạng thái hệ thống ==== */}
               {detailTab === 'system' && (
                 <>
-                  {/* Per-processor utilisation trends (Now/Min/Max/Avg) — LibreNMS parity */}
-                  <ProcessorsPanel deviceId={selectedDevice.id} darkMode={darkMode} />
+                  {/* 2-column layout: bên trái biểu đồ, bên phải các thông tin còn lại — hạn chế cuộn dọc */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-                  {/* Historical performance charts (CPU/RAM/temp/ping over time) */}
-                  <div>
-                    <DeviceMetricsHistory deviceId={selectedDevice.id} darkMode={darkMode} />
-                  </div>
+                    {/* ==== Cột trái: Biểu đồ ==== */}
+                    <div className="lg:col-span-7 space-y-6 min-w-0">
+                      {/* Per-processor utilisation trends (Now/Min/Max/Avg) — LibreNMS parity */}
+                      <ProcessorsPanel deviceId={selectedDevice.id} darkMode={darkMode} />
 
-                  {/* Gauges & Telemetry Bar */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
-                    <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
-                      <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {selectedDevice.cpuUsage}%
-                      </p>
-                      <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div className="bg-emerald-400 h-full" style={{ width: `${selectedDevice.cpuUsage}%` }}></div>
+                      {/* Historical performance charts (CPU/RAM/temp/ping over time) */}
+                      <div>
+                        <DeviceMetricsHistory deviceId={selectedDevice.id} darkMode={darkMode} />
                       </div>
+
+                      {/* UPS output load % history, when the device exposes a load sensor */}
+                      {detailSensors.some((s) => s.type === 'load') && (
+                        <SensorHistoryPanel deviceId={selectedDevice.id} sensorType="load" title="Lịch sử Tải (UPS)" darkMode={darkMode} />
+                      )}
                     </div>
 
-                    <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
-                      <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
-                        {selectedDevice.memoryUsage}%
-                      </p>
-                      <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div className="bg-amber-400 h-full" style={{ width: `${selectedDevice.memoryUsage}%` }}></div>
+                    {/* ==== Cột phải: Thông tin còn lại ==== */}
+                    <div className="lg:col-span-5 space-y-6 min-w-0">
+                      {/* Gauges & Telemetry Bar */}
+                      <div className="grid grid-cols-2 gap-4 font-mono">
+                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
+                          <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {selectedDevice.cpuUsage}%
+                          </p>
+                          <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div className="bg-emerald-400 h-full" style={{ width: `${selectedDevice.cpuUsage}%` }}></div>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
+                          <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
+                            {selectedDevice.memoryUsage}%
+                          </p>
+                          <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div className="bg-amber-400 h-full" style={{ width: `${selectedDevice.memoryUsage}%` }}></div>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Nhiệt độ Ambient</span>
+                          <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
+                          <p className="text-[10px] text-slate-500 mt-1">Ngưỡng &lt;65°C</p>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Độ trễ ICMP</span>
+                          <p className="text-xl font-black mt-1 text-cyan-400">
+                            {selectedDevice.status === 'down' ? 'N/A' : `${selectedDevice.pingLatencyMs} ms`}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">Packet loss: {selectedDevice.packetLoss}%</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Nhiệt độ Ambient</span>
-                      <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
-                      <p className="text-[10px] text-slate-500 mt-1">Ngưỡng &lt;65°C</p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Độ trễ ICMP</span>
-                      <p className="text-xl font-black mt-1 text-cyan-400">
-                        {selectedDevice.status === 'down' ? 'N/A' : `${selectedDevice.pingLatencyMs} ms`}
-                      </p>
-                      <p className="text-[10px] text-slate-500 mt-1">Packet loss: {selectedDevice.packetLoss}%</p>
-                    </div>
-                  </div>
-
-                  {/* Device identity: name / vendor / model / OS / version */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 font-mono text-xs">
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Tên thiết bị</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.name}>{selectedDevice.name}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hãng / Model</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={`${selectedDevice.vendor} ${selectedDevice.model}`}>{selectedDevice.vendor} {selectedDevice.model || '—'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Firmware</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware}>
-                        {esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware || '—'}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Số Serial</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.serial}>{selectedDevice.serial || '—'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Loại thiết bị</span>
-                      <p className="text-slate-100 font-bold mt-0.5">{selectedDevice.type}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hệ điều hành</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.osVersion || selectedDevice.os}>{selectedDevice.osVersion || selectedDevice.os || '—'}</p>
-                    </div>
-                    {esxiInventory && (
-                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">CPU Model</span>
-                        <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.cpu_model}>{esxiInventory.cpu_model || '—'}</p>
+                      {/* Device identity: name / vendor / model / OS / version */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Tên thiết bị</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.name}>{selectedDevice.name}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hãng / Model</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={`${selectedDevice.vendor} ${selectedDevice.model}`}>{selectedDevice.vendor} {selectedDevice.model || '—'}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Firmware</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware}>
+                            {esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware || '—'}
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Số Serial</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.serial}>{selectedDevice.serial || '—'}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Loại thiết bị</span>
+                          <p className="text-slate-100 font-bold mt-0.5">{selectedDevice.type}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hệ điều hành</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.osVersion || selectedDevice.os}>{selectedDevice.osVersion || selectedDevice.os || '—'}</p>
+                        </div>
+                        {esxiInventory && (
+                          <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">CPU Model</span>
+                            <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.cpu_model}>{esxiInventory.cpu_model || '—'}</p>
+                          </div>
+                        )}
+                        {esxiInventory && (
+                          <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">NIC vật lý</span>
+                            <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.physical_nics}>{esxiInventory.physical_nics || '—'}</p>
+                          </div>
+                        )}
+                        {esxiInventory && (
+                          <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Kho lưu trữ (Inventory)</span>
+                            <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.datastore_summary}>{esxiInventory.datastore_summary || '—'}</p>
+                          </div>
+                        )}
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mô tả hệ thống (sysDescr)</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.sysDescr}>{selectedDevice.sysDescr || '—'}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Vị trí</span>
+                          <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.location}>{selectedDevice.location || '—'}</p>
+                        </div>
                       </div>
-                    )}
-                    {esxiInventory && (
-                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">NIC vật lý</span>
-                        <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.physical_nics}>{esxiInventory.physical_nics || '—'}</p>
+
+                      {/* Health sensors (temperature/fan/voltage/power/CPU/memory/disk...) — LibreNMS parity */}
+                      <DeviceSensorsPanel sensors={detailSensors} />
+
+                      {/* Technical Details Footer */}
+                      <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-400">
+                        <div className="flex justify-between">
+                          <span>System Object ID (sysObjectID):</span>
+                          <span className="text-slate-200">{selectedDevice.sysObjectID}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>SNMP Community / Credentials:</span>
+                          <span className="text-slate-200">{selectedDevice.snmpVersion} ({selectedDevice.community || 'SNMPv3 User'})</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Thời gian Uptime liên tục:</span>
+                          <span className="text-emerald-400 font-bold">{selectedDevice.uptime}</span>
+                        </div>
                       </div>
-                    )}
-                    {esxiInventory && (
-                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">Kho lưu trữ (Inventory)</span>
-                        <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.datastore_summary}>{esxiInventory.datastore_summary || '—'}</p>
-                      </div>
-                    )}
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mô tả hệ thống (sysDescr)</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.sysDescr}>{selectedDevice.sysDescr || '—'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Vị trí</span>
-                      <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.location}>{selectedDevice.location || '—'}</p>
-                    </div>
-                  </div>
-
-                  {/* UPS output load % history, when the device exposes a load sensor */}
-                  {detailSensors.some((s) => s.type === 'load') && (
-                    <SensorHistoryPanel deviceId={selectedDevice.id} sensorType="load" title="Lịch sử Tải (UPS)" darkMode={darkMode} />
-                  )}
-
-                  {/* Health sensors (temperature/fan/voltage/power/CPU/memory/disk...) — LibreNMS parity */}
-                  <DeviceSensorsPanel sensors={detailSensors} />
-
-                  {/* Technical Details Footer */}
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-400">
-                    <div className="flex justify-between">
-                      <span>System Object ID (sysObjectID):</span>
-                      <span className="text-slate-200">{selectedDevice.sysObjectID}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>SNMP Community / Credentials:</span>
-                      <span className="text-slate-200">{selectedDevice.snmpVersion} ({selectedDevice.community || 'SNMPv3 User'})</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Thời gian Uptime liên tục:</span>
-                      <span className="text-emerald-400 font-bold">{selectedDevice.uptime}</span>
                     </div>
                   </div>
                 </>

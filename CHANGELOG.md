@@ -17,6 +17,20 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-08-27
+
+### Changed
+- Chia lại layout tab "Trạng thái hệ thống" trong popup chi tiết thiết bị thành
+  2 cột để xem được nhiều thông tin hơn trên 1 màn hình, giảm việc phải cuộn
+  lên/xuống:
+  - Cột trái (7/12): các biểu đồ — Bộ xử lý (Processor), Lịch sử hiệu năng
+    (CPU/RAM/nhiệt độ/ping theo thời gian), và Lịch sử Tải UPS (nếu có).
+  - Cột phải (5/12): các thông tin còn lại — Gauges (CPU/RAM/nhiệt độ/ICMP,
+    nay 2 ô/hàng), lưới thông tin định danh thiết bị (nay 2 ô/hàng), cảm biến
+    sức khỏe, và khối chi tiết kỹ thuật (sysObjectID/SNMP/uptime).
+  - Ở màn hình hẹp (<1024px) layout tự động xếp chồng lại thành 1 cột như cũ.
+  - File: `UI/src/components/DeviceManagement.tsx`.
+
 ## [0.7.2] - 2026-08-27
 
 ### Changed
