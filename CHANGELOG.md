@@ -17,6 +17,15 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-08-27
+
+### Changed
+- Không cho phép thiết lập kết nối vCenter ở phạm vi "Toàn hệ thống" nữa —
+  mỗi kết nối vCenter bắt buộc phải gắn với 1 trụ sở cụ thể (backend:
+  `siteId` bắt buộc khi tạo mới và khi sửa không được đặt về rỗng/null;
+  UI: bỏ tùy chọn "Toàn hệ thống" trong form, bắt buộc chọn trụ sở trước
+  khi lưu).
+
 ## [0.6.0] - 2026-08-27
 
 ### Added

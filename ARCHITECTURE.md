@@ -62,6 +62,10 @@ lâu hơn khoảng thời gian giữa 2 lần).
 sửa từng phần (`name/endpoint/username/password/siteId`) một kết nối
 `VirtualizationManager` đã tồn tại mà không cần xoá + tạo lại; `username`/`password`
 để trống trong body coi như giữ nguyên giá trị cũ (không bắt buộc gửi lại).
+`siteId` là bắt buộc từ v0.6.1 (không còn phạm vi "Toàn hệ thống"/null nữa) —
+cả `createManagerSchema` lẫn `updateManagerSchema` yêu cầu `siteId` là chuỗi
+không rỗng nếu có gửi lên; cột DB `VirtualizationManager.siteId` vẫn để nullable
+(không tạo migration) vì chỉ chặn ở tầng API/UI, không đổi schema.
 
 ### Lib dùng chung (`src/lib/`)
 `snmp.ts` (session SNMP v1/v2c/v3, get/walk), `mib-oids.ts` (OID cho MIB-II, IF-MIB,

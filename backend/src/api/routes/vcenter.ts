@@ -13,17 +13,19 @@ const createManagerSchema = z.object({
   endpoint: z.string().min(1),
   username: z.string().min(1),
   password: z.string().min(1),
-  siteId: z.string().nullish(),
+  siteId: z.string().min(1),
 });
 
 // password is optional on update: an empty/omitted value keeps the existing one
 // so the edit form doesn't have to re-enter it every time.
+// siteId (if sent) must be a real site — a vCenter connection can no longer be
+// scoped to the whole system.
 const updateManagerSchema = z.object({
   name: z.string().min(1).optional(),
   endpoint: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
   password: z.string().min(1).optional(),
-  siteId: z.string().nullish(),
+  siteId: z.string().min(1).optional(),
 });
 
 async function findScopedManager(req: AuthedRequest, id: string) {
@@ -52,12 +54,12 @@ vcenterRouter.post('/managers', async (req: AuthedRequest, res) => {
     return;
   }
   const { siteId, ...data } = parsed.data;
-  if (siteId && !canAccessSite(req, siteId)) {
+  if (!canAccessSite(req, siteId)) {
     res.status(403).json({ error: 'Bạn không có quyền tạo kết nối cho trụ sở này' });
     return;
   }
   try {
-    const manager = await prisma.virtualizationManager.create({ data: { ...data, siteId: siteId ?? null } });
+    const manager = await prisma.virtualizationManager.create({ data: { ...data, siteId } });
     const { password: _password, ...safe } = manager;
     res.status(201).json(safe);
   } catch (err) {
@@ -78,14 +80,14 @@ vcenterRouter.patch('/managers/:id', async (req: AuthedRequest, res) => {
     return;
   }
   const { siteId, ...data } = parsed.data;
-  if (siteId && !canAccessSite(req, siteId)) {
+  if (siteId !== undefined && !canAccessSite(req, siteId)) {
     res.status(403).json({ error: 'Bạn không có quyền chuyển kết nối sang trụ sở này' });
     return;
   }
   try {
     const updated = await prisma.virtualizationManager.update({
       where: { id: manager.id },
-      data: { ...data, ...(siteId !== undefined ? { siteId: siteId ?? null } : {}) },
+      data: { ...data, ...(siteId !== undefined ? { siteId } : {}) },
     });
     const { password: _password, ...safe } = updated;
     res.json(safe);

@@ -19,7 +19,7 @@ export interface CreateVirtualizationManagerInput {
   endpoint: string;
   username: string;
   password: string;
-  siteId?: string | null;
+  siteId: string;
 }
 
 export interface UpdateVirtualizationManagerInput {
@@ -27,7 +27,7 @@ export interface UpdateVirtualizationManagerInput {
   endpoint?: string;
   username?: string;
   password?: string;
-  siteId?: string | null;
+  siteId?: string;
 }
 
 export interface CreateDeviceInput {

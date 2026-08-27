@@ -183,13 +183,13 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
   const resetForm = () => {
     setShowForm(false);
     setEditingManagerId(null);
-    setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? '' });
+    setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? sites[0]?.id ?? '' });
   };
 
   const startCreate = () => {
     setError('');
     setEditingManagerId(null);
-    setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? '' });
+    setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? sites[0]?.id ?? '' });
     setShowForm(true);
   };
 
@@ -204,14 +204,14 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
     setError('');
     try {
       if (editingManagerId) {
-        const patch: Record<string, string | null> = { siteId: form.siteId || null };
+        const patch: Record<string, string> = { siteId: form.siteId };
         if (form.name) patch.name = form.name;
         if (form.endpoint) patch.endpoint = form.endpoint;
         if (form.username) patch.username = form.username;
         if (form.password) patch.password = form.password;
         await api.vcenter.update(editingManagerId, patch);
       } else {
-        await api.vcenter.create({ ...form, siteId: form.siteId || null });
+        await api.vcenter.create({ ...form, siteId: form.siteId });
       }
       resetForm();
       await load();
@@ -300,7 +300,9 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
               <label className="space-y-1">
                 <span className="block text-[11px] font-medium text-slate-400">Trụ sở</span>
                 <select className={input} value={form.siteId} onChange={(e) => setForm({ ...form, siteId: e.target.value })}>
-                  <option value="">Toàn hệ thống</option>
+                  <option value="" disabled>
+                    Chọn trụ sở
+                  </option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -334,7 +336,11 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
             <div className="mt-3 flex justify-end">
               <button
                 onClick={submitForm}
-                disabled={editingManagerId ? !form.name || !form.endpoint : !form.name || !form.endpoint || !form.username || !form.password}
+                disabled={
+                  editingManagerId
+                    ? !form.name || !form.endpoint || !form.siteId
+                    : !form.name || !form.endpoint || !form.username || !form.password || !form.siteId
+                }
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold disabled:opacity-50"
               >
                 {editingManagerId ? 'Cập nhật kết nối' : 'Lưu kết nối'}
