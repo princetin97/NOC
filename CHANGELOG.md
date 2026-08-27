@@ -17,6 +17,20 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-27
+
+### Fixed
+- **Bug**: các rule cảnh báo (`device down`, `cpu`, `memory`...) hoàn toàn không
+  được áp dụng cho các thiết bị đồng bộ từ vCenter, dù dữ liệu CPU/RAM/status
+  vẫn cập nhật đúng. Nguyên nhân: các `Device` này được tạo với `disabled=true`
+  (để vòng poll ping/SNMP thường không quét đè), nhưng `evaluateAlertsForDevice()`
+  chỉ được gọi từ `pollDevice()` — hàm này bỏ qua ngay các device có
+  `disabled=true`, và `poller/vcenter.ts` trước đó không tự gọi đánh giá cảnh báo.
+- **Fix**: `poller/vcenter.ts` giờ gọi `evaluateAlertsForDevice()` ngay sau khi
+  tạo/cập nhật `Device` cho mỗi ESXi host trong mỗi lần đồng bộ vCenter — các
+  rule nhắm tới thiết bị/nhóm/site đó (theo `deviceId`, `deviceIds`, `groupId`
+  "vCenter Device", hoặc `siteId`) giờ hoạt động bình thường như thiết bị SNMP.
+
 ## [0.5.0] - 2026-08-27
 
 ### Added

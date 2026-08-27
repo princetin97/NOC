@@ -1,6 +1,7 @@
 import { prisma } from '../lib/db';
 import { logger } from '../lib/logger';
 import * as vsphere from '../lib/vsphere';
+import { evaluateAlertsForDevice } from './alerting';
 
 const VCENTER_DEVICE_GROUP_NAME = 'vCenter Device';
 
@@ -178,9 +179,11 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
         };
         if (row.deviceId) {
           await prisma.device.update({ where: { id: row.deviceId }, data: deviceData });
+          await evaluateAlertsForDevice(row.deviceId);
         } else {
           const device = await prisma.device.create({ data: deviceData });
           await prisma.virtualizationHost.update({ where: { id: row.id }, data: { deviceId: device.id } });
+          await evaluateAlertsForDevice(device.id);
         }
       }
     }

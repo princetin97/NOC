@@ -96,6 +96,15 @@ nghiêm trọng (vd. ESXi host còn `connectionState=connected` nhưng
 `overallStatus=red` hoặc CPU/RAM vượt ngưỡng) — khác với `down` (mất kết nối hẳn).
 `poller/vcenter.ts`'s `deviceStatusFor()` là nơi áp dụng logic này cho vCenter hosts.
 
+Rule cảnh báo (`AlertRule`/`evaluateAlertsForDevice()`) hoạt động như nhau cho cả
+thiết bị SNMP lẫn thiết bị đồng bộ từ vCenter: vòng poll SNMP/ping thường
+(`poller/metrics.ts`'s `pollDevice()`) bỏ qua các `Device` có `disabled=true`
+(gồm mọi thiết bị vCenter) trước khi gọi `evaluateAlertsForDevice()`, nên
+`poller/vcenter.ts` phải tự gọi `evaluateAlertsForDevice(deviceId)` ngay sau khi
+tạo/cập nhật từng `Device` trong `syncVCenterManager()` (từ v0.5.1) — nếu thiếu
+bước này, rule `device_status`/`cpu`/`memory`/... nhắm tới các host vCenter sẽ
+không bao giờ được đánh giá dù dữ liệu vẫn hiển thị đúng trên UI.
+
 Migrations nằm ở `backend/prisma/migrations/*`, đặt tên theo timestamp + mô tả.
 
 ## 3. UI (`UI/`)
