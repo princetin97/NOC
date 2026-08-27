@@ -17,7 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-27
+
+### Added
+- Lưu lịch sử theo thời gian cho tất cả cảm biến (`Sensor`) qua model `SensorMetric`
+  mới (giống cơ chế `ProcessorMetric`), áp dụng cho mọi loại cảm biến — bao gồm
+  **Tải (UPS)** như yêu cầu.
+- API `GET /devices/:id/sensors/metrics?type=load&hours=` trả về lịch sử cảm biến
+  theo loại.
+- UI: component `SensorHistoryPanel` hiển thị biểu đồ lịch sử Tải (UPS) trong trang
+  chi tiết thiết bị, kèm bảng Hiện tại/Nhỏ nhất/Lớn nhất/Trung bình.
+- Dọn dẹp định kỳ (`cleanup.ts`) xoá `SensorMetric` cũ theo `METRIC_RETENTION_DAYS`
+  như các bảng time-series khác.
+
 ## [0.1.0] - 2026-08-27
+
 
 ### Added
 - Khởi tạo git repository cho toàn bộ source hiện có (backend + UI + deploy) làm baseline.

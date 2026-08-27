@@ -239,6 +239,17 @@ export interface ProcessorSeries {
   metrics: { timestamp: string; usage: number }[];
 }
 
+// One sensor's historical trend, as returned by GET /devices/:id/sensors/metrics?type=...
+export interface SensorSeries {
+  id: string;
+  type: string;
+  index: string;
+  description: string;
+  value: number | null; // last polled value
+  unit: string;
+  metrics: { timestamp: string; value: number }[];
+}
+
 export type AlertMetric =
   | 'cpu'
   | 'memory'

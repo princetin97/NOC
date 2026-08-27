@@ -391,9 +391,22 @@ model Sensor {
   updatedAt   DateTime  @updatedAt
 
   alertRules AlertRule[]
+  metrics    SensorMetric[]
 
   @@unique([deviceId, type, index])
   @@index([deviceId])
+}
+
+// Time-series samples for one sensor (drives history graphs, e.g. UPS load % over time).
+model SensorMetric {
+  id        String   @id @default(uuid())
+  sensor    Sensor   @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+  sensorId  String
+  timestamp DateTime @default(now())
+  value     Float
+
+  @@index([sensorId, timestamp])
+  @@index([timestamp])
 }
 
 model PortMetric {

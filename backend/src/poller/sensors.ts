@@ -750,15 +750,22 @@ async function readIbmSensors(session: Session): Promise<DiscoveredSensor[]> {
 async function persistSensors(deviceId: string, sensors: DiscoveredSensor[]): Promise<void> {
   const now = new Date();
   const seen = new Set<string>();
+  const metricRows: { sensorId: string; value: number }[] = [];
   for (const s of sensors) {
     const key = `${s.type}:${s.index}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    await prisma.sensor.upsert({
+    const row = await prisma.sensor.upsert({
       where: { deviceId_type_index: { deviceId, type: s.type, index: s.index } },
       create: { deviceId, type: s.type, index: s.index, description: s.description, value: s.value, unit: s.unit, status: s.status, lastPolled: now },
       update: { description: s.description, value: s.value, unit: s.unit, status: s.status, lastPolled: now },
     });
+    if (s.value !== null && s.value !== undefined && !Number.isNaN(s.value)) {
+      metricRows.push({ sensorId: row.id, value: s.value });
+    }
+  }
+  if (metricRows.length > 0) {
+    await prisma.sensorMetric.createMany({ data: metricRows.map((r) => ({ ...r, timestamp: now })) });
   }
 
   const existing = await prisma.sensor.findMany({ where: { deviceId }, select: { id: true, type: true, index: true } });

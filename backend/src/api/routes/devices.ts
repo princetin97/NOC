@@ -303,6 +303,36 @@ devicesRouter.get('/:id/processors/metrics', async (req: AuthedRequest, res) => 
   res.json(processors);
 });
 
+// Historical trend for sensors of a given category (e.g. type=load -> UPS output load %).
+devicesRouter.get('/:id/sensors/metrics', async (req: AuthedRequest, res) => {
+  const existing = await findScopedDevice(req, req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: 'Device not found' });
+    return;
+  }
+  const type = req.query.type ? String(req.query.type) : undefined;
+  const hours = req.query.hours ? Number(req.query.hours) : 24;
+  const since = new Date(Date.now() - hours * 3600_000);
+  const sensors = await prisma.sensor.findMany({
+    where: { deviceId: req.params.id, ...(type ? { type } : {}) },
+    orderBy: [{ description: 'asc' }, { index: 'asc' }],
+    select: {
+      id: true,
+      type: true,
+      index: true,
+      description: true,
+      value: true,
+      unit: true,
+      metrics: {
+        where: { timestamp: { gte: since } },
+        orderBy: { timestamp: 'asc' },
+        select: { timestamp: true, value: true },
+      },
+    },
+  });
+  res.json(sensors);
+});
+
 devicesRouter.get('/:id/neighbors', async (req: AuthedRequest, res) => {
   const existing = await findScopedDevice(req, req.params.id);
   if (!existing) {

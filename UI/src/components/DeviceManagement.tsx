@@ -4,6 +4,7 @@ import { Server, Search, Filter, RefreshCw, Cpu, HardDrive, Thermometer, Clock, 
 import { DeviceMetricsHistory } from './DeviceMetricsHistory';
 import { DeviceNeighbors } from './DeviceNeighbors';
 import { ProcessorsPanel } from './ProcessorsPanel';
+import { SensorHistoryPanel } from './SensorHistoryPanel';
 import { PortDetail } from './PortDetail';
 import { AlertRuleForm } from './AlertConsole';
 import { api } from '../services/api';
@@ -1845,6 +1846,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.location}>{selectedDevice.location || '—'}</p>
                     </div>
                   </div>
+
+                  {/* UPS output load % history, when the device exposes a load sensor */}
+                  {detailSensors.some((s) => s.type === 'load') && (
+                    <SensorHistoryPanel deviceId={selectedDevice.id} sensorType="load" title="Lịch sử Tải (UPS)" darkMode={darkMode} />
+                  )}
 
                   {/* Health sensors (temperature/fan/voltage/power/CPU/memory/disk...) — LibreNMS parity */}
                   <DeviceSensorsPanel sensors={detailSensors} />

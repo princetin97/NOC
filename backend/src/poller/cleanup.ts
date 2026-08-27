@@ -16,10 +16,11 @@ export async function runRetentionCleanup(): Promise<void> {
   const alertCutoff = daysAgo(env.resolvedAlertRetentionDays);
 
   try {
-    const [deviceMetrics, portMetrics, processorMetrics, serviceHistory, events, alerts] = await Promise.all([
+    const [deviceMetrics, portMetrics, processorMetrics, sensorMetrics, serviceHistory, events, alerts] = await Promise.all([
       prisma.deviceMetric.deleteMany({ where: { timestamp: { lt: metricCutoff } } }),
       prisma.portMetric.deleteMany({ where: { timestamp: { lt: metricCutoff } } }),
       prisma.processorMetric.deleteMany({ where: { timestamp: { lt: metricCutoff } } }),
+      prisma.sensorMetric.deleteMany({ where: { timestamp: { lt: metricCutoff } } }),
       prisma.serviceCheckHistory.deleteMany({ where: { timestamp: { lt: metricCutoff } } }),
       prisma.eventLog.deleteMany({ where: { timestamp: { lt: eventCutoff } } }),
       prisma.alert.deleteMany({ where: { status: 'resolved', resolvedAt: { lt: alertCutoff } } }),
@@ -29,6 +30,7 @@ export async function runRetentionCleanup(): Promise<void> {
         deviceMetrics: deviceMetrics.count,
         portMetrics: portMetrics.count,
         processorMetrics: processorMetrics.count,
+        sensorMetrics: sensorMetrics.count,
         serviceHistory: serviceHistory.count,
         events: events.count,
         resolvedAlerts: alerts.count,

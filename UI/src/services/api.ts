@@ -12,7 +12,7 @@ import {
   mapService,
   mapEvent,
 } from './adapters';
-import { NetworkDevice, NetworkAlert, AlertRule, ServiceCheck, EventLog, TopologyNode, TopologyLink, NotificationChannel, NotificationChannelInput, AppUser, DeviceMetricPoint, PollerHealth, DeviceGroup, DeviceGroupInput, DeviceNeighbor, PortMetricPoint, AlertRuleInput, AlertRuleCopyInput, AlertRuleCopyResult, AlertRuleApplySitesInput, AlertRuleApplySitesResult, MapNode, MapLink, MapLinkInput, SubnetScanResult, Dashboard, DashboardInput, ProcessorSeries, AlertRenotifySettings, ServiceMethodInput, SiteInfo } from '../types';
+import { NetworkDevice, NetworkAlert, AlertRule, ServiceCheck, EventLog, TopologyNode, TopologyLink, NotificationChannel, NotificationChannelInput, AppUser, DeviceMetricPoint, PollerHealth, DeviceGroup, DeviceGroupInput, DeviceNeighbor, PortMetricPoint, AlertRuleInput, AlertRuleCopyInput, AlertRuleCopyResult, AlertRuleApplySitesInput, AlertRuleApplySitesResult, MapNode, MapLink, MapLinkInput, SubnetScanResult, Dashboard, DashboardInput, ProcessorSeries, SensorSeries, AlertRenotifySettings, ServiceMethodInput, SiteInfo } from '../types';
 
 export interface CreateDeviceInput {
   name: string;
@@ -86,6 +86,8 @@ export const api = {
       apiClient.get<DeviceMetricPoint[]>(`/devices/${id}/metrics?hours=${hours}`),
     processorMetrics: (id: string, hours: number): Promise<ProcessorSeries[]> =>
       apiClient.get<ProcessorSeries[]>(`/devices/${id}/processors/metrics?hours=${hours}`),
+    sensorMetrics: (id: string, type: string, hours: number): Promise<SensorSeries[]> =>
+      apiClient.get<SensorSeries[]>(`/devices/${id}/sensors/metrics?type=${encodeURIComponent(type)}&hours=${hours}`),
     scanSubnet: async (input: { subnet: string; snmpVersion: string; snmpCommunity?: string; snmpPort?: number }): Promise<SubnetScanResult[]> => {
       const start = await apiClient.post<SubnetScanJobResponse>('/devices/scan-subnet/start', input, 15_000);
       const startedAt = Date.now();
