@@ -17,6 +17,19 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-08-27
+
+### Changed
+- Mở rộng popup chi tiết thiết bị (khi click vào 1 thiết bị trong danh sách) sang
+  hai bên để hiển thị nhiều thông tin hơn, giảm việc phải cuộn lên/xuống:
+  - Khung popup: `max-w-4xl` → `max-w-6xl` (và `2xl:max-w-7xl` trên màn hình rất
+    rộng ≥1536px).
+  - Lưới thông tin định danh thiết bị (Tên thiết bị, Hãng/Model, Firmware, Số
+    Serial, Loại thiết bị, Hệ điều hành, CPU Model, NIC vật lý, Kho lưu trữ, Mô
+    tả sysDescr, Vị trí): thêm `lg:grid-cols-4` (≥1024px) để hiển thị 4 ô/hàng
+    thay vì tối đa 3 ô/hàng như trước.
+  - File: `UI/src/components/DeviceManagement.tsx`.
+
 ## [0.7.1] - 2026-08-27
 
 ### Changed

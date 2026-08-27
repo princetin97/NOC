@@ -1677,7 +1677,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       {/* Device Detailed Modal / Drawer */}
       {selectedDevice && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl ${
+          <div className={`w-full max-w-6xl 2xl:max-w-7xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl ${
             darkMode ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
           }`}>
             
@@ -1827,7 +1827,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   </div>
 
                   {/* Device identity: name / vendor / model / OS / version */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 font-mono text-xs">
                     <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider">Tên thiết bị</span>
                       <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.name}>{selectedDevice.name}</p>
