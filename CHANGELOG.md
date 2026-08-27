@@ -17,6 +17,20 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-27
+
+### Added
+- Thêm trạng thái thiết bị mới **`critical`** (enum `DeviceStatus`, khác với
+  `down`): một ESXi host vẫn kết nối bình thường tới vCenter nhưng có cảnh báo
+  phần cứng/tài nguyên nghiêm trọng (`overallStatus=red` hoặc CPU/RAM vượt
+  ngưỡng) giờ hiển thị đúng là **CRITICAL** (cam) thay vì bị gộp nhầm vào
+  **DOWN** (đỏ, nghĩa là mất kết nối hẳn) như trước — chỉ khi vCenter báo
+  `connectionState !== 'connected'` mới thật sự là `down`.
+- Migration `20260827010000_device_status_critical` (`ALTER TYPE ... ADD VALUE`).
+- UI: badge/màu trạng thái mới cho `critical` ở danh sách Thiết bị, modal chi
+  tiết thiết bị, dashboard tuỳ biến (widget trạng thái thiết bị), và bản đồ
+  mạng (Topology).
+
 ## [0.4.0] - 2026-08-27
 
 ### Added

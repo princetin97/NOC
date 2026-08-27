@@ -887,6 +887,8 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
         return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">● ONLINE</span>;
       case 'warning':
         return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30">▲ WARN</span>;
+      case 'critical':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-orange-500/20 text-orange-400 border border-orange-500/30 animate-pulse">▲ CRITICAL</span>;
       case 'down':
         return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">■ DOWN</span>;
       default:
@@ -1678,6 +1680,8 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : selectedDevice.status === 'warning'
                     ? 'bg-amber-500/20 text-amber-400'
+                    : selectedDevice.status === 'critical'
+                    ? 'bg-orange-500/20 text-orange-400'
                     : 'bg-red-500/20 text-red-400'
                 }`}>
                   <Server className="w-6 h-6" />

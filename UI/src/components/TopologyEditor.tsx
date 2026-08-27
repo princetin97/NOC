@@ -660,9 +660,10 @@ export const TopologyEditor: React.FC<TopologyEditorProps> = ({ devices, alerts,
             const isSel = selectedNodeId === node.id;
             const isDevice = node.kind === 'device';
             const down = isDevice && node.status === 'down';
+            const crit = isDevice && node.status === 'critical';
             const warn = isDevice && node.status === 'warning';
             const refColor = '#818cf8';
-            const ringColor = isSel ? '#22d3ee' : isDevice ? (down ? '#ef4444' : warn ? '#f59e0b' : '#10b981') : refColor;
+            const ringColor = isSel ? '#22d3ee' : isDevice ? (down ? '#ef4444' : crit ? '#f97316' : warn ? '#f59e0b' : '#10b981') : refColor;
             const glyph = node.icon ?? (isDevice ? (DEVICE_TYPE_GLYPH[node.type] ?? '🖥️') : '❔');
             const device = node.deviceId ? deviceById.get(node.deviceId) : undefined;
             const alertCount = node.deviceId ? activeAlertCounts.get(node.deviceId) ?? 0 : 0;

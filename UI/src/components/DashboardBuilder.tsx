@@ -869,7 +869,7 @@ const DeviceStatusWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> = 
   const title = widget.config.title || 'Trạng thái thiết bị';
   let list = ctx.devices;
   if (widget.config.groupId) list = list.filter((d) => d.groupId === widget.config.groupId);
-  const color = (s: string) => s === 'up' ? 'bg-emerald-500' : s === 'down' ? 'bg-red-500' : s === 'warning' ? 'bg-amber-500' : 'bg-slate-500';
+  const color = (s: string) => s === 'up' ? 'bg-emerald-500' : s === 'down' ? 'bg-red-500' : s === 'critical' ? 'bg-orange-500' : s === 'warning' ? 'bg-amber-500' : 'bg-slate-500';
   return (
     <div className="w-full h-full p-3 flex flex-col">
       <div className="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-1.5">

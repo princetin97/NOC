@@ -13,6 +13,7 @@ enum DeviceStatus {
   up
   down
   warning
+  critical
   maintenance
 }
 

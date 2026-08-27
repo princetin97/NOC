@@ -1,4 +1,4 @@
-export type DeviceStatus = 'up' | 'down' | 'warning' | 'maintenance';
+export type DeviceStatus = 'up' | 'down' | 'warning' | 'critical' | 'maintenance';
 export type DeviceType = 'router' | 'switch' | 'firewall' | 'server' | 'wireless' | 'storage' | 'ups';
 export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 export type AlertStatus = 'active' | 'acknowledged' | 'resolved';

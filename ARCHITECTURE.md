@@ -89,6 +89,13 @@ liên kết 1-1 tới `Device`: mỗi lần đồng bộ, `poller/vcenter.ts` t�
 thường không quét đè (dữ liệu CPU/RAM/status lấy từ vCenter). Xoá host khỏi vCenter
 hoặc xoá manager sẽ xoá luôn `Device` tương ứng (dọn cả metric/alert lịch sử).
 
+`Device.status` (enum `DeviceStatus`) có 5 giá trị: `up, down, warning, critical,
+maintenance` (thêm `critical` ở v0.5.0, migration `20260827010000_device_status_critical`).
+`critical` dùng cho thiết bị vẫn kết nối/hoạt động bình thường nhưng có cảnh báo
+nghiêm trọng (vd. ESXi host còn `connectionState=connected` nhưng
+`overallStatus=red` hoặc CPU/RAM vượt ngưỡng) — khác với `down` (mất kết nối hẳn).
+`poller/vcenter.ts`'s `deviceStatusFor()` là nơi áp dụng logic này cho vCenter hosts.
+
 Migrations nằm ở `backend/prisma/migrations/*`, đặt tên theo timestamp + mô tả.
 
 ## 3. UI (`UI/`)

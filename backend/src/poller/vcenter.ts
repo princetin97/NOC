@@ -42,9 +42,14 @@ async function resolveHostname(candidate: string, currentDeviceId: string | null
   }
 }
 
-function deviceStatusFor(h: vsphere.VSphereHostInfo, alertState: 'ok' | 'warning' | 'critical'): 'up' | 'down' | 'warning' | 'maintenance' {
+// A host reporting `connectionState !== 'connected'` is genuinely unreachable
+// from vCenter ("down"); a connected host with a critical hardware/resource
+// alarm is still up and running, so it maps to the distinct "critical" status
+// instead of being conflated with "down".
+function deviceStatusFor(h: vsphere.VSphereHostInfo, alertState: 'ok' | 'warning' | 'critical'): 'up' | 'down' | 'warning' | 'critical' | 'maintenance' {
   if (h.inMaintenanceMode) return 'maintenance';
-  if (alertState === 'critical') return 'down';
+  if (h.connectionState && h.connectionState !== 'connected') return 'down';
+  if (alertState === 'critical') return 'critical';
   if (alertState === 'warning') return 'warning';
   return 'up';
 }
