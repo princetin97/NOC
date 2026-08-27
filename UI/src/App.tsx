@@ -23,6 +23,7 @@ import { ScanSubnetModal } from './components/ScanSubnetModal';
 import { LoginScreen } from './components/LoginScreen';
 import { SettingsPanel } from './components/SettingsPanel';
 import { SyslogConsole } from './components/SyslogConsole';
+import { VirtualizationMonitor } from './components/VirtualizationMonitor';
 import { getSelectedSiteId, setSelectedSiteId as persistSelectedSiteId } from './services/siteContext';
 
 const MAX_TRAFFIC_POINTS = 30;
@@ -37,6 +38,7 @@ const TAB_PATHS: Record<TabType, string> = {
   syslog: '/syslog',
   topology: '/topology',
   services: '/services',
+  virtualization: '/virtualization',
   settings: '/settings',
 };
 const PATH_TABS: Record<string, TabType> = Object.fromEntries(
@@ -800,6 +802,15 @@ export default function App() {
                 .then(() => refreshServices())
                 .catch((err) => console.error('Failed to refresh service', err))
             }
+          />
+        )}
+
+        {activeTab === 'virtualization' && (
+          <VirtualizationMonitor
+            sites={sites}
+            selectedSiteId={selectedSiteId}
+            darkMode={darkMode}
+            canManage={!isViewer}
           />
         )}
 

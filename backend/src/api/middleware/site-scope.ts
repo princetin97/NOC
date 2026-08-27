@@ -67,3 +67,8 @@ export function mapNodeSiteWhere(req: AuthedRequest): Prisma.MapNodeWhereInput |
     OR: [{ siteId: { in: siteIds } }, { device: { siteId: { in: siteIds } } }],
   };
 }
+
+export function virtualizationManagerSiteWhere(req: AuthedRequest): Prisma.VirtualizationManagerWhereInput | undefined {
+  if (isGlobalAdmin(req)) return undefined;
+  return { siteId: { in: getScopedSiteIds(req) } };
+}

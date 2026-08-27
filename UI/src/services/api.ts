@@ -12,7 +12,15 @@ import {
   mapService,
   mapEvent,
 } from './adapters';
-import { NetworkDevice, NetworkAlert, AlertRule, ServiceCheck, EventLog, TopologyNode, TopologyLink, NotificationChannel, NotificationChannelInput, AppUser, DeviceMetricPoint, PollerHealth, DeviceGroup, DeviceGroupInput, DeviceNeighbor, PortMetricPoint, AlertRuleInput, AlertRuleCopyInput, AlertRuleCopyResult, AlertRuleApplySitesInput, AlertRuleApplySitesResult, MapNode, MapLink, MapLinkInput, SubnetScanResult, Dashboard, DashboardInput, ProcessorSeries, SensorSeries, AlertRenotifySettings, ServiceMethodInput, SiteInfo } from '../types';
+import { NetworkDevice, NetworkAlert, AlertRule, ServiceCheck, EventLog, TopologyNode, TopologyLink, NotificationChannel, NotificationChannelInput, AppUser, DeviceMetricPoint, PollerHealth, DeviceGroup, DeviceGroupInput, DeviceNeighbor, PortMetricPoint, AlertRuleInput, AlertRuleCopyInput, AlertRuleCopyResult, AlertRuleApplySitesInput, AlertRuleApplySitesResult, MapNode, MapLink, MapLinkInput, SubnetScanResult, Dashboard, DashboardInput, ProcessorSeries, SensorSeries, AlertRenotifySettings, ServiceMethodInput, SiteInfo, VirtualizationManager, VirtualizationHost } from '../types';
+
+export interface CreateVirtualizationManagerInput {
+  name: string;
+  endpoint: string;
+  username: string;
+  password: string;
+  siteId?: string | null;
+}
 
 export interface CreateDeviceInput {
   name: string;
@@ -300,5 +308,21 @@ export const api = {
     update: (id: string, patch: Partial<DashboardInput>): Promise<Dashboard> =>
       apiClient.put<Dashboard>(`/dashboards/${id}`, patch),
     remove: (id: string): Promise<void> => apiClient.delete(`/dashboards/${id}`),
+  },
+
+  vcenter: {
+    listManagers: (siteId?: string | null): Promise<VirtualizationManager[]> => {
+      const q = typeof siteId === 'string' && siteId.length > 0 ? `?siteId=${encodeURIComponent(siteId)}` : '';
+      return apiClient.get<VirtualizationManager[]>(`/vcenter/managers${q}`);
+    },
+    create: (input: CreateVirtualizationManagerInput): Promise<VirtualizationManager> =>
+      apiClient.post<VirtualizationManager>('/vcenter/managers', input),
+    remove: (managerId: string): Promise<void> => apiClient.delete(`/vcenter/managers/${managerId}`),
+    inventory: (managerId: string): Promise<{ hosts: VirtualizationHost[] }> =>
+      apiClient.get<{ hosts: VirtualizationHost[] }>(`/vcenter/managers/${managerId}/inventory`),
+    sync: (managerId: string): Promise<{ hostCount: number; vmCount: number }> =>
+      apiClient.post<{ hostCount: number; vmCount: number }>(`/vcenter/managers/${managerId}/sync`, undefined, 30_000),
+    diagnostics: (managerId: string, hostId: string): Promise<Record<string, unknown>> =>
+      apiClient.get<Record<string, unknown>>(`/vcenter/managers/${managerId}/hosts/${hostId}/diagnostics`, 30_000),
   },
 };

@@ -250,6 +250,39 @@ export interface SensorSeries {
   metrics: { timestamp: string; value: number }[];
 }
 
+// A configured vCenter connection used to inventory ESXi hosts/VMs.
+export interface VirtualizationManager {
+  id: string;
+  name: string;
+  endpoint: string;
+  siteId: string | null;
+  enabled: boolean;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { hosts: number };
+}
+
+// One ESXi host discovered under a vCenter manager.
+export interface VirtualizationHost {
+  id: string;
+  managerId: string;
+  externalId: string;
+  name: string;
+  powerState: string | null;
+  connectionState: string | null;
+  cpuMhz: number | null;
+  cpuCores: number | null;
+  memoryBytes: number | null;
+  vmCount: number;
+  cpuUsage: number | null;
+  memoryUsage: number | null;
+  inventorySummary: string | null;
+  alertState: 'ok' | 'warning' | 'critical';
+  lastSeenAt: string;
+}
+
 export type AlertMetric =
   | 'cpu'
   | 'memory'

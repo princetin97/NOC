@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Server, ShieldAlert, GitFork, Cpu, Settings, ScrollText } from 'lucide-react';
+import { LayoutDashboard, Server, ShieldAlert, GitFork, Cpu, Settings, ScrollText, Cloud } from 'lucide-react';
 
-export type TabType = 'overview' | 'devices' | 'alerts' | 'syslog' | 'topology' | 'services' | 'settings';
+export type TabType = 'overview' | 'devices' | 'alerts' | 'syslog' | 'topology' | 'services' | 'virtualization' | 'settings';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -53,6 +53,11 @@ export const Navigation: React.FC<NavigationProps> = ({
       id: 'services' as TabType,
       label: 'Giám sát Dịch vụ',
       icon: Cpu,
+    },
+    {
+      id: 'virtualization' as TabType,
+      label: 'VMware vCenter',
+      icon: Cloud,
     },
     {
       id: 'settings' as TabType,

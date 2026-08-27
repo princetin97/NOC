@@ -62,4 +62,6 @@ export const env = {
   nagstamonIncludeAcknowledged: parseBoolean(process.env.NAGSTAMON_INCLUDE_ACKNOWLEDGED, true),
   // Align bridge source set with web UI behavior (latest 500 alerts by default).
   nagstamonSourceWindow: parsePositiveInt(process.env.NAGSTAMON_SOURCE_WINDOW, 500),
+  // How often the poller re-syncs ESXi host/VM inventory from each enabled vCenter manager.
+  vcenterSyncIntervalSeconds: parsePositiveInt(process.env.VCENTER_SYNC_INTERVAL_SECONDS, 300),
 };

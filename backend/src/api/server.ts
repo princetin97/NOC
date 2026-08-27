@@ -26,6 +26,7 @@ import { groupsRouter } from './routes/groups';
 import { dashboardsRouter } from './routes/dashboards';
 import { nagstamonRouter } from './routes/nagstamon';
 import { sitesRouter } from './routes/sites';
+import { vcenterRouter } from './routes/vcenter';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/poller-health', requireAuth, requireWriteAccess, healthRouter);
 app.use('/api/device-groups', requireAuth, requireWriteAccess, groupsRouter);
 app.use('/api/dashboards', requireAuth, requireWriteAccess, dashboardsRouter);
 app.use('/api/sites', requireAuth, requireWriteAccess, sitesRouter);
+app.use('/api/vcenter', requireAuth, requireWriteAccess, vcenterRouter);
 app.use('/alertmanager', nagstamonRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

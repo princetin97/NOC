@@ -46,22 +46,28 @@ Stack: Express, Socket.IO, Zod, JWT+bcrypt, Prisma + PostgreSQL, BullMQ + Redis,
 
 ### API routes (`src/api/routes/`)
 `alerts, auth, dashboards, devices, events, groups, health, nagstamon, notifications,
-ports, services, sites, topology, users` — mỗi file là 1 router Express theo domain tương ứng.
+ports, services, sites, topology, users, vcenter` — mỗi file là 1 router Express theo domain tương ứng.
 
 ### Poller modules (`src/poller/`)
 `index.ts` (bootstrap/scheduler), `discovery.ts` (nhận diện thiết bị + enum interfaces),
 `metrics.ts` (poll ping/CPU/mem/counter interface mỗi cycle), `alerting.ts` (đánh giá
 `AlertRule` → mở/đóng `Alert`), `service-check.ts` (HTTP/HTTPS/DNS/PING/TCP check),
-`sensors.ts`, `processors.ts`, `vlans.ts`, `neighbors.ts`, `inventory.ts`, `cleanup.ts`.
+`sensors.ts`, `processors.ts`, `vlans.ts`, `neighbors.ts`, `inventory.ts`, `cleanup.ts`,
+`vcenter.ts` (đồng bộ inventory ESXi host/VM từ vCenter, chạy định kỳ mỗi
+`VCENTER_SYNC_INTERVAL_SECONDS`, mặc định 300s).
 
 ### Lib dùng chung (`src/lib/`)
 `snmp.ts` (session SNMP v1/v2c/v3, get/walk), `mib-oids.ts` (OID cho MIB-II, IF-MIB,
 HOST-RESOURCES-MIB, UCD-SNMP-MIB), `events.ts` (Redis pub/sub → WebSocket realtime),
 `auth.ts`, `db.ts` (Prisma client), `env.ts`, `logger.ts` (pino), `notifications.ts`,
-`ping.ts`, `queue.ts` (BullMQ), `ssh.ts`, `subnet-scan.ts`, `websocket.ts`.
+`ping.ts`, `queue.ts` (BullMQ), `ssh.ts`, `subnet-scan.ts`, `websocket.ts`,
+`vsphere.ts` (client SOAP vim25 tự viết để gọi VMware vSphere Web Services API —
+`RetrieveServiceContent`/`Login`/`RetrieveProperties` với `TraversalSpec` để duyệt
+Folder→Datacenter→hostFolder→ComputeResource→HostSystem; không dùng thư viện ngoài
+vì không có bản pyVmomi cho Node).
 
 ### Data model (`backend/prisma/schema.prisma`)
-Các model chính (27 model, xem file để biết đầy đủ field/quan hệ):
+Các model chính (30 model, xem file để biết đầy đủ field/quan hệ):
 `User, Site, UserSite` (multi-site + phân quyền) · `Device, HardwareComponent,
 DeviceGroup, DeviceNeighbor, ConfigBackup` · `Port, Vlan, PortVlan, PortMetric`
 (time-series interface) · `DeviceMetric, Processor, ProcessorMetric, Sensor,
@@ -70,7 +76,11 @@ biến, ví dụ Tải UPS %, dùng bởi `GET /devices/:id/sensors/metrics?type
 component `SensorHistoryPanel`) · `AlertRule, AlertRenotifySettings,
 NotificationChannel, Alert`
 · `EventLog` (syslog/trap/system) · `ServiceCheck, ServiceCheckHistory` ·
-`MapNode, MapLink` (topology map) · `Dashboard` (dashboard tuỳ biến).
+`MapNode, MapLink` (topology map) · `Dashboard` (dashboard tuỳ biến) ·
+`VirtualizationManager, VirtualizationHost, VirtualMachine` (kết nối vCenter +
+inventory ESXi host/VM, giám sát tương tự `vmware_exporter`; model khớp với 2
+migration đã áp dụng từ trước `20260821120000_vcenter_monitoring` và
+`20260821130000_vcenter_host_metrics` — không tạo migration mới khi thêm model).
 
 Migrations nằm ở `backend/prisma/migrations/*`, đặt tên theo timestamp + mô tả.
 
@@ -83,7 +93,8 @@ React 19 + Vite + Tailwind v4, TypeScript. Có server Express riêng (`server.ts
 `OverviewDashboard, DeviceManagement, AddDeviceModal, EditDeviceModal, DevicePortPicker,
 InterfaceList, PortDetail, DeviceMetricsHistory, DeviceNeighbors, DeviceConfigBackup,
 AlertConsole, ServiceMonitoring, SyslogConsole, NetworkTopology, TopologyEditor,
-DashboardBuilder, ProcessorsPanel, VirtualizationMonitor, PollerHealth,
+DashboardBuilder, ProcessorsPanel, VirtualizationMonitor (tab "VMware vCenter" —
+quản lý kết nối vCenter + bảng host ESXi + modal chi tiết/chẩn đoán), PollerHealth,
 AIAnomalyAssistant, ScanSubnetModal, ExportModal, SettingsPanel, LoginScreen, Header,
 Navigation`.
 

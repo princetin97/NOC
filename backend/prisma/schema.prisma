@@ -91,6 +91,7 @@ model Site {
   dashboards      Dashboard[]
   mapNodes        MapNode[]
   userMemberships UserSite[]
+  virtualizationManagers VirtualizationManager[]
 }
 
 model UserSite {
@@ -103,6 +104,78 @@ model UserSite {
 
   @@unique([userId, siteId])
   @@index([siteId])
+}
+
+// A vCenter connection (VMware vSphere API endpoint) that ESXi host/VM inventory is
+// synced from — LibreNMS-style "vmware_exporter" parity for virtualization monitoring.
+model VirtualizationManager {
+  id         String    @id @default(uuid())
+  name       String
+  endpoint   String    @unique
+  username   String
+  password   String
+  site       Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId     String?
+  enabled    Boolean   @default(true)
+  lastSyncAt DateTime?
+  lastError  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  hosts VirtualizationHost[]
+  vms   VirtualMachine[]
+
+  @@index([siteId])
+}
+
+// One ESXi host discovered under a vCenter, refreshed on every sync cycle.
+model VirtualizationHost {
+  id               String                @id @default(uuid())
+  manager          VirtualizationManager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  managerId        String
+  externalId       String // vSphere MoRef (e.g. "host-123")
+  name             String
+  powerState       String?
+  connectionState  String?
+  cpuMhz           Int?
+  cpuCores         Int?
+  memoryBytes      Float?
+  vmCount          Int                   @default(0)
+  cpuUsage         Float? // percentage, derived from quickStats.overallCpuUsage / cpuMhz
+  memoryUsage      Float? // percentage, derived from quickStats.overallMemoryUsage / memoryBytes
+  inventorySummary String? // "key=value" tokens joined by " • " for UI display
+  alertState       String                @default("ok") // ok | warning | critical
+  lastSeenAt       DateTime              @default(now())
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  vms VirtualMachine[]
+
+  @@unique([managerId, externalId])
+  @@index([managerId])
+}
+
+// One virtual machine discovered under a vCenter (linked to its current ESXi host).
+model VirtualMachine {
+  id          String                @id @default(uuid())
+  manager     VirtualizationManager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  managerId   String
+  host        VirtualizationHost?   @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  hostId      String?
+  externalId  String // vSphere MoRef (e.g. "vm-456")
+  name        String
+  powerState  String?
+  cpuCount    Int?
+  memoryBytes Float?
+  guestOs     String?
+  ipAddress   String?
+  lastSeenAt  DateTime              @default(now())
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([managerId, externalId])
+  @@index([managerId])
+  @@index([hostId])
 }
 
 model Device {

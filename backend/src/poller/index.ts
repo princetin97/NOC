@@ -9,6 +9,7 @@ import { discoverDevice } from './discovery';
 import { runServiceCheck } from './service-check';
 import { runRetentionCleanup } from './cleanup';
 import { resolveAlertsFromGlobalTemplateRules } from './alerting';
+import { syncAllEnabledVCenterManagers } from './vcenter';
 
 const pollWorker = new Worker('device-poll', async (job) => pollDevice(job.data.deviceId), {
   connection: redisConnection,
@@ -153,6 +154,7 @@ scheduleFastPollCycle();
 scheduleDiscoveryCycle();
 scheduleServiceCheckCycle();
 runRetentionCleanup();
+void syncAllEnabledVCenterManagers().catch((err) => logger.warn({ err }, 'Initial vCenter sync cycle failed'));
 void resolveAlertsFromGlobalTemplateRules()
   .then((count) => {
     if (count > 0) logger.info({ resolvedCount: count }, 'Resolved legacy alerts from global template rules');
@@ -165,6 +167,12 @@ setInterval(scheduleDiscoveryCycle, env.discoveryIntervalSeconds * 1000);
 setInterval(scheduleServiceCheckCycle, env.serviceCheckIntervalSeconds * 1000);
 setInterval(scheduleServiceCheckFastCycle, env.serviceCheckFastIntervalSeconds * 1000);
 setInterval(runRetentionCleanup, env.cleanupIntervalMinutes * 60_000);
+setInterval(
+  () => {
+    void syncAllEnabledVCenterManagers().catch((err) => logger.warn({ err }, 'vCenter sync cycle failed'));
+  },
+  env.vcenterSyncIntervalSeconds * 1000,
+);
 setInterval(
   () => {
     void resolveAlertsFromGlobalTemplateRules().catch((err) =>
