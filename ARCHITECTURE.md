@@ -56,7 +56,15 @@ ports, services, sites, topology, users, vcenter` — mỗi file là 1 router Ex
 `vcenter.ts` (đồng bộ inventory ESXi host/VM từ vCenter, chạy định kỳ mỗi
 `VCENTER_SYNC_INTERVAL_SECONDS`, mặc định 60s kể từ v0.5.2 (trước là 300s);
 có cơ chế khoá (`syncInProgress`) chống chạy chồng chéo nếu một lần đồng bộ mất
-lâu hơn khoảng thời gian giữa 2 lần).
+lâu hơn khoảng thời gian giữa 2 lần). Từ v0.6.2, mỗi lần đồng bộ ghi thêm 1 dòng
+`DeviceMetric` (cpuUsage/memoryUsage) cho từng host ESXi — bắt buộc vì các
+Device đồng bộ từ vCenter có `disabled=true` nên `poller/metrics.ts`'s
+`pollDevice()` bỏ qua hoàn toàn (không có nguồn `DeviceMetric` nào khác), nếu
+thiếu bước này biểu đồ "Lịch sử hiệu năng" trên UI sẽ luôn trống. Cũng từ
+v0.6.2, `Device.firmware`/`Device.serial` được điền từ
+`vsphere.VSphereHostInfo.biosVersion`/`.serialNumber` (lấy qua
+`hardware.biosInfo.biosVersion` và `summary.hardware.otherIdentifyingInfo` của
+vSphere API).
 
 `api/routes/vcenter.ts` có route `PATCH /api/vcenter/managers/:id` (v0.6.0) để
 sửa từng phần (`name/endpoint/username/password/siteId`) một kết nối

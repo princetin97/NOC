@@ -73,6 +73,8 @@ function buildInventorySummary(h: vsphere.VSphereHostInfo, datastoreSummary?: st
   push('boot_time', h.bootTime);
   push('vendor', h.vendor);
   push('model', h.model);
+  push('serial_number', h.serialNumber);
+  push('firmware', h.biosVersion);
   push('host_uuid', h.uuid);
   push('cpu_model', h.cpuModel);
   push('cpu_threads', h.cpuThreads);
@@ -168,6 +170,8 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
           type: 'server',
           vendor: h.vendor,
           model: h.model,
+          firmware: h.biosVersion,
+          serial: h.serialNumber,
           os: 'VMware ESXi',
           osVersion: h.productVersion,
           sysDescr: data.inventorySummary,
@@ -182,14 +186,22 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
           groupId,
           siteId: manager.siteId,
         };
+        let deviceId: string;
         if (row.deviceId) {
           await prisma.device.update({ where: { id: row.deviceId }, data: deviceData });
-          await evaluateAlertsForDevice(row.deviceId);
+          deviceId = row.deviceId;
         } else {
           const device = await prisma.device.create({ data: deviceData });
           await prisma.virtualizationHost.update({ where: { id: row.id }, data: { deviceId: device.id } });
-          await evaluateAlertsForDevice(device.id);
+          deviceId = device.id;
         }
+        await evaluateAlertsForDevice(deviceId);
+        // Device.disabled=true makes poller/metrics.ts's pollDevice() skip this host
+        // entirely, so it's the only writer of DeviceMetric rows — without this, the
+        // "Lịch sử hiệu năng" (performance history) chart would always be empty.
+        await prisma.deviceMetric.create({
+          data: { deviceId, cpuUsage: cpuUsage ?? 0, memoryUsage: memUsage ?? 0, packetLoss: 0 },
+        });
       }
     }
 

@@ -17,6 +17,22 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-08-27
+
+### Fixed
+- Khớp thêm thông tin host ESXi đồng bộ từ vCenter vào đúng các ô tương ứng của
+  thiết bị: **Firmware** (BIOS version) và **Số Serial** trước đây luôn để trống, giờ
+  lấy từ `hardware.biosInfo.biosVersion` và
+  `summary.hardware.otherIdentifyingInfo` (Service Tag/Serial Number Tag) qua
+  vSphere API. Tab "VMware vCenter/ESXi" cũng thêm mục **Firmware** trong phần
+  "Phần cứng" và sửa lỗi **Serial** chưa bao giờ được điền (thiếu token
+  `serial_number` khi build inventory summary).
+- Biểu đồ **"Lịch sử hiệu năng"** (CPU/RAM theo thời gian) không bao giờ hiển
+  thị dữ liệu cho các thiết bị đồng bộ từ vCenter, vì các thiết bị này có
+  `disabled=true` nên bị `poller/metrics.ts`'s `pollDevice()` bỏ qua hoàn toàn
+  (không bao giờ tạo `DeviceMetric`). Giờ `poller/vcenter.ts` tự ghi 1 dòng
+  `DeviceMetric` (cpuUsage/memoryUsage) sau mỗi chu kỳ đồng bộ cho từng host.
+
 ## [0.6.1] - 2026-08-27
 
 ### Changed

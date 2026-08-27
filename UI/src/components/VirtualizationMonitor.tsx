@@ -25,6 +25,7 @@ const INVENTORY_LABELS: Record<string, string> = {
   vendor: 'Hãng',
   model: 'Model',
   serial_number: 'Serial',
+  firmware: 'Firmware',
   host_uuid: 'UUID',
   cpu_model: 'CPU model',
   cpu_threads: 'CPU threads',
@@ -39,7 +40,7 @@ const INVENTORY_LABELS: Record<string, string> = {
 
 const INVENTORY_SECTIONS: InventorySection[] = [
   { title: 'Hệ thống', keys: ['esxi', 'version', 'overall_status', 'maintenance_mode', 'boot_time'] },
-  { title: 'Phần cứng', keys: ['vendor', 'model', 'serial_number', 'host_uuid', 'cpu_model', 'cpu_threads', 'physical_nics', 'hbas'] },
+  { title: 'Phần cứng', keys: ['vendor', 'model', 'serial_number', 'firmware', 'host_uuid', 'cpu_model', 'cpu_threads', 'physical_nics', 'hbas'] },
   { title: 'Mạng', keys: ['dns_hostname', 'dns_domain', 'default_gateway', 'vmnics'] },
   { title: 'Lưu trữ', keys: ['datastore_summary'] },
 ];

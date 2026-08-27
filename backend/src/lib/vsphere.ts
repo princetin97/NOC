@@ -42,6 +42,8 @@ export interface VSphereHostInfo {
   managementIp?: string;
   datastoreRefs?: string[];
   vmRefs?: string[];
+  biosVersion?: string;
+  serialNumber?: string;
 }
 
 export interface VSphereDatastoreInfo {
@@ -74,7 +76,8 @@ export interface VSphereSession {
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  isArray: (name) => ['returnval', 'propSet', 'ManagedObjectReference', 'HostPhysicalNic', 'HostVirtualNic'].includes(name),
+  isArray: (name) =>
+    ['returnval', 'propSet', 'ManagedObjectReference', 'HostPhysicalNic', 'HostVirtualNic', 'HostSystemIdentificationInfo'].includes(name),
 });
 
 function escapeXml(value: string): string {
@@ -150,6 +153,19 @@ function extractManagementIp(val: any): string | undefined {
   const nics = toArray(val.HostVirtualNic);
   const managementNic = nics.find((n: any) => strOf(n?.device) === 'vmk0') ?? nics[0];
   return strOf(managementNic?.spec?.ip?.ipAddress);
+}
+
+// `summary.hardware.otherIdentifyingInfo` has no dedicated serial-number field;
+// the serial is one of several tagged identifiers (label varies by vendor: Dell
+// reports "Service tag", others "Serial Number Tag"/"Asset Tag").
+function extractSerialNumber(val: any): string | undefined {
+  if (!val) return undefined;
+  const items = toArray(val.HostSystemIdentificationInfo);
+  const preferred = items.find((item: any) => {
+    const label = strOf(item?.identifierType?.label)?.toLowerCase() ?? '';
+    return label.includes('service tag') || label.includes('serial');
+  });
+  return strOf((preferred ?? items[0])?.identifierValue);
 }
 
 function buildAgent(endpoint: string): https.Agent | http.Agent {
@@ -335,6 +351,8 @@ export async function retrieveHosts(session: VSphereSession): Promise<VSphereHos
     'summary.hardware.memorySize',
     'summary.hardware.numNics',
     'summary.hardware.numHBAs',
+    'summary.hardware.otherIdentifyingInfo',
+    'hardware.biosInfo.biosVersion',
     'summary.quickStats.overallCpuUsage',
     'summary.quickStats.overallMemoryUsage',
     'config.product.name',
@@ -380,6 +398,8 @@ export async function retrieveHosts(session: VSphereSession): Promise<VSphereHos
       managementIp: extractManagementIp(p['config.network.vnic']),
       datastoreRefs: extractMoRefs(p['datastore']),
       vmRefs: extractMoRefs(p['vm']),
+      biosVersion: strOf(p['hardware.biosInfo.biosVersion']),
+      serialNumber: extractSerialNumber(p['summary.hardware.otherIdentifyingInfo']),
     };
   });
 }
