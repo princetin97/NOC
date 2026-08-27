@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Cloud, Plus, RefreshCw, Server, Trash2, X } from 'lucide-react';
+import { Activity, Cloud, Pencil, Plus, RefreshCw, Server, Trash2, X } from 'lucide-react';
 import { SiteInfo, VirtualizationHost, VirtualizationManager } from '../types';
 import { api } from '../services/api';
 
@@ -17,18 +17,18 @@ type InventorySection = {
 };
 
 const INVENTORY_LABELS: Record<string, string> = {
-  overall_status: 'Trang thai tong',
-  maintenance_mode: 'Bao tri',
+  overall_status: 'Trạng thái tổng',
+  maintenance_mode: 'Bảo trì',
   boot_time: 'Boot time',
   esxi: 'ESXi',
   version: 'Version',
-  vendor: 'Hang',
+  vendor: 'Hãng',
   model: 'Model',
   serial_number: 'Serial',
   host_uuid: 'UUID',
   cpu_model: 'CPU model',
   cpu_threads: 'CPU threads',
-  physical_nics: 'So NIC',
+  physical_nics: 'Số NIC',
   hbas: 'HBA',
   dns_hostname: 'DNS host',
   dns_domain: 'DNS domain',
@@ -38,10 +38,10 @@ const INVENTORY_LABELS: Record<string, string> = {
 };
 
 const INVENTORY_SECTIONS: InventorySection[] = [
-  { title: 'He thong', keys: ['esxi', 'version', 'overall_status', 'maintenance_mode', 'boot_time'] },
-  { title: 'Phan cung', keys: ['vendor', 'model', 'serial_number', 'host_uuid', 'cpu_model', 'cpu_threads', 'physical_nics', 'hbas'] },
-  { title: 'Mang', keys: ['dns_hostname', 'dns_domain', 'default_gateway', 'vmnics'] },
-  { title: 'Luu tru', keys: ['datastore_summary'] },
+  { title: 'Hệ thống', keys: ['esxi', 'version', 'overall_status', 'maintenance_mode', 'boot_time'] },
+  { title: 'Phần cứng', keys: ['vendor', 'model', 'serial_number', 'host_uuid', 'cpu_model', 'cpu_threads', 'physical_nics', 'hbas'] },
+  { title: 'Mạng', keys: ['dns_hostname', 'dns_domain', 'default_gateway', 'vmnics'] },
+  { title: 'Lưu trữ', keys: ['datastore_summary'] },
 ];
 
 function parseInventorySummary(summary?: string | null): Record<string, string> {
@@ -89,6 +89,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
   const [loading, setLoading] = useState(true);
   const [syncingManagerId, setSyncingManagerId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingManagerId, setEditingManagerId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const [form, setForm] = useState({
@@ -143,7 +144,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
         setHosts([]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Khong the tai danh sach vCenter');
+      setError(err instanceof Error ? err.message : 'Không thể tải danh sách vCenter');
     } finally {
       setLoading(false);
     }
@@ -162,7 +163,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
       const inv = await api.vcenter.inventory(manager.id);
       setHosts(inv.hosts);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Khong the tai inventory');
+      setError(err instanceof Error ? err.message : 'Không thể tải inventory');
     }
   };
 
@@ -173,32 +174,60 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
       await api.vcenter.sync(manager.id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Dong bo vCenter that bai');
+      setError(err instanceof Error ? err.message : 'Đồng bộ vCenter thất bại');
     } finally {
       setSyncingManagerId(null);
     }
   };
 
-  const create = async () => {
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingManagerId(null);
+    setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? '' });
+  };
+
+  const startCreate = () => {
+    setError('');
+    setEditingManagerId(null);
+    setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? '' });
+    setShowForm(true);
+  };
+
+  const startEdit = (manager: VirtualizationManager) => {
+    setError('');
+    setEditingManagerId(manager.id);
+    setForm({ name: manager.name, endpoint: manager.endpoint, username: '', password: '', siteId: manager.siteId ?? '' });
+    setShowForm(true);
+  };
+
+  const submitForm = async () => {
     setError('');
     try {
-      await api.vcenter.create({ ...form, siteId: form.siteId || null });
-      setShowForm(false);
-      setForm({ name: '', endpoint: '', username: '', password: '', siteId: selectedSiteId ?? '' });
+      if (editingManagerId) {
+        const patch: Record<string, string | null> = { siteId: form.siteId || null };
+        if (form.name) patch.name = form.name;
+        if (form.endpoint) patch.endpoint = form.endpoint;
+        if (form.username) patch.username = form.username;
+        if (form.password) patch.password = form.password;
+        await api.vcenter.update(editingManagerId, patch);
+      } else {
+        await api.vcenter.create({ ...form, siteId: form.siteId || null });
+      }
+      resetForm();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Khong the them vCenter');
+      setError(err instanceof Error ? err.message : editingManagerId ? 'Không thể cập nhật kết nối vCenter' : 'Không thể thêm vCenter');
     }
   };
 
   const remove = async (manager: VirtualizationManager) => {
-    if (!window.confirm(`Xoa ket noi vCenter ${manager.name}?`)) return;
+    if (!window.confirm(`Xóa kết nối vCenter ${manager.name}?`)) return;
     setError('');
     try {
       await api.vcenter.remove(manager.id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Khong the xoa vCenter');
+      setError(err instanceof Error ? err.message : 'Không thể xóa vCenter');
     }
   };
 
@@ -211,7 +240,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
       const result = await api.vcenter.diagnostics(selectedManagerId, host.id);
       setDiagnostics(result);
     } catch (err) {
-      setDiagnosticsError(err instanceof Error ? err.message : 'Chan doan that bai');
+      setDiagnosticsError(err instanceof Error ? err.message : 'Chẩn đoán thất bại');
     } finally {
       setDiagnosing(false);
     }
@@ -232,11 +261,11 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
           </div>
           {canManage && (
             <button
-              onClick={() => setShowForm(true)}
+              onClick={startCreate}
               className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              Them vCenter
+              Thêm vCenter
             </button>
           )}
         </div>
@@ -249,17 +278,17 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
           <div className="max-w-4xl">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-sm">Ket noi vCenter</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Connection details are stored on backend.</p>
+                <h3 className="font-semibold text-sm">{editingManagerId ? 'Sửa kết nối vCenter' : 'Kết nối vCenter'}</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Thông tin kết nối được lưu tại backend.</p>
               </div>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-800">
+              <button onClick={resetForm} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-800">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <label className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Ten ket noi</span>
+                <span className="block text-[11px] font-medium text-slate-400">Tên kết nối</span>
                 <input className={input} placeholder="vCenter Production" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </label>
 
@@ -269,9 +298,9 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
               </label>
 
               <label className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Tru so</span>
+                <span className="block text-[11px] font-medium text-slate-400">Trụ sở</span>
                 <select className={input} value={form.siteId} onChange={(e) => setForm({ ...form, siteId: e.target.value })}>
-                  <option value="">Toan he thong</option>
+                  <option value="">Toàn hệ thống</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -281,23 +310,34 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
               </label>
 
               <label className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Tai khoan</span>
-                <input className={input} placeholder="administrator@vsphere.local" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                <span className="block text-[11px] font-medium text-slate-400">Tài khoản</span>
+                <input
+                  className={input}
+                  placeholder={editingManagerId ? 'Giữ nguyên nếu để trống' : 'administrator@vsphere.local'}
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                />
               </label>
 
               <label className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Mat khau</span>
-                <input className={input} type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                <span className="block text-[11px] font-medium text-slate-400">Mật khẩu</span>
+                <input
+                  className={input}
+                  type="password"
+                  placeholder={editingManagerId ? 'Giữ nguyên nếu để trống' : 'Password'}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
               </label>
             </div>
 
             <div className="mt-3 flex justify-end">
               <button
-                onClick={create}
-                disabled={!form.name || !form.endpoint || !form.username || !form.password}
+                onClick={submitForm}
+                disabled={editingManagerId ? !form.name || !form.endpoint : !form.name || !form.endpoint || !form.username || !form.password}
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold disabled:opacity-50"
               >
-                Luu ket noi
+                {editingManagerId ? 'Cập nhật kết nối' : 'Lưu kết nối'}
               </button>
             </div>
           </div>
@@ -314,7 +354,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
           {loading ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
           ) : managers.length === 0 ? (
-            <div className="text-xs text-slate-500 py-4">Chua co ket noi.</div>
+            <div className="text-xs text-slate-500 py-4">Chưa có kết nối.</div>
           ) : (
             managers.map((m) => (
               <button
@@ -327,11 +367,16 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
                 <div className="text-[10px] text-cyan-300 mt-1">{m._count?.hosts ?? 0} host</div>
                 <div className="flex gap-3 mt-2">
                   <span onClick={(e) => { e.stopPropagation(); void sync(m); }} className="text-emerald-400 text-[10px]">
-                    {syncingManagerId === m.id ? 'Dang dong bo...' : 'Dong bo ngay'}
+                    {syncingManagerId === m.id ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
                   </span>
                   {canManage && (
+                    <span onClick={(e) => { e.stopPropagation(); startEdit(m); }} className="text-cyan-400 text-[10px]">
+                      <Pencil className="w-3 h-3 inline" /> Sửa
+                    </span>
+                  )}
+                  {canManage && (
                     <span onClick={(e) => { e.stopPropagation(); void remove(m); }} className="text-red-400 text-[10px]">
-                      <Trash2 className="w-3 h-3 inline" /> Xoa
+                      <Trash2 className="w-3 h-3 inline" /> Xóa
                     </span>
                   )}
                 </div>
@@ -350,16 +395,16 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
           </div>
 
           {!selectedManagerId ? (
-            <div className="text-xs text-slate-400">Chua co ket noi vCenter.</div>
+            <div className="text-xs text-slate-400">Chưa có kết nối vCenter.</div>
           ) : hosts.length === 0 ? (
-            <div className="text-xs text-slate-400">Chua co inventory. Bam Dong bo ngay.</div>
+            <div className="text-xs text-slate-400">Chưa có inventory. Bấm Đồng bộ ngay.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-500">
-                    <th className="py-2 px-2">Ten host</th>
-                    <th className="py-2 px-2">Trang thai</th>
+                    <th className="py-2 px-2">Tên host</th>
+                    <th className="py-2 px-2">Trạng thái</th>
                     <th className="py-2 px-2">CPU</th>
                     <th className="py-2 px-2">RAM</th>
                     <th className="py-2 px-2">Inventory</th>
@@ -437,10 +482,10 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
 
             <div className="grid sm:grid-cols-2 gap-3 mt-4 text-xs">
               <div className="rounded-lg border border-slate-700/70 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Trang thai</p>
-                <p className="text-slate-200">Nguon: <span className="text-cyan-300">{selectedHost.powerState ?? 'N/A'}</span></p>
-                <p className="text-slate-200 mt-1">Ket noi: <span className="text-emerald-400">{selectedHost.connectionState ?? 'N/A'}</span></p>
-                <p className="text-slate-200 mt-1">Canh bao: <span className={hostStatus(selectedHost).className.split(' ')[0]}>{hostStatus(selectedHost).label}</span></p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Trạng thái</p>
+                <p className="text-slate-200">Nguồn: <span className="text-cyan-300">{selectedHost.powerState ?? 'N/A'}</span></p>
+                <p className="text-slate-200 mt-1">Kết nối: <span className="text-emerald-400">{selectedHost.connectionState ?? 'N/A'}</span></p>
+                <p className="text-slate-200 mt-1">Cảnh báo: <span className={hostStatus(selectedHost).className.split(' ')[0]}>{hostStatus(selectedHost).label}</span></p>
               </div>
 
               <div className="rounded-lg border border-slate-700/70 p-3">
@@ -495,7 +540,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
                   disabled={diagnosing}
                   className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold disabled:opacity-50"
                 >
-                  {diagnosing ? 'Dang chan doan...' : 'Chan doan'}
+                  {diagnosing ? 'Đang chẩn đoán...' : 'Chẩn đoán'}
                 </button>
               </div>
               {diagnosticsError && <p className="text-[11px] text-red-400 mt-2">{diagnosticsError}</p>}
@@ -515,7 +560,7 @@ export const VirtualizationMonitor: React.FC<Props> = ({ sites, selectedSiteId, 
                 }}
                 className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
               >
-                Dong
+                Đóng
               </button>
             </div>
           </div>

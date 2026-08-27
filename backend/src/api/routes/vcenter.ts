@@ -16,6 +16,16 @@ const createManagerSchema = z.object({
   siteId: z.string().nullish(),
 });
 
+// password is optional on update: an empty/omitted value keeps the existing one
+// so the edit form doesn't have to re-enter it every time.
+const updateManagerSchema = z.object({
+  name: z.string().min(1).optional(),
+  endpoint: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
+  password: z.string().min(1).optional(),
+  siteId: z.string().nullish(),
+});
+
 async function findScopedManager(req: AuthedRequest, id: string) {
   return prisma.virtualizationManager.findFirst({ where: { id, ...virtualizationManagerSiteWhere(req) } });
 }
@@ -53,6 +63,35 @@ vcenterRouter.post('/managers', async (req: AuthedRequest, res) => {
   } catch (err) {
     logger.warn({ err }, 'Failed to create vCenter manager');
     res.status(400).json({ error: 'Không thể tạo kết nối vCenter (endpoint có thể đã tồn tại)' });
+  }
+});
+
+vcenterRouter.patch('/managers/:id', async (req: AuthedRequest, res) => {
+  const manager = await findScopedManager(req, req.params.id);
+  if (!manager) {
+    res.status(404).json({ error: 'Không tìm thấy vCenter' });
+    return;
+  }
+  const parsed = updateManagerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join(', ') });
+    return;
+  }
+  const { siteId, ...data } = parsed.data;
+  if (siteId && !canAccessSite(req, siteId)) {
+    res.status(403).json({ error: 'Bạn không có quyền chuyển kết nối sang trụ sở này' });
+    return;
+  }
+  try {
+    const updated = await prisma.virtualizationManager.update({
+      where: { id: manager.id },
+      data: { ...data, ...(siteId !== undefined ? { siteId: siteId ?? null } : {}) },
+    });
+    const { password: _password, ...safe } = updated;
+    res.json(safe);
+  } catch (err) {
+    logger.warn({ err }, 'Failed to update vCenter manager');
+    res.status(400).json({ error: 'Không thể cập nhật kết nối vCenter (endpoint có thể đã tồn tại)' });
   }
 });
 

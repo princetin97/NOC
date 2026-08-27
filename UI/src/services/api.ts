@@ -22,6 +22,14 @@ export interface CreateVirtualizationManagerInput {
   siteId?: string | null;
 }
 
+export interface UpdateVirtualizationManagerInput {
+  name?: string;
+  endpoint?: string;
+  username?: string;
+  password?: string;
+  siteId?: string | null;
+}
+
 export interface CreateDeviceInput {
   name: string;
   hostname: string;
@@ -317,6 +325,8 @@ export const api = {
     },
     create: (input: CreateVirtualizationManagerInput): Promise<VirtualizationManager> =>
       apiClient.post<VirtualizationManager>('/vcenter/managers', input),
+    update: (managerId: string, patch: UpdateVirtualizationManagerInput): Promise<VirtualizationManager> =>
+      apiClient.patch<VirtualizationManager>(`/vcenter/managers/${managerId}`, patch),
     remove: (managerId: string): Promise<void> => apiClient.delete(`/vcenter/managers/${managerId}`),
     inventory: (managerId: string): Promise<{ hosts: VirtualizationHost[] }> =>
       apiClient.get<{ hosts: VirtualizationHost[] }>(`/vcenter/managers/${managerId}/inventory`),

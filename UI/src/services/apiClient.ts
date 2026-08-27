@@ -108,5 +108,7 @@ export const apiClient = {
     request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }, timeoutMs),
   put: <T>(path: string, body?: unknown, timeoutMs?: number) =>
     request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }, timeoutMs),
+  patch: <T>(path: string, body?: unknown, timeoutMs?: number) =>
+    request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, timeoutMs),
   delete: <T>(path: string, timeoutMs?: number) => request<T>(path, { method: 'DELETE' }, timeoutMs),
 };

@@ -17,6 +17,17 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-27
+
+### Added
+- Thêm nút **"Sửa"** cho từng kết nối vCenter (bên cạnh Đồng bộ ngay / Xóa): cho phép sửa tên, endpoint, tài khoản, mật khẩu, trụ sở mà không cần xóa và tạo lại. Tài khoản/mật khẩu để trống khi sửa sẽ giữ nguyên giá trị cũ.
+- Backend: route `PATCH /api/vcenter/managers/:id` (cho phép cập nhật từng phần).
+
+### Fixed
+- Sửa toàn bộ tiếng Việt không dấu trong giao diện VMware vCenter/ESXi
+  (`VirtualizationMonitor.tsx`): nhãn form, danh sách vCenter, bảng host, modal
+  chi tiết host, thông báo lỗi...
+
 ## [0.5.2] - 2026-08-27
 
 ### Changed

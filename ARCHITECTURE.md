@@ -58,6 +58,11 @@ ports, services, sites, topology, users, vcenter` — mỗi file là 1 router Ex
 có cơ chế khoá (`syncInProgress`) chống chạy chồng chéo nếu một lần đồng bộ mất
 lâu hơn khoảng thời gian giữa 2 lần).
 
+`api/routes/vcenter.ts` có route `PATCH /api/vcenter/managers/:id` (v0.6.0) để
+sửa từng phần (`name/endpoint/username/password/siteId`) một kết nối
+`VirtualizationManager` đã tồn tại mà không cần xoá + tạo lại; `username`/`password`
+để trống trong body coi như giữ nguyên giá trị cũ (không bắt buộc gửi lại).
+
 ### Lib dùng chung (`src/lib/`)
 `snmp.ts` (session SNMP v1/v2c/v3, get/walk), `mib-oids.ts` (OID cho MIB-II, IF-MIB,
 HOST-RESOURCES-MIB, UCD-SNMP-MIB), `events.ts` (Redis pub/sub → WebSocket realtime),
@@ -119,7 +124,9 @@ React 19 + Vite + Tailwind v4, TypeScript. Có server Express riêng (`server.ts
 InterfaceList, PortDetail, DeviceMetricsHistory, DeviceNeighbors, DeviceConfigBackup,
 AlertConsole, ServiceMonitoring, SyslogConsole, NetworkTopology, TopologyEditor,
 DashboardBuilder, ProcessorsPanel, VirtualizationMonitor (tab "VMware vCenter" —
-quản lý kết nối vCenter + bảng host ESXi + modal chi tiết/chẩn đoán), PollerHealth,
+quản lý kết nối vCenter + bảng host ESXi + modal chi tiết/chẩn đoán; mỗi kết nối có
+nút "Sửa" (v0.6.0) gọi `api.vcenter.update()` → `PATCH /vcenter/managers/:id`),
+PollerHealth,
 AIAnomalyAssistant, ScanSubnetModal, ExportModal, SettingsPanel, LoginScreen, Header,
 Navigation`.
 
