@@ -54,7 +54,9 @@ ports, services, sites, topology, users, vcenter` — mỗi file là 1 router Ex
 `AlertRule` → mở/đóng `Alert`), `service-check.ts` (HTTP/HTTPS/DNS/PING/TCP check),
 `sensors.ts`, `processors.ts`, `vlans.ts`, `neighbors.ts`, `inventory.ts`, `cleanup.ts`,
 `vcenter.ts` (đồng bộ inventory ESXi host/VM từ vCenter, chạy định kỳ mỗi
-`VCENTER_SYNC_INTERVAL_SECONDS`, mặc định 300s).
+`VCENTER_SYNC_INTERVAL_SECONDS`, mặc định 60s kể từ v0.5.2 (trước là 300s);
+có cơ chế khoá (`syncInProgress`) chống chạy chồng chéo nếu một lần đồng bộ mất
+lâu hơn khoảng thời gian giữa 2 lần).
 
 ### Lib dùng chung (`src/lib/`)
 `snmp.ts` (session SNMP v1/v2c/v3, get/walk), `mib-oids.ts` (OID cho MIB-II, IF-MIB,

@@ -5,6 +5,11 @@ import { evaluateAlertsForDevice } from './alerting';
 
 const VCENTER_DEVICE_GROUP_NAME = 'vCenter Device';
 
+// Guards against overlapping sync cycles (e.g. a slow vCenter response taking
+// longer than VCENTER_SYNC_INTERVAL_SECONDS) which could otherwise trigger
+// concurrent syncVCenterManager() runs for the same manager.
+let syncInProgress = false;
+
 function pctOf(numerator?: number, denominator?: number): number | undefined {
   if (numerator === undefined || denominator === undefined || denominator <= 0) return undefined;
   return Math.round((numerator / denominator) * 1000) / 10;
@@ -240,14 +245,23 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
 }
 
 export async function syncAllEnabledVCenterManagers(): Promise<void> {
-  const managers = await prisma.virtualizationManager.findMany({ where: { enabled: true }, select: { id: true, name: true } });
-  for (const m of managers) {
-    try {
-      const result = await syncVCenterManager(m.id);
-      logger.info({ managerId: m.id, name: m.name, ...result }, 'vCenter sync completed');
-    } catch (err) {
-      logger.warn({ err, managerId: m.id, name: m.name }, 'vCenter sync cycle failed for manager');
+  if (syncInProgress) {
+    logger.warn('Bỏ qua chu kỳ đồng bộ vCenter vì lần đồng bộ trước vẫn đang chạy');
+    return;
+  }
+  syncInProgress = true;
+  try {
+    const managers = await prisma.virtualizationManager.findMany({ where: { enabled: true }, select: { id: true, name: true } });
+    for (const m of managers) {
+      try {
+        const result = await syncVCenterManager(m.id);
+        logger.info({ managerId: m.id, name: m.name, ...result }, 'vCenter sync completed');
+      } catch (err) {
+        logger.warn({ err, managerId: m.id, name: m.name }, 'vCenter sync cycle failed for manager');
+      }
     }
+  } finally {
+    syncInProgress = false;
   }
 }
 

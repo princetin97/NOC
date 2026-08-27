@@ -17,6 +17,19 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-27
+
+### Changed
+- Giảm chu kỳ đồng bộ vCenter mặc định từ 300s xuống **60s**
+  (`VCENTER_SYNC_INTERVAL_SECONDS`, đặt trong `docker-compose.yml`) — CPU/RAM/
+  status/cảnh báo của các host ESXi giờ cập nhật mới hơn (tối đa 1 phút thay vì
+  5 phút), phù hợp với quy mô hiện tại (1 vCenter manager, 5 host, ~101 VM).
+
+### Added
+- `poller/vcenter.ts`: thêm khoá `syncInProgress` chống 2 lần đồng bộ chạy
+  chồng lên nhau nếu một lần đồng bộ (gọi vCenter API) mất lâu hơn khoảng thời
+  gian giữa 2 chu kỳ — quan trọng hơn khi chu kỳ đã rút ngắn xuống 60s.
+
 ## [0.5.1] - 2026-08-27
 
 ### Fixed
