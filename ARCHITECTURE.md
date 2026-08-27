@@ -61,11 +61,14 @@ HOST-RESOURCES-MIB, UCD-SNMP-MIB), `events.ts` (Redis pub/sub → WebSocket real
 `ping.ts`, `queue.ts` (BullMQ), `ssh.ts`, `subnet-scan.ts`, `websocket.ts`.
 
 ### Data model (`backend/prisma/schema.prisma`)
-Các model chính (26 model, xem file để biết đầy đủ field/quan hệ):
+Các model chính (27 model, xem file để biết đầy đủ field/quan hệ):
 `User, Site, UserSite` (multi-site + phân quyền) · `Device, HardwareComponent,
 DeviceGroup, DeviceNeighbor, ConfigBackup` · `Port, Vlan, PortVlan, PortMetric`
-(time-series interface) · `DeviceMetric, Processor, ProcessorMetric, Sensor`
-(time-series thiết bị) · `AlertRule, AlertRenotifySettings, NotificationChannel, Alert`
+(time-series interface) · `DeviceMetric, Processor, ProcessorMetric, Sensor,
+SensorMetric` (time-series thiết bị/cảm biến — `SensorMetric` lưu lịch sử từng cảm
+biến, ví dụ Tải UPS %, dùng bởi `GET /devices/:id/sensors/metrics?type=&hours=` và
+component `SensorHistoryPanel`) · `AlertRule, AlertRenotifySettings,
+NotificationChannel, Alert`
 · `EventLog` (syslog/trap/system) · `ServiceCheck, ServiceCheckHistory` ·
 `MapNode, MapLink` (topology map) · `Dashboard` (dashboard tuỳ biến).
 
