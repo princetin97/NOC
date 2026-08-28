@@ -388,6 +388,27 @@ async function readMemoryUsage(
   return {};
 }
 
+const AMBIENT_SENSOR_NAME_RE = /ambient|inlet|intake/i;
+const HOTSPOT_SENSOR_NAME_RE = /\bcpu\b|processor|\bdie\b|\bcore\b|asic/i;
+
+/**
+ * Picks a single representative value out of several temperature sensor readings.
+ * Prefers an explicitly named ambient/inlet/intake probe; otherwise averages the
+ * non-CPU/die "hotspot" sensors (or all readings if every sensor looks like a
+ * hotspot) instead of blindly taking the single hottest reading — a device with
+ * e.g. a hot CPU-die probe shouldn't have that spike misreported as its overall
+ * (ambient) temperature.
+ */
+function pickRepresentativeTemperature(readings: { name?: string; celsius: number }[]): number | undefined {
+  if (readings.length === 0) return undefined;
+  const ambient = readings.find((r) => r.name && AMBIENT_SENSOR_NAME_RE.test(r.name));
+  if (ambient) return Math.round(ambient.celsius * 10) / 10;
+  const nonHotspot = readings.filter((r) => !r.name || !HOTSPOT_SENSOR_NAME_RE.test(r.name));
+  const pool = nonHotspot.length > 0 ? nonHotspot : readings;
+  const avg = pool.reduce((sum, r) => sum + r.celsius, 0) / pool.length;
+  return Math.round(avg * 10) / 10;
+}
+
 /** Reads chassis/ambient temperature via ENTITY-SENSOR-MIB, falling back to CISCO-ENTITY-SENSOR-MIB / CISCO-ENVMON-MIB. */
 async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], deviceId: string): Promise<number | undefined> {
   try {
@@ -449,14 +470,15 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
       snmpWalkColumn(session, OID.fgHwSensorEntName),
       snmpWalkColumn(session, OID.fgHwSensorEntValue),
     ]);
-    const readings: number[] = [];
+    const readings: { name: string; celsius: number }[] = [];
     for (const [idx, nameVb] of names) {
-      const name = (varbindToString(nameVb) ?? '').toLowerCase();
-      if (!/temp/.test(name)) continue;
+      const name = (varbindToString(nameVb) ?? '').trim();
+      if (!/temp/i.test(name)) continue;
       const value = varbindToNumber(values.get(idx));
-      if (value !== undefined && value > 0 && value < 150) readings.push(value);
+      if (value !== undefined && value > 0 && value < 150) readings.push({ name, celsius: value });
     }
-    if (readings.length > 0) return Math.round((Math.max(...readings)) * 10) / 10;
+    const representative = pickRepresentativeTemperature(readings);
+    if (representative !== undefined) return representative;
   } catch (err) {
     logger.debug({ err, deviceId }, 'FORTINET-FORTIGATE-MIB temperature read failed, trying JUNIPER-MIB');
   }
@@ -464,8 +486,10 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
     const temps = await snmpWalkSuffix(session, OID.jnxOperatingTemp);
     const readings = Array.from(temps.values())
       .map((vb) => varbindToNumber(vb))
-      .filter((v): v is number => v !== undefined && v > 0 && v < 150);
-    if (readings.length > 0) return Math.round(Math.max(...readings) * 10) / 10;
+      .filter((v): v is number => v !== undefined && v > 0 && v < 150)
+      .map((celsius) => ({ celsius }));
+    const representative = pickRepresentativeTemperature(readings);
+    if (representative !== undefined) return representative;
   } catch (err) {
     logger.debug({ err, deviceId }, 'JUNIPER-MIB temperature read failed, trying HH3C-ENTITY-EXT-MIB');
   }
@@ -473,8 +497,10 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
     const temps = await snmpWalkColumn(session, OID.hh3cEntityExtTemperature);
     const readings = Array.from(temps.values())
       .map((vb) => varbindToNumber(vb))
-      .filter((v): v is number => v !== undefined && v > 0 && v < 150);
-    if (readings.length > 0) return Math.round(Math.max(...readings) * 10) / 10;
+      .filter((v): v is number => v !== undefined && v > 0 && v < 150)
+      .map((celsius) => ({ celsius }));
+    const representative = pickRepresentativeTemperature(readings);
+    if (representative !== undefined) return representative;
   } catch (err) {
     logger.debug({ err, deviceId }, 'HH3C-ENTITY-EXT-MIB temperature read failed, trying CISCOSB-MIB');
   }
@@ -483,31 +509,28 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
     const temps = await snmpWalkColumn(session, OID.ciscosbEnvTemp);
     const readings = Array.from(temps.values())
       .map((vb) => varbindToNumber(vb))
-      .filter((v): v is number => v !== undefined && v > 0 && v < 150);
-    if (readings.length > 0) return Math.round(Math.max(...readings) * 10) / 10;
+      .filter((v): v is number => v !== undefined && v > 0 && v < 150)
+      .map((celsius) => ({ celsius }));
+    const representative = pickRepresentativeTemperature(readings);
+    if (representative !== undefined) return representative;
   } catch (err) {
     logger.debug({ err, deviceId }, 'CISCOSB-MIB temperature read failed, trying IDRAC-MIB');
   }
   try {
-    // Dell iDRAC/OMSA temperatureProbeTable — prefer the inlet/ambient probe (matches
-    // what the "ambient temperature" tile represents), falling back to the average.
+    // Dell iDRAC/OMSA temperatureProbeTable.
     const [temps, names] = await Promise.all([
       snmpWalkColumn(session, OID.dellTempReading),
       snmpWalkColumn(session, OID.dellTempLocation),
     ]);
-    const readings: { idx: number; celsius: number }[] = [];
+    const readings: { name?: string; celsius: number }[] = [];
     for (const [idx, vb] of temps) {
       const raw = varbindToNumber(vb);
       if (raw === undefined) continue;
       const celsius = raw / 10; // tenths °C
-      if (celsius > 0 && celsius < 150) readings.push({ idx, celsius });
+      if (celsius > 0 && celsius < 150) readings.push({ name: varbindToString(names.get(idx)), celsius });
     }
-    const inlet = readings.find((r) => /inlet|ambient/i.test(varbindToString(names.get(r.idx)) ?? ''));
-    if (inlet) return Math.round(inlet.celsius * 10) / 10;
-    if (readings.length > 0) {
-      const avg = readings.reduce((sum, r) => sum + r.celsius, 0) / readings.length;
-      return Math.round(avg * 10) / 10;
-    }
+    const representative = pickRepresentativeTemperature(readings);
+    if (representative !== undefined) return representative;
   } catch (err) {
     logger.debug({ err, deviceId }, 'IDRAC-MIB temperature read failed, no more fallbacks');
   }

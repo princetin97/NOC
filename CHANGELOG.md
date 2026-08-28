@@ -17,6 +17,28 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-08-28
+
+### Changed
+- Thay đổi cách chọn nhiệt độ đại diện cho thiết bị (ô "Nhiệt độ Ambient") khi
+  thiết bị có nhiều cảm biến nhiệt độ (FortiGate, Juniper, HH3C, Cisco Small
+  Business, Dell iDRAC), thay vì luôn lấy giá trị **cao nhất** trong tất cả cảm
+  biến (dễ gây hiểu nhầm, ví dụ CPU on-die 74.4°C bị hiển thị như "Ambient" dù
+  ngưỡng cảnh báo mặc định là cho nhiệt độ khung máy/inlet, không phải nhiệt độ
+  lõi CPU):
+  1. Ưu tiên cảm biến có tên chứa "ambient/inlet/intake" nếu có.
+  2. Nếu không có, loại các cảm biến "hotspot" tên chứa cpu/processor/die/core/asic
+     rồi lấy **trung bình** các cảm biến còn lại (board/nguồn/quạt...).
+  3. Nếu tất cả cảm biến đều là hotspot (không cảm biến nào khác), lấy trung
+     bình toàn bộ — vẫn hợp lý hơn lấy đỉnh của 1 cảm biến đơn lẻ.
+  - File: `backend/src/poller/metrics.ts` — hàm mới `pickRepresentativeTemperature()`
+    dùng chung cho các nhánh FortiGate/Juniper/HH3C/CiscoSB/Dell iDRAC trong
+    `readTemperature()`. ENTITY-SENSOR-MIB/CISCO-ENTITY-SENSOR-MIB/CISCO-ENVMON-MIB
+    vẫn giữ nguyên (đã lấy trung bình từ trước).
+  - Lưu ý: giá trị "Nhiệt độ Ambient" cho các thiết bị nhiều cảm biến có thể
+    thay đổi (thường thấp hơn) sau bản này — nên rà soát lại ngưỡng cảnh báo
+    nhiệt độ nếu có rule tùy chỉnh dựa trên giá trị cũ.
+
 ## [0.7.3] - 2026-08-27
 
 ### Changed
