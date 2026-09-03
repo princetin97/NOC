@@ -72,8 +72,11 @@ async function schedulePollCycle(): Promise<void> {
   const devices = candidates.sort(byPollPriority).slice(0, toAdd);
   for (const device of devices) {
     // jobId dedupes so a slow poll doesn't pile up duplicate jobs for the same device.
+    // BullMQ treats unprioritized jobs as highest priority, so this must be explicitly
+    // lower than the fast/boost recheck jobs (priority: 1) or it would starve them.
     await pollQueue.add('poll', { deviceId: device.id }, {
       jobId: `poll-${device.id}`,
+      priority: 5,
       removeOnComplete: true,
       removeOnFail: true,
     });
@@ -126,7 +129,14 @@ async function scheduleDiscoveryCycle(): Promise<void> {
 async function scheduleServiceCheckCycle(): Promise<void> {
   const services = await prisma.serviceCheck.findMany({ where: { enabled: true }, select: { id: true } });
   for (const service of services) {
-    await serviceCheckQueue.add('check', { serviceId: service.id }, { jobId: `check-${service.id}`, removeOnComplete: true, removeOnFail: true });
+    // See the poll queue's 'poll' job above: unprioritized jobs are treated as highest
+    // priority by BullMQ, so this needs an explicit lower priority than 'check-fast'.
+    await serviceCheckQueue.add('check', { serviceId: service.id }, {
+      jobId: `check-${service.id}`,
+      priority: 5,
+      removeOnComplete: true,
+      removeOnFail: true,
+    });
   }
 }
 

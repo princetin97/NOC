@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-03
+
+### Fixed
+- Cảnh báo "thiết bị đã khắc phục" (device up trở lại) có lúc báo trễ tới hơn
+  1 phút so với thực tế khi thiết bị down lâu (> ~3 phút), so với PRTG dùng
+  cùng SNMP thì phát hiện phục hồi gần như ngay lập tức.
+  - Nguyên nhân: BullMQ coi job không set `priority` là ưu tiên **cao nhất**
+    (cao hơn cả `priority: 1`). Job poll nhanh 15s dành cho thiết bị
+    down/warning (`poll-fast`, `check-fast`, priority: 1) vô tình bị các job
+    poll định kỳ 60s bình thường (không set priority) chen ngang, nên khi
+    hàng đợi có nhiều thiết bị, việc tái kiểm tra thiết bị down bị trễ.
+  - Sửa: gán `priority: 5` cho job poll/check định kỳ thường
+    (`backend/src/poller/index.ts`), để job tái kiểm tra nhanh của thiết bị
+    down/warning thực sự được xử lý trước.
+
 ## [0.8.0] - 2026-09-03
 
 ### Added
