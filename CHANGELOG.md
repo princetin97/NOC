@@ -17,6 +17,16 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-09-03
+
+### Added
+- Tính năng quét dải mạng (Subnet Scan) giờ cho phép chọn **Nhóm thiết bị** trước
+  khi thêm hàng loạt thiết bị đã quét thấy.
+  - UI `ScanSubnetModal` thêm dropdown nhóm, tự nạp danh sách nhóm theo trụ sở đã chọn.
+  - Khi bấm "Thêm thiết bị đã chọn", `groupId` được gửi kèm mỗi thiết bị.
+  - Backend `/api/devices/bulk` nhận `groupId`, kiểm tra hợp lệ nhóm-trụ sở giống
+    logic tạo/sửa thiết bị đơn lẻ, rồi gán nhóm ngay lúc tạo.
+
 ## [0.8.4] - 2026-09-03
 
 ### Fixed

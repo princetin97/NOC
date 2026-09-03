@@ -125,7 +125,16 @@ export const api = {
       throw new Error('Quét subnet mất quá nhiều thời gian. Vui lòng thử dải nhỏ hơn (/28 hoặc /29).');
     },
     bulkAdd: (
-      devices: { name: string; ip: string; type?: string; siteId?: string | null; snmpVersion: string; snmpCommunity?: string; pingOnly?: boolean }[],
+      devices: {
+        name: string;
+        ip: string;
+        type?: string;
+        siteId?: string | null;
+        groupId?: string | null;
+        snmpVersion: string;
+        snmpCommunity?: string;
+        pingOnly?: boolean;
+      }[],
     ): Promise<{ created: { id: string; ip: string }[]; skipped: { ip: string; reason: string }[] }> =>
       apiClient.post('/devices/bulk', { devices }),
   },

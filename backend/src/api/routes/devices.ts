@@ -622,6 +622,7 @@ const bulkDeviceSchema = z.object({
         ip: z.string().min(1),
         type: z.string().default('server'),
         siteId: z.string().nullish(),
+        groupId: z.string().nullish(),
         snmpVersion: z.enum(['v1', 'v2c', 'v3']).default('v2c'),
         snmpCommunity: z.string().optional(),
         snmpPort: z.number().int().optional(),
@@ -645,11 +646,13 @@ devicesRouter.post('/bulk', async (req: AuthedRequest, res) => {
     const fallbackScopedSiteId =
       !isGlobalAdmin(req) && (req.user?.siteIds?.length ?? 0) === 1 ? (req.user?.siteIds[0] ?? null) : null;
     const targetSiteId = d.siteId ?? fallbackScopedSiteId;
+    const targetGroupId = d.groupId ?? null;
     try {
       if (!isGlobalAdmin(req) && !canAccessSite(req, targetSiteId)) {
         skipped.push({ ip: d.ip, reason: 'No permission for selected site' });
         continue;
       }
+      await ensureGroupMatchesSite(targetGroupId, targetSiteId);
       const device = await prisma.device.create({
         data: {
           name: d.name,
@@ -657,6 +660,7 @@ devicesRouter.post('/bulk', async (req: AuthedRequest, res) => {
           ip: d.ip,
           type: d.type,
           siteId: targetSiteId,
+          groupId: targetGroupId,
           snmpVersion: d.snmpVersion,
           snmpCommunity: d.pingOnly ? null : d.snmpCommunity,
           ...(d.pingOnly ? { snmpPort: 0 } : d.snmpPort ? { snmpPort: d.snmpPort } : {}),

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X, Radar, Loader2, Check } from 'lucide-react';
 import { api } from '../services/api';
-import { SiteInfo, SubnetScanResult } from '../types';
+import { DeviceGroup, SiteInfo, SubnetScanResult } from '../types';
 
 interface ScanSubnetModalProps {
   isOpen: boolean;
@@ -26,6 +26,8 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
   const [snmpVersion, setSnmpVersion] = useState<'v1' | 'v2c' | 'v3'>('v2c');
   const [community, setCommunity] = useState('public');
   const [siteId, setSiteId] = useState<string>(defaultSiteId ?? '');
+  const [groupId, setGroupId] = useState('');
+  const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [scanning, setScanning] = useState(false);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +37,41 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setSiteId(defaultSiteId ?? '');
+    setGroupId('');
   }, [isOpen, defaultSiteId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    api.deviceGroups.list(siteId || null).then(setGroups).catch(() => setGroups([]));
+  }, [isOpen, siteId]);
+
+  useEffect(() => {
+    if (!groupId) return;
+    if (!groups.some((g) => g.id === groupId)) setGroupId('');
+  }, [groups, groupId]);
+
+  const groupOptions = useMemo(() => {
+    const childrenByParent = new Map<string, DeviceGroup[]>();
+    for (const g of groups) {
+      const key = g.parentId ?? '__root__';
+      const list = childrenByParent.get(key) ?? [];
+      list.push(g);
+      childrenByParent.set(key, list);
+    }
+    for (const list of childrenByParent.values()) {
+      list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    }
+    const out: Array<{ id: string; label: string }> = [];
+    const walk = (parentId: string, depth: number) => {
+      const list = childrenByParent.get(parentId) ?? [];
+      for (const g of list) {
+        out.push({ id: g.id, label: `${depth > 0 ? `${'  '.repeat(depth)}↳ ` : ''}${g.name}` });
+        walk(g.id, depth + 1);
+      }
+    };
+    walk('__root__', 0);
+    return out;
+  }, [groups]);
 
   if (!isOpen) return null;
 
@@ -77,6 +113,7 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
         name: r.sysName || r.ip,
         ip: r.ip,
         siteId: siteId || null,
+        groupId: groupId || null,
         snmpVersion,
         snmpCommunity: community,
         pingOnly: !r.snmpAlive,
@@ -138,6 +175,15 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
                 {allowAllSitesOption && <option value="">(Chưa gán trụ sở)</option>}
                 {sites.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-400 mb-1">Nhóm gán cho thiết bị quét:</label>
+              <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className={inputCls}>
+                <option value="">(Không thuộc nhóm)</option>
+                {groupOptions.map((g) => (
+                  <option key={g.id} value={g.id}>{g.label}</option>
                 ))}
               </select>
             </div>
