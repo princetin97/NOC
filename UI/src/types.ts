@@ -410,6 +410,7 @@ export interface NetworkAlert {
   timestamp: string;
   acknowledgedBy?: string;
   acknowledgedAt?: string;
+  resolvedAt?: string;
   metricValue?: string;
 }
 

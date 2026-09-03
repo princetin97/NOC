@@ -346,6 +346,25 @@ devicesRouter.get('/:id/neighbors', async (req: AuthedRequest, res) => {
   res.json(neighbors);
 });
 
+// Per-device alert history tab: last 30 days only (older rows are pruned by cleanup.ts
+// anyway once resolved, but this also bounds still-open long-running alerts).
+const ALERT_HISTORY_DAYS = 30;
+devicesRouter.get('/:id/alerts', async (req: AuthedRequest, res) => {
+  const existing = await findScopedDevice(req, req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: 'Device not found' });
+    return;
+  }
+  const since = new Date(Date.now() - ALERT_HISTORY_DAYS * 24 * 60 * 60 * 1000);
+  const alerts = await prisma.alert.findMany({
+    where: { deviceId: req.params.id, timestamp: { gte: since } },
+    orderBy: { timestamp: 'desc' },
+    include: { rule: { select: { name: true } } },
+    take: 500,
+  });
+  res.json(alerts);
+});
+
 // Read-only raw SNMP walk of a single OID column, used to diagnose which MIBs a
 // device actually implements (e.g. confirming ENTITY-SENSOR-MIB/CISCO-ENVMON-MIB
 // support) without needing shell/snmpwalk access to the box.

@@ -128,6 +128,7 @@ export interface RawAlert {
   timestamp: string;
   acknowledgedBy?: string | null;
   acknowledgedAt?: string | null;
+  resolvedAt?: string | null;
   metricValue?: string | null;
 }
 
@@ -350,6 +351,7 @@ export function mapAlert(raw: RawAlert): NetworkAlert {
     timestamp: new Date(raw.timestamp).toLocaleString('vi-VN'),
     acknowledgedBy: raw.acknowledgedBy ?? undefined,
     acknowledgedAt: raw.acknowledgedAt ? new Date(raw.acknowledgedAt).toLocaleString('vi-VN') : undefined,
+    resolvedAt: raw.resolvedAt ? new Date(raw.resolvedAt).toLocaleString('vi-VN') : undefined,
     metricValue: raw.metricValue ?? undefined,
   };
 }

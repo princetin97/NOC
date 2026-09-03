@@ -104,6 +104,10 @@ export const api = {
       apiClient.get<ProcessorSeries[]>(`/devices/${id}/processors/metrics?hours=${hours}`),
     sensorMetrics: (id: string, type: string, hours: number): Promise<SensorSeries[]> =>
       apiClient.get<SensorSeries[]>(`/devices/${id}/sensors/metrics?type=${encodeURIComponent(type)}&hours=${hours}`),
+    alertHistory: async (id: string): Promise<NetworkAlert[]> => {
+      const raw = await apiClient.get<RawAlert[]>(`/devices/${id}/alerts`);
+      return raw.map(mapAlert);
+    },
     scanSubnet: async (input: { subnet: string; snmpVersion: string; snmpCommunity?: string; snmpPort?: number }): Promise<SubnetScanResult[]> => {
       const start = await apiClient.post<SubnetScanJobResponse>('/devices/scan-subnet/start', input, 15_000);
       const startedAt = Date.now();

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { NetworkDevice, DeviceStatus, DeviceType, NetworkInterface, DeviceGroup, DeviceSensor, DeviceVlan, AlertRuleInput, ServiceCheck, SiteInfo } from '../types';
-import { Server, Search, Filter, RefreshCw, Cpu, HardDrive, Thermometer, Clock, ShieldCheck, Activity, Cable, Terminal, ArrowDownLeft, ArrowUpRight, X, Pencil, Trash2, Radar, Boxes, Plus, CheckCircle, AlertTriangle, ChevronDown, ChevronRight, Folder, FolderOpen, Network, Columns3, PauseCircle, PlayCircle } from 'lucide-react';
+import { Server, Search, Filter, RefreshCw, Cpu, HardDrive, Thermometer, Clock, ShieldCheck, Activity, Cable, Terminal, ArrowDownLeft, ArrowUpRight, X, Pencil, Trash2, Radar, Boxes, Plus, CheckCircle, AlertTriangle, ChevronDown, ChevronRight, Folder, FolderOpen, Network, Columns3, PauseCircle, PlayCircle, History } from 'lucide-react';
 import { DeviceMetricsHistory } from './DeviceMetricsHistory';
 import { DeviceNeighbors } from './DeviceNeighbors';
+import { DeviceAlertHistory } from './DeviceAlertHistory';
 import { ProcessorsPanel } from './ProcessorsPanel';
 import { SensorHistoryPanel } from './SensorHistoryPanel';
 import { PortDetail } from './PortDetail';
@@ -665,7 +666,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   };
 
   // Device detail modal: active tab + interface search/pagination
-  const [detailTab, setDetailTab] = useState<'system' | 'neighbors' | 'ports' | 'vlans'>('system');
+  const [detailTab, setDetailTab] = useState<'system' | 'neighbors' | 'ports' | 'vlans' | 'alerts'>('system');
   const [portSearch, setPortSearch] = useState<string>('');
   const [portPage, setPortPage] = useState<number>(1);
   const [showVirtualInterfaces, setShowVirtualInterfaces] = useState<boolean>(true);
@@ -1755,7 +1756,8 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                 ...(showVlanTab
                   ? [{ key: 'vlans', label: `VLAN (${detailVlans.length})`, icon: Network }]
                   : []),
-              ] as { key: 'system' | 'neighbors' | 'ports' | 'vlans'; label: string; icon: typeof Activity }[]).map((tab) => {
+                { key: 'alerts', label: 'Lịch sử cảnh báo', icon: History },
+              ] as { key: 'system' | 'neighbors' | 'ports' | 'vlans' | 'alerts'; label: string; icon: typeof Activity }[]).map((tab) => {
                 const Icon = tab.icon;
                 const active = detailTab === tab.key;
                 return (
@@ -1921,6 +1923,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               {/* ==== TAB: Thiết bị lân cận ==== */}
               {detailTab === 'neighbors' && (
                 <DeviceNeighbors deviceId={selectedDevice.id} darkMode={darkMode} />
+              )}
+
+              {/* ==== TAB: Lịch sử cảnh báo (30 ngày gần nhất) ==== */}
+              {detailTab === 'alerts' && (
+                <DeviceAlertHistory deviceId={selectedDevice.id} darkMode={darkMode} />
               )}
 
               {/* ==== TAB: Interfaces (search + pagination 20/page) ==== */}

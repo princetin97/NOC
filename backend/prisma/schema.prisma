@@ -624,6 +624,7 @@ model Alert {
   @@index([serviceId, status])
   @@index([deviceId, ruleId, status])
   @@index([serviceId, ruleId, status])
+  @@index([deviceId, timestamp])
 }
 
 model EventLog {

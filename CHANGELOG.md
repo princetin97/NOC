@@ -17,6 +17,22 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-03
+
+### Added
+- Tab mới "Lịch sử cảnh báo" trong popup chi tiết thiết bị, hiển thị các cảnh
+  báo (mọi trạng thái: active/acknowledged/resolved) của riêng thiết bị đó
+  trong 30 ngày gần nhất, kèm mức độ, nội dung, quy tắc, trạng thái và thời
+  điểm khắc phục.
+  - Backend: `GET /api/devices/:id/alerts` (`backend/src/api/routes/
+    devices.ts`), giới hạn cứng 30 ngày + 500 bản ghi gần nhất. Thêm index
+    `Alert(deviceId, timestamp)` (migration
+    `20260903000000_alert_device_timestamp_index`) để truy vấn nhanh.
+  - Frontend: component mới `UI/src/components/DeviceAlertHistory.tsx`
+    (cùng khuôn mẫu với `DeviceNeighbors.tsx`), gắn vào tab bar của
+    `DeviceManagement.tsx`. `NetworkAlert`/`RawAlert`/`mapAlert` bổ sung
+    trường `resolvedAt`.
+
 ## [0.7.6] - 2026-09-03
 
 ### Fixed
