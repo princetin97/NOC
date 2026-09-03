@@ -17,6 +17,18 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-09-03
+
+### Fixed
+- Tab Interfaces trên popup thiết bị trước đây chỉ hiển thị 1 VLAN untagged
+  cho mỗi cổng, nên với cổng trunk có nhiều VLAN tagged dễ nhìn thành "sai VLAN"
+  khi so với giao diện quản trị switch.
+  - Dữ liệu backend thực tế đã đúng (có đủ tagged/untagged theo từng port trong
+    bảng `PortVlan`), nhưng UI rút gọn còn 1 giá trị nên gây hiểu nhầm.
+  - Sửa hiển thị ở `UI/src/components/DeviceManagement.tsx`: cột VLAN giờ hiện
+    đầy đủ membership theo port dạng `U/T` (ví dụ `407U, 1T, 6T, ...`) thay vì
+    chỉ 1 VLAN mặc định.
+
 ## [0.8.2] - 2026-09-03
 
 ### Fixed

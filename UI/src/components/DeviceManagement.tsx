@@ -685,6 +685,24 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     return map;
   }, [detailVlans]);
 
+  // Full VLAN membership per port for Interfaces tab (e.g. "407U, 1T, 6T").
+  const detailVlanMembershipByPortId = useMemo(() => {
+    const map = new Map<string, { untagged: number[]; tagged: number[] }>();
+    for (const v of detailVlans) {
+      for (const p of v.ports) {
+        const bucket = map.get(p.portId) ?? { untagged: [], tagged: [] };
+        if (p.untagged) bucket.untagged.push(v.vlanId);
+        else bucket.tagged.push(v.vlanId);
+        map.set(p.portId, bucket);
+      }
+    }
+    for (const value of map.values()) {
+      value.untagged.sort((a, b) => a - b);
+      value.tagged.sort((a, b) => a - b);
+    }
+    return map;
+  }, [detailVlans]);
+
   const showVlanTab = useMemo(() => {
     if (!selectedDevice) return false;
     if (selectedDevice.type === 'switch' || selectedDevice.type === 'router' || selectedDevice.type === 'firewall') return true;
@@ -1934,6 +1952,17 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               {detailTab === 'ports' && (() => {
                 const PAGE_SIZE = 20;
                 const q = portSearch.trim().toLowerCase();
+                const vlanLabelForPort = (portId: string, fallbackVlan?: number): string => {
+                  const membership = detailVlanMembershipByPortId.get(portId);
+                  if (!membership) return fallbackVlan ? String(fallbackVlan) : '—';
+
+                  const parts: string[] = [];
+                  for (const v of membership.untagged) parts.push(`${v}U`);
+                  for (const v of membership.tagged) parts.push(`${v}T`);
+                  if (parts.length > 0) return parts.join(', ');
+
+                  return fallbackVlan ? String(fallbackVlan) : '—';
+                };
                 const allPorts = getVisiblePorts(selectedDevice, showVirtualInterfaces)
                   .map((iface) => ({ ...iface, vlan: detailVlanByPortId.get(iface.id) ?? iface.vlan }))
                   .filter((iface) =>
@@ -2003,7 +2032,12 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                             >
                               <td className="py-2.5 px-3 font-bold text-emerald-400 underline decoration-dotted underline-offset-2">{iface.name}</td>
                               <td className="py-2.5 px-3 text-slate-300">{iface.description}</td>
-                              <td className="py-2.5 px-3 text-slate-300">{iface.vlan ?? '—'}</td>
+                              <td
+                                className="py-2.5 px-3 text-slate-300 max-w-[300px] truncate"
+                                title={vlanLabelForPort(iface.id, iface.vlan)}
+                              >
+                                {vlanLabelForPort(iface.id, iface.vlan)}
+                              </td>
                               <td className="py-2.5 px-3 text-slate-300">{iface.speed}</td>
                               <td className="py-2.5 px-3">
                                 <span className={`px-2 py-0.5 text-xs rounded font-bold uppercase ${
