@@ -17,6 +17,20 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-09-03
+
+### Fixed
+- Giá trị RAM trên thiết bị F5 BIG-IP có thể hiển thị sai cao bất thường
+  (ví dụ 90%+) so với dashboard trực tiếp trên F5.
+  - Nguyên nhân: poller ưu tiên đọc UCD-SNMP-MIB (Linux chung), trong khi BIG-IP
+    quản lý bộ nhớ theo pool TMM và non-TMM riêng; cách đọc generic này không phản
+    ánh đúng cách F5 tính RAM sử dụng toàn hệ thống.
+  - Sửa: thêm nhánh tính RAM riêng cho F5 trong `backend/src/poller/metrics.ts`,
+    ưu tiên các OID của `F5-BIGIP-SYSTEM-MIB`:
+    `sysGlobalHostMemTotal/Used` (fallback `sysStatMemory*` +
+    `sysGlobalHostOtherMemory*`) để lấy đúng phần trăm RAM và tổng RAM theo F5.
+  - Thêm các hằng OID F5 tương ứng trong `backend/src/lib/mib-oids.ts`.
+
 ## [0.8.1] - 2026-09-03
 
 ### Fixed

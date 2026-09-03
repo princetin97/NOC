@@ -109,7 +109,11 @@ export async function pollDevice(deviceId: string): Promise<void> {
       cpuUsage = cpuResult?.avgUsage ?? cpuUsage;
       cpuCount = cpuResult?.count ?? cpuCount;
 
-      const memResult = await readMemoryUsage(session, deviceId, device.sysDescr ?? undefined);
+      const memResult = await readMemoryUsage(session, deviceId, {
+        sysDescr: device.sysDescr ?? undefined,
+        sysObjectId: device.sysObjectId ?? undefined,
+        vendor: device.vendor ?? undefined,
+      });
       memoryUsage = memResult.percent ?? memoryUsage;
       totalMemoryBytes = memResult.totalBytes ?? totalMemoryBytes;
 
@@ -209,8 +213,62 @@ async function readCiscoProcessMibMemory(
 async function readMemoryUsage(
   session: Parameters<typeof snmpWalkColumn>[0],
   deviceId: string,
-  sysDescr?: string,
+  opts?: { sysDescr?: string; sysObjectId?: string; vendor?: string },
 ): Promise<MemoryReading> {
+  const isF5 =
+    opts?.vendor === 'F5' ||
+    (opts?.sysObjectId?.startsWith('1.3.6.1.4.1.3375') ?? false) ||
+    /\bbig-ip\b|\btmos\b/i.test(opts?.sysDescr ?? '');
+  if (isF5) {
+    try {
+      const [hostTotalVb, hostUsedVb, tmmTotalVb, tmmUsedVb, otherTotalVb, otherUsedVb] = await Promise.all([
+        snmpGetSingle(session, OID.f5SysGlobalHostMemTotal),
+        snmpGetSingle(session, OID.f5SysGlobalHostMemUsed),
+        snmpGetSingle(session, OID.f5SysStatMemoryTotal),
+        snmpGetSingle(session, OID.f5SysStatMemoryUsed),
+        snmpGetSingle(session, OID.f5SysGlobalHostOtherMemoryTotal),
+        snmpGetSingle(session, OID.f5SysGlobalHostOtherMemoryUsed),
+      ]);
+
+      const hostTotal = varbindToBigInt(hostTotalVb);
+      const hostUsed = varbindToBigInt(hostUsedVb);
+      if (hostTotal > 0n) {
+        const clampedUsed = hostUsed > hostTotal ? hostTotal : hostUsed;
+        const total = Number(hostTotal);
+        const used = Number(clampedUsed);
+        if (Number.isFinite(total) && Number.isFinite(used) && total > 0) {
+          return { percent: Math.round((used / total) * 100), totalBytes: total };
+        }
+      }
+
+      const tmmTotal = varbindToBigInt(tmmTotalVb);
+      const tmmUsed = varbindToBigInt(tmmUsedVb);
+      const otherTotal = varbindToBigInt(otherTotalVb);
+      const otherUsed = varbindToBigInt(otherUsedVb);
+      const combinedTotal = tmmTotal + otherTotal;
+      if (combinedTotal > 0n) {
+        const combinedUsedRaw = tmmUsed + otherUsed;
+        const combinedUsed = combinedUsedRaw > combinedTotal ? combinedTotal : combinedUsedRaw;
+        const total = Number(combinedTotal);
+        const used = Number(combinedUsed);
+        if (Number.isFinite(total) && Number.isFinite(used) && total > 0) {
+          return { percent: Math.round((used / total) * 100), totalBytes: total };
+        }
+      }
+
+      if (tmmTotal > 0n) {
+        const clampedUsed = tmmUsed > tmmTotal ? tmmTotal : tmmUsed;
+        const total = Number(tmmTotal);
+        const used = Number(clampedUsed);
+        if (Number.isFinite(total) && Number.isFinite(used) && total > 0) {
+          return { percent: Math.round((used / total) * 100), totalBytes: total };
+        }
+      }
+    } catch (err) {
+      logger.debug({ err, deviceId }, 'F5-BIGIP-SYSTEM-MIB memory read failed, trying generic memory fallbacks');
+    }
+  }
+
   try {
     const mem = await snmpGet(session, [OID.ucdMemTotalReal, OID.ucdMemAvailReal, OID.ucdMemBuffer, OID.ucdMemCached]);
     const total = varbindToNumber(mem[0]);
@@ -233,7 +291,7 @@ async function readMemoryUsage(
   // it does not match `show system resources` at all (confirmed live: ~3.5GB/78%
   // reported vs the real ~23.5GB/28.6%). CISCO-PROCESS-MIB, however, matches the
   // real system-wide total on NX-OS, so prefer it first on that platform.
-  if (/nx-os|nxos/i.test(sysDescr ?? '')) {
+  if (/nx-os|nxos/i.test(opts?.sysDescr ?? '')) {
     try {
       const cpmResult = await readCiscoProcessMibMemory(session);
       if (cpmResult) return cpmResult;

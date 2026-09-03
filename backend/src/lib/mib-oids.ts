@@ -110,6 +110,15 @@ export const OID = {
   fgVpnTunEntPhase1Name: '1.3.6.1.4.1.12356.101.12.2.2.1.2', // walk, tunnel (phase1) name = ifName
   fgVpnTunEntStatus: '1.3.6.1.4.1.12356.101.12.2.2.1.20', // walk, down(1) / up(2)
 
+  // F5-BIGIP-SYSTEM-MIB memory counters. BIG-IP reports memory in split pools
+  // (TMM and non-TMM "other") and a host-total aggregate; UCD memory can be misleading here.
+  f5SysStatMemoryTotal: '1.3.6.1.4.1.3375.2.1.1.2.1.44.0', // TMM memory total, bytes
+  f5SysStatMemoryUsed: '1.3.6.1.4.1.3375.2.1.1.2.1.45.0', // TMM memory used, bytes
+  f5SysGlobalHostMemTotal: '1.3.6.1.4.1.3375.2.1.1.2.20.2.0', // host memory total, bytes
+  f5SysGlobalHostMemUsed: '1.3.6.1.4.1.3375.2.1.1.2.20.3.0', // host memory used, bytes
+  f5SysGlobalHostOtherMemoryTotal: '1.3.6.1.4.1.3375.2.1.1.2.20.44.0', // non-TMM memory total, bytes
+  f5SysGlobalHostOtherMemoryUsed: '1.3.6.1.4.1.3375.2.1.1.2.20.45.0', // non-TMM memory used, bytes
+
   // JUNIPER-MIB (jnxOperatingTable) - Junos routers/switches (MX/EX/SRX/QFX/ACX).
   // Compound-indexed; walk by suffix. CPU/buffer are percentages, temp in Celsius.
   jnxBoxDescr: '1.3.6.1.4.1.2636.3.1.2.0', // chassis hardware/model string
