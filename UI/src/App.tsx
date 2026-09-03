@@ -274,15 +274,39 @@ export default function App() {
   }, []);
 
   // Sliding-session token refresh: renew the JWT periodically while the user is
-  // active so long sessions do not expire mid-work (token TTL is 12h).
+  // active so long sessions do not expire mid-work (token TTL is 12h). Besides the
+  // interval, also refresh right when the tab regains focus/visibility: browsers
+  // throttle/suspend setInterval on long-backgrounded tabs (e.g. an unattended NOC
+  // wallboard left open overnight), which can let the interval miss entirely and
+  // let the token expire silently — a refresh-on-visible check closes that gap.
+  const lastRefreshAtRef = useRef<number>(0);
   useEffect(() => {
     if (!currentUser) return;
-    const interval = setInterval(() => {
+    const SLIDING_REFRESH_MS = 30 * 60 * 1000;
+    const MIN_REFRESH_GAP_MS = 5 * 60 * 1000;
+
+    const doRefresh = () => {
+      lastRefreshAtRef.current = Date.now();
       refreshSession().then((user) => {
         if (user) setCurrentUser(user);
       });
-    }, 30 * 60 * 1000);
-    return () => clearInterval(interval);
+    };
+
+    lastRefreshAtRef.current = Date.now();
+    const interval = setInterval(doRefresh, SLIDING_REFRESH_MS);
+
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (Date.now() - lastRefreshAtRef.current >= MIN_REFRESH_GAP_MS) doRefresh();
+    };
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+    window.addEventListener('focus', onFocusOrVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+      window.removeEventListener('focus', onFocusOrVisible);
+    };
   }, [currentUser]);
 
   // Pause aggressive realtime/interval refreshes when the tab is backgrounded.

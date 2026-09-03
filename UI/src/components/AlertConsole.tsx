@@ -245,13 +245,13 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
   const getSeverityBadge = (sev: AlertSeverity) => {
     switch (sev) {
       case 'critical':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse">🔴 CRITICAL</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse">🔴 CRITICAL</span>;
       case 'high':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-orange-500/20 text-orange-400 border border-orange-500/40">🟠 HIGH</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-orange-500/20 text-orange-400 border border-orange-500/40">🟠 HIGH</span>;
       case 'medium':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-400 border border-amber-500/40">🟡 MEDIUM</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-amber-500/20 text-amber-400 border border-amber-500/40">🟡 MEDIUM</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-sky-500/20 text-sky-400 border border-sky-500/40">🔵 LOW</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-sky-500/20 text-sky-400 border border-sky-500/40">🔵 LOW</span>;
     }
   };
 
@@ -276,12 +276,12 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
               <h4 className="font-bold text-sm font-mono text-slate-100">{alt.deviceName}</h4>
               <span className="text-xs font-mono text-emerald-400">({alt.deviceIp})</span>
               {alt.interfaceName && (
-                <span className="text-xs font-mono text-slate-400">• Đối tượng: {alt.interfaceName}</span>
+                <span className="text-xs font-mono text-slate-300">• Đối tượng: {alt.interfaceName}</span>
               )}
             </div>
             <p className="text-xs font-semibold text-amber-400 mt-0.5">{alt.ruleName}</p>
             <p className="text-xs text-slate-300 mt-1">{alt.message}</p>
-            <div className="flex items-center space-x-4 mt-2 text-[10px] font-mono text-slate-500">
+            <div className="flex items-center space-x-4 mt-2 text-xs font-mono text-slate-400">
               <span>⏱ Xuất hiện: {alt.timestamp}</span>
               {alt.metricValue && <span>Giá trị: {alt.metricValue}</span>}
               {alt.acknowledgedBy && (
@@ -329,7 +329,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${
               activeTab === 'alerts'
                 ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-300 hover:text-slate-200'
             }`}
           >
             🚨 Cảnh báo Thời gian thực ({alerts.filter((a) => a.status === 'active').length})
@@ -339,7 +339,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${
               activeTab === 'acknowledged'
                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-300 hover:text-slate-200'
             }`}
           >
             ✅ Đã xác nhận ({acknowledgedAlerts.length})
@@ -349,7 +349,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${
               activeTab === 'rules'
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-300 hover:text-slate-200'
             }`}
           >
             ⚙️ Quy tắc Cảnh báo ({alertRules.length})
@@ -359,7 +359,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
             className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${
               activeTab === 'syslog'
                 ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-300 hover:text-slate-200'
             }`}
           >
             📜 Nhật ký Syslog & SNMP Trap ({eventLogs.length})
@@ -376,7 +376,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
             darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
           }`}>
             <div className="relative min-w-[200px] flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-300" />
               <input
                 type="text"
                 value={searchQuery}
@@ -416,7 +416,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
           <div className="space-y-3">
             {filteredAlerts.length === 0 ? (
               <div className={`p-8 rounded-xl border text-center ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
               }`}>
                 <CheckCircle className="w-8 h-8 mx-auto text-emerald-400 mb-2" />
                 <p className="font-bold text-sm">Không có cảnh báo nào thuộc bộ lọc này.</p>
@@ -444,12 +444,12 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                           <h4 className="font-bold text-sm font-mono text-slate-100">{alt.deviceName}</h4>
                           <span className="text-xs font-mono text-emerald-400">({alt.deviceIp})</span>
                           {alt.interfaceName && (
-                            <span className="text-xs font-mono text-slate-400">• Đối tượng: {alt.interfaceName}</span>
+                            <span className="text-xs font-mono text-slate-300">• Đối tượng: {alt.interfaceName}</span>
                           )}
                         </div>
                         <p className="text-xs font-semibold text-amber-400 mt-0.5">{alt.ruleName}</p>
                         <p className="text-xs text-slate-300 mt-1">{alt.message}</p>
-                        <div className="flex items-center space-x-4 mt-2 text-[10px] font-mono text-slate-500">
+                        <div className="flex items-center space-x-4 mt-2 text-xs font-mono text-slate-400">
                           <span>⏱ Xuất hiện: {alt.timestamp}</span>
                           {alt.metricValue && <span>Giá trị: {alt.metricValue}</span>}
                           {alt.acknowledgedBy && (
@@ -510,7 +510,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
           <div className="space-y-3">
             {acknowledgedAlerts.length === 0 ? (
               <div className={`p-8 rounded-xl border text-center ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
               }`}>
                 <CheckCircle className="w-8 h-8 mx-auto text-emerald-400 mb-2" />
                 <p className="font-bold text-sm">Chưa có cảnh báo nào được xác nhận.</p>
@@ -530,17 +530,17 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
           <div className="mb-4 space-y-3">
             <div>
               <h3 className="font-bold text-sm tracking-wide">Cấu hình Quy tắc Cảnh báo LibreNMS</h3>
-              <p className="text-xs text-slate-400">Quản lý ngưỡng kích hoạt cảnh báo SNMP Polling và ICMP Health Checks</p>
+              <p className="text-xs text-slate-300">Quản lý ngưỡng kích hoạt cảnh báo SNMP Polling và ICMP Health Checks</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px_auto] gap-2">
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-300" />
                 <input
                   value={ruleSearchQuery}
                   onChange={(e) => setRuleSearchQuery(e.target.value)}
                   placeholder="Tìm rule theo tên, metric, thiết bị, nhóm, trụ sở..."
                   className={`w-full rounded-lg border pl-9 pr-3 py-2 text-xs font-mono ${
-                    darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500' : 'bg-slate-50 border-slate-300 text-slate-700 placeholder:text-slate-400'
+                    darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-400' : 'bg-slate-50 border-slate-300 text-slate-700 placeholder:text-slate-300'
                   }`}
                 />
               </div>
@@ -569,23 +569,23 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
           <div className="space-y-3">
             {alertRules.length === 0 ? (
               <div className={`p-8 rounded-xl border text-center ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
               }`}>
-                <ShieldAlert className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                <ShieldAlert className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                 <p className="font-bold text-sm">Chưa có quy tắc cảnh báo nào.</p>
               </div>
             ) : ruleRows.length === 0 ? (
               <div className={`p-8 rounded-xl border text-center ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
               }`}>
-                <Filter className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                <Filter className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                 <p className="font-bold text-sm">Không có quy tắc nào ở mức độ này.</p>
               </div>
             ) : filteredRuleRows.length === 0 ? (
               <div className={`p-8 rounded-xl border text-center ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
               }`}>
-                <Search className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                <Search className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                 <p className="font-bold text-sm">Không tìm thấy quy tắc phù hợp với từ khóa.</p>
               </div>
             ) : (
@@ -600,33 +600,33 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h4 className="font-bold text-xs text-slate-200 leading-5">{rule.name}</h4>
-                        <p className="text-xs text-slate-400 mt-1 leading-4 max-h-8 overflow-hidden">{rule.description || 'Không có mô tả'}</p>
+                        <p className="text-xs text-slate-300 mt-1 leading-4 max-h-8 overflow-hidden">{rule.description || 'Không có mô tả'}</p>
                       </div>
                       <div className="shrink-0">{getSeverityBadge(rule.severity)}</div>
                     </div>
 
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {rule.scope === 'interface' && (
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-cyan-500/20 text-cyan-400">Theo cổng</span>
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-cyan-500/20 text-cyan-400">Theo cổng</span>
                       )}
                       {rule.scope === 'sensor' && (
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-violet-500/20 text-violet-400">Theo đối tượng</span>
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-violet-500/20 text-violet-400">Theo đối tượng</span>
                       )}
                       {rule.scope === 'service' && (
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-fuchsia-500/20 text-fuchsia-300">Theo dịch vụ</span>
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-fuchsia-500/20 text-fuchsia-300">Theo dịch vụ</span>
                       )}
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${rule.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}`}>
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${rule.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}`}>
                         {rule.enabled ? 'Đang bật' : 'Đã tắt'}
                       </span>
                     </div>
 
-                    <div className="mt-2 space-y-1.5 text-[10px]">
+                    <div className="mt-2 space-y-1.5 text-xs">
                       <p className="text-emerald-400 leading-4">
                         Ngưỡng: {rule.scope === 'sensor'
                           ? `Đối tượng [${rule.sensorType ? `${sensorTypeLabel(rule.sensorType)} (toàn bộ)` : rule.sensorIds && rule.sensorIds.length > 1 ? `${rule.sensorIds.length} đối tượng` : rule.sensorLabel ?? '—'}]`
                           : `Metric [${rule.metric}]`} {rule.condition} {rule.threshold} {rule.unit}
                       </p>
-                      <p className="text-slate-500 leading-4">
+                      <p className="text-slate-400 leading-4">
                         Áp dụng: {rule.sensorType
                           ? rule.osFilter
                             ? `Máy chủ ${rule.osFilter}`
@@ -654,7 +654,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                     </div>
 
                     <div className="mt-3 pt-2 border-t border-slate-700/70 flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 text-[10px] text-slate-300 cursor-pointer">
+                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={rule.enabled}
@@ -669,14 +669,14 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                             <button
                               onClick={() => applyRuleToAllSitesQuick(rule)}
                               disabled={!!quickApplyRuleId}
-                              className="text-slate-500 hover:text-amber-300 disabled:opacity-50 text-xs"
+                              className="text-slate-400 hover:text-amber-300 disabled:opacity-50 text-xs"
                               title="Áp dụng nhanh cho tất cả trụ sở"
                             >
                               ALL
                             </button>
                             <button
                               onClick={() => openApplyDialog(rule)}
-                              className="text-slate-500 hover:text-emerald-400"
+                              className="text-slate-400 hover:text-emerald-400"
                               title="Chọn trụ sở áp dụng"
                             >
                               <Copy className="w-4 h-4" />
@@ -685,14 +685,14 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                         )}
                         <button
                           onClick={() => { setEditingRule(rule); setShowRuleForm(true); }}
-                          className="text-slate-500 hover:text-sky-400"
+                          className="text-slate-400 hover:text-sky-400"
                           title="Sửa quy tắc"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onDeleteRule(rule.id)}
-                          className="text-slate-500 hover:text-red-400"
+                          className="text-slate-400 hover:text-red-400"
                           title="Xóa quy tắc"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -745,17 +745,17 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                 <Copy className="w-4 h-4" />
                 Chọn trụ sở áp dụng cho quy tắc
               </h3>
-              <button onClick={() => !applySubmitting && setApplyingRule(null)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
+              <button onClick={() => !applySubmitting && setApplyingRule(null)} className="text-slate-300 hover:text-slate-200"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="mt-4 text-xs space-y-3 overflow-y-auto">
               <div className={`p-3 rounded-lg border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                 <p className="text-slate-300">Quy tắc: <span className="text-emerald-400 font-bold">{applyingRule.name}</span></p>
-                <p className="text-slate-400 mt-1">Metric: {applyingRule.metric} • Scope: {applyingRule.scope ?? 'device'} • Template quản lý: {(applyingRule.siteId ?? null) ? (siteNameById.get(applyingRule.siteId as string) ?? applyingRule.siteId) : 'toàn cục'}</p>
+                <p className="text-slate-300 mt-1">Metric: {applyingRule.metric} • Scope: {applyingRule.scope ?? 'device'} • Template quản lý: {(applyingRule.siteId ?? null) ? (siteNameById.get(applyingRule.siteId as string) ?? applyingRule.siteId) : 'toàn cục'}</p>
               </div>
 
               <div>
-                <p className="text-slate-400 mb-2">Chọn các trụ sở cần áp dụng rule:</p>
+                <p className="text-slate-300 mb-2">Chọn các trụ sở cần áp dụng rule:</p>
                 <div className="flex items-center gap-2 mb-2">
                   <button
                     type="button"
@@ -774,7 +774,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                 </div>
                 <div className={`max-h-48 overflow-y-auto rounded-lg border p-2 space-y-2 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                   {sites.length === 0 ? (
-                    <p className="text-slate-500 px-1 py-2">Không có trụ sở đích hợp lệ.</p>
+                    <p className="text-slate-400 px-1 py-2">Không có trụ sở đích hợp lệ.</p>
                   ) : (
                     sites
                       .map((site) => (
@@ -803,7 +803,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
               </label>
 
               {!applyIncludeTargets && (
-                <p className="text-[11px] text-amber-400">
+                <p className="text-xs text-amber-400">
                   Khuyến nghị: chỉ bật khi các trụ sở có cùng đối tượng target. Nếu không, rule sẽ áp dụng theo ngưỡng chung.
                 </p>
               )}
@@ -1187,17 +1187,17 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
             {editing ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {editing ? 'Sửa quy tắc cảnh báo' : 'Thêm quy tắc cảnh báo'}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-200"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs overflow-y-auto flex-1 min-h-0">
           <div>
-            <label className="block text-slate-400 mb-1">Tên quy tắc:</label>
+            <label className="block text-slate-300 mb-1">Tên quy tắc:</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="VD: Cảnh báo traffic uplink > 800 Mbps" required />
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Chỉ số (metric):</label>
+            <label className="block text-slate-300 mb-1">Chỉ số (metric):</label>
             <select value={metric} onChange={(e) => handleMetricChange(e.target.value as AlertMetric)} className={inputCls}>
               <optgroup label="Theo thiết bị">
                 <option value="cpu">CPU (%)</option>
@@ -1229,7 +1229,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Trụ sở áp dụng:</label>
+            <label className="block text-slate-300 mb-1">Trụ sở áp dụng:</label>
             <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={inputCls}>
               <option value="">Toàn cục / Không gán</option>
               {sites.map((s) => (
@@ -1241,7 +1241,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
           {isState ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Điều kiện kích hoạt:</label>
+                <label className="block text-slate-300 mb-1">Điều kiện kích hoạt:</label>
                 <select value={stateIndex} onChange={(e) => setStateIndex(Number(e.target.value))} className={inputCls}>
                   {config.states!.map((s, idx) => (
                     <option key={idx} value={idx}>{s.label}</option>
@@ -1249,7 +1249,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Mức độ:</label>
+                <label className="block text-slate-300 mb-1">Mức độ:</label>
                 <select value={severity} onChange={(e) => setSeverity(e.target.value as AlertSeverity)} className={inputCls}>
                   <option value="critical">Critical</option>
                   <option value="high">High</option>
@@ -1261,7 +1261,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
           ) : (
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Điều kiện:</label>
+                <label className="block text-slate-300 mb-1">Điều kiện:</label>
                 <select value={condition} onChange={(e) => setCondition(e.target.value as Operator)} className={inputCls}>
                   {(config.operators ?? ['>', '<', '==', '!=']).map((op) => (
                     <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
@@ -1269,7 +1269,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Ngưỡng ({(isObject ? (objectMode === 'fleet' ? SENSOR_TYPE_META[sensorType]?.unit : selectedUnit) : config.unit) || 'giá trị'}):</label>
+                <label className="block text-slate-300 mb-1">Ngưỡng ({(isObject ? (objectMode === 'fleet' ? SENSOR_TYPE_META[sensorType]?.unit : selectedUnit) : config.unit) || 'giá trị'}):</label>
                 <input
                   type="number"
                   step={config.step ?? 'any'}
@@ -1282,7 +1282,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                 />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Mức độ:</label>
+                <label className="block text-slate-300 mb-1">Mức độ:</label>
                 <select value={severity} onChange={(e) => setSeverity(e.target.value as AlertSeverity)} className={inputCls}>
                   <option value="critical">Critical</option>
                   <option value="high">High</option>
@@ -1293,12 +1293,12 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
             </div>
           )}
 
-          {config.hint && <p className="text-[11px] text-slate-500 -mt-1">💡 {config.hint}</p>}
+          {config.hint && <p className="text-xs text-slate-400 -mt-1">💡 {config.hint}</p>}
 
           {/* Targeting: all / group / specific device (object rules are always device-specific) */}
           {!isObject && !isService && (
             <div>
-              <label className="block text-slate-400 mb-1">Phạm vi áp dụng:</label>
+              <label className="block text-slate-300 mb-1">Phạm vi áp dụng:</label>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   { k: 'all', label: 'Mọi thiết bị' },
@@ -1326,7 +1326,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
 
           {isService && (
             <div className="space-y-2">
-              <label className="block text-slate-400 mb-1">Phạm vi dịch vụ:</label>
+              <label className="block text-slate-300 mb-1">Phạm vi dịch vụ:</label>
               <div className="grid grid-cols-2 gap-2">
                 {([
                   { k: 'all', label: 'Mọi dịch vụ' },
@@ -1362,15 +1362,15 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
 
           {targetKind === 'group' && (
             <div>
-              <label className="block text-slate-400 mb-1">Nhóm thiết bị (chọn nhiều nhóm):</label>
+              <label className="block text-slate-300 mb-1">Nhóm thiết bị (chọn nhiều nhóm):</label>
               {groups.length === 0 ? (
-                <p className="text-[11px] text-amber-400">Chưa có nhóm thiết bị nào.</p>
+                <p className="text-xs text-amber-400">Chưa có nhóm thiết bị nào.</p>
               ) : (
                 <div className={`max-h-40 overflow-y-auto rounded-lg border divide-y p-2 space-y-1 ${darkMode ? 'border-slate-700 divide-slate-800' : 'border-slate-300 divide-slate-200'}`}>
                   {groups.map((g) => (
                     <label
                       key={g.id}
-                      className="flex items-center gap-2 text-[11px] px-1 py-0.5 rounded cursor-pointer hover:bg-slate-700/30"
+                      className="flex items-center gap-2 text-xs px-1 py-0.5 rounded cursor-pointer hover:bg-slate-700/30"
                     >
                       <input
                         type="checkbox"
@@ -1389,7 +1389,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
           {targetKind === 'device' && !isFleet && !isObject && (
             <div className={`grid ${isInterface ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
               <div>
-                <label className="block text-slate-400 mb-1">Thiết bị:</label>
+                <label className="block text-slate-300 mb-1">Thiết bị:</label>
                 <DevicePickerButton
                   devices={devices}
                   darkMode={darkMode}
@@ -1399,7 +1399,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
               </div>
               {isInterface && (
                 <div>
-                  <label className="block text-slate-400 mb-1">Cổng áp dụng:</label>
+                  <label className="block text-slate-300 mb-1">Cổng áp dụng:</label>
                   <button
                     type="button"
                     onClick={() => selectedDevice && setShowPortPicker(true)}
@@ -1410,7 +1410,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                       <Boxes className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                       <span className="truncate">{portIds.length === 0 ? 'Mọi cổng của thiết bị' : `${portIds.length} cổng đã chọn`}</span>
                     </span>
-                    <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <Search className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                   </button>
                 </div>
               )}
@@ -1445,7 +1445,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
               {objectMode === 'fleet' ? (
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-slate-400 mb-1">Loại đối tượng:</label>
+                    <label className="block text-slate-300 mb-1">Loại đối tượng:</label>
                     <select value={sensorType} onChange={(e) => handleFleetTypeChange(e.target.value)} className={inputCls}>
                       {Object.keys(SENSOR_TYPE_META).map((t) => (
                         <option key={t} value={t}>{SENSOR_TYPE_META[t].label}</option>
@@ -1453,7 +1453,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                     </select>
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Hệ điều hành áp dụng:</label>
+                    <label className="block text-slate-300 mb-1">Hệ điều hành áp dụng:</label>
                     <select value={osFilter} onChange={(e) => setOsFilter(e.target.value)} className={inputCls}>
                       <option value="">Tất cả hệ điều hành</option>
                       {osOptions.map((o) => (
@@ -1461,7 +1461,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                       ))}
                     </select>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-400">
                     Quy tắc tự áp cho <span className="text-slate-300">mọi {SENSOR_TYPE_META[sensorType]?.label ?? sensorType}</span>{' '}
                     trên {osFilter ? <>các máy chủ <span className="text-slate-300">{osFilter}</span></> : 'tất cả thiết bị'}. Không cần chọn từng đối tượng.
                   </p>
@@ -1469,7 +1469,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
               ) : (
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-slate-400 mb-1">Phạm vi áp dụng:</label>
+                    <label className="block text-slate-300 mb-1">Phạm vi áp dụng:</label>
                     <div className="grid grid-cols-2 gap-2">
                       {([
                         { k: 'device', label: 'Theo thiết bị' },
@@ -1494,7 +1494,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                   </div>
                   {objectTargetKind === 'device' ? (
                     <div>
-                      <label className="block text-slate-400 mb-1">Thiết bị:</label>
+                      <label className="block text-slate-300 mb-1">Thiết bị:</label>
                       <DevicePickerButton
                         devices={devices}
                         darkMode={darkMode}
@@ -1504,15 +1504,15 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-slate-400 mb-1">Nhóm thiết bị (chọn nhiều nhóm):</label>
+                      <label className="block text-slate-300 mb-1">Nhóm thiết bị (chọn nhiều nhóm):</label>
                       {groups.length === 0 ? (
-                        <p className="text-[11px] text-amber-400">Chưa có nhóm thiết bị nào.</p>
+                        <p className="text-xs text-amber-400">Chưa có nhóm thiết bị nào.</p>
                       ) : (
                         <div className={`max-h-40 overflow-y-auto rounded-lg border divide-y p-2 space-y-1 ${darkMode ? 'border-slate-700 divide-slate-800' : 'border-slate-300 divide-slate-200'}`}>
                           {groups.map((g) => (
                             <label
                               key={g.id}
-                              className="flex items-center gap-2 text-[11px] px-1 py-0.5 rounded cursor-pointer hover:bg-slate-700/30"
+                              className="flex items-center gap-2 text-xs px-1 py-0.5 rounded cursor-pointer hover:bg-slate-700/30"
                             >
                               <input
                                 type="checkbox"
@@ -1525,16 +1525,16 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                           ))}
                         </div>
                       )}
-                      <p className="text-[11px] text-slate-500 mt-1">Quy tắc áp dụng cho tất cả thiết bị trong nhóm có cùng loại đối tượng.</p>
+                      <p className="text-xs text-slate-400 mt-1">Quy tắc áp dụng cho tất cả thiết bị trong nhóm có cùng loại đối tượng.</p>
                     </div>
                   )}
                   <div>
-                  <label className="block text-slate-400 mb-1">Đối tượng / cảm biến (chọn nhiều cùng đơn vị):</label>
+                  <label className="block text-slate-300 mb-1">Đối tượng / cảm biến (chọn nhiều cùng đơn vị):</label>
                   {!deviceId && objectTargetKind === 'device' ? (
-                <p className="text-[11px] text-slate-500">Hãy chọn thiết bị ở trên trước.</p>
+                <p className="text-xs text-slate-400">Hãy chọn thiết bị ở trên trước.</p>
               ) : !deviceId && objectTargetKind === 'group' ? (
                 <div className="space-y-1">
-                  <p className="text-[11px] text-slate-500">Chọn 1 thiết bị đại diện nhóm để xem đối tượng khả dụng:</p>
+                  <p className="text-xs text-slate-400">Chọn 1 thiết bị đại diện nhóm để xem đối tượng khả dụng:</p>
                   <DevicePickerButton
                     devices={devices}
                     darkMode={darkMode}
@@ -1543,13 +1543,13 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                   />
                 </div>
               ) : deviceSensors.length === 0 ? (
-                <p className="text-[11px] text-amber-400">Thiết bị chưa có cảm biến/đối tượng nào. Nhấn "Quét SNMP" và chờ một chu kỳ thu thập.</p>
+                <p className="text-xs text-amber-400">Thiết bị chưa có cảm biến/đối tượng nào. Nhấn "Quét SNMP" và chờ một chu kỳ thu thập.</p>
               ) : (
                 <>
                   <div className={`max-h-40 overflow-y-auto rounded-lg border divide-y ${darkMode ? 'border-slate-700 divide-slate-800' : 'border-slate-300 divide-slate-200'}`}>
                     {Array.from(new Set(deviceSensors.map((s) => s.type))).map((t: string) => (
                       <div key={t} className="p-2">
-                        <p className="text-[11px] font-semibold text-emerald-400 mb-1">{sensorTypeLabel(t)}</p>
+                        <p className="text-xs font-semibold text-emerald-400 mb-1">{sensorTypeLabel(t)}</p>
                         <div className="space-y-1">
                           {deviceSensors
                             .filter((s) => s.type === t)
@@ -1559,7 +1559,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                               return (
                                 <label
                                   key={s.id}
-                                  className={`flex items-center gap-2 text-[11px] px-1 py-0.5 rounded ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-700/30'}`}
+                                  className={`flex items-center gap-2 text-xs px-1 py-0.5 rounded ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-700/30'}`}
                                 >
                                   <input
                                     type="checkbox"
@@ -1570,7 +1570,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                                   />
                                   <span className="truncate flex-1">{s.description}</span>
                                   {s.value !== null && s.value !== undefined && (
-                                    <span className="text-slate-500 shrink-0">{s.value}{s.unit}</span>
+                                    <span className="text-slate-400 shrink-0">{s.value}{s.unit}</span>
                                   )}
                                 </label>
                               );
@@ -1579,7 +1579,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     {sensorIds.length > 0
                       ? <>Đã chọn <span className="text-slate-300">{sensorIds.length}</span> đối tượng (đơn vị <span className="text-slate-300">{selectedUnit || '—'}</span>). Chỉ chọn được đối tượng cùng đơn vị.</>
                       : 'Chỉ có thể chọn các đối tượng cùng đơn vị trong một quy tắc (vd: đều là %).'}
@@ -1593,7 +1593,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
           )}
 
           <div>
-            <label className="block text-slate-400 mb-1">Mô tả (tùy chọn):</label>
+            <label className="block text-slate-300 mb-1">Mô tả (tùy chọn):</label>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className={inputCls} />
           </div>
 
@@ -1674,12 +1674,12 @@ const PortPickerModal: React.FC<PortPickerModalProps> = ({ device, darkMode, sel
       >
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <h3 className="font-bold text-sm flex items-center gap-2"><Boxes className="w-4 h-4 text-cyan-400" /> Chọn cổng — {device.name}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-200"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="p-3 flex flex-wrap items-center gap-2 border-b border-slate-800">
           <div className="relative flex-1 min-w-[160px]">
-            <Search className="w-4 h-4 absolute left-3 top-2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-2 text-slate-300" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -1699,7 +1699,7 @@ const PortPickerModal: React.FC<PortPickerModalProps> = ({ device, darkMode, sel
 
         <div className="p-3 overflow-y-auto space-y-1">
           {filtered.length === 0 ? (
-            <p className="text-xs text-slate-500 p-3 text-center">Không có cổng phù hợp bộ lọc.</p>
+            <p className="text-xs text-slate-400 p-3 text-center">Không có cổng phù hợp bộ lọc.</p>
           ) : (
             filtered.map((i) => (
               <label
@@ -1716,16 +1716,16 @@ const PortPickerModal: React.FC<PortPickerModalProps> = ({ device, darkMode, sel
                 <span className={`w-2 h-2 rounded-full shrink-0 ${i.operStatus === 'up' ? 'bg-emerald-400' : i.operStatus === 'down' ? 'bg-red-400' : 'bg-amber-400'}`} />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{i.name}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{i.alias || i.description || '—'} • {i.speed}</div>
+                  <div className="text-xs text-slate-300 truncate">{i.alias || i.description || '—'} • {i.speed}</div>
                 </div>
-                <span className="text-[10px] font-mono uppercase text-slate-500 shrink-0">{i.operStatus}</span>
+                <span className="text-xs font-mono uppercase text-slate-400 shrink-0">{i.operStatus}</span>
               </label>
             ))
           )}
         </div>
 
         <div className="p-3 border-t border-slate-800 flex items-center justify-between gap-2">
-          <span className="text-xs text-slate-400">Đã chọn: {picked.size} cổng {picked.size === 0 ? '(→ áp dụng mọi cổng)' : ''}</span>
+          <span className="text-xs text-slate-300">Đã chọn: {picked.size} cổng {picked.size === 0 ? '(→ áp dụng mọi cổng)' : ''}</span>
           <div className="flex gap-2">
             <button type="button" onClick={() => onApply([])} className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 text-xs">Mọi cổng</button>
             <button type="button" onClick={() => onApply(Array.from(picked))} className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold">Áp dụng</button>

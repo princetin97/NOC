@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-09-03
+
+### Fixed
+- Giao diện có thể bị "đứng hình" (không cập nhật dữ liệu thiết bị) khi phiên
+  đăng nhập (JWT, hạn 12h) hết hạn trong lúc tab trình duyệt bị để chạy nền lâu
+  (ví dụ màn hình wallboard NOC để qua đêm). Cơ chế tự làm mới phiên trước đây
+  chỉ dựa vào `setInterval` mỗi 30 phút, có thể bị trình duyệt tạm dừng khi tab
+  không hiển thị trong thời gian dài, khiến token hết hạn mà không kịp làm mới
+  → mọi request API trả 401 → tự đăng xuất về màn hình đăng nhập. Backend/poller
+  vẫn thu thập dữ liệu bình thường trong suốt thời gian này (không mất dữ liệu),
+  đây thuần là vấn đề hiển thị phía UI.
+- `UI/src/App.tsx`: thêm làm mới phiên ngay khi tab được focus lại/hiển thị lại
+  (`visibilitychange`/`focus`), bên cạnh interval 30 phút hiện có, để thu hẹp
+  khoảng trống khi interval bị trình duyệt tạm dừng.
+
 ## [0.7.4] - 2026-08-28
 
 ### Changed

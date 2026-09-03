@@ -101,7 +101,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                 <span className="font-bold text-xs uppercase tracking-wider font-mono">
                   {criticalCount > 0 ? '🚨 Cảnh báo Nguy hiểm (Critical)' : '⚠️ Cảnh báo Mạng'}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-black/40 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded bg-black/40 font-mono">
                   {activeAlerts.length} Cần xử lý
                 </span>
               </div>
@@ -141,7 +141,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trạng thái Thiết bị</span>
+            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Trạng thái Thiết bị</span>
             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
               <Server className="w-5 h-5" />
             </div>
@@ -150,7 +150,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             <span className="text-2xl font-black font-mono tracking-tight text-slate-100">{totalDevices}</span>
             <span className="text-xs font-mono text-emerald-400 font-semibold">{((upDevices / totalDevices) * 100).toFixed(0)}% Hoạt động</span>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-1 text-[11px] font-mono border-t border-slate-800/60 pt-2 text-center">
+          <div className="mt-3 grid grid-cols-3 gap-1 text-xs font-mono border-t border-slate-800/60 pt-2 text-center">
             <div className="text-emerald-400 font-bold bg-emerald-500/10 py-1 rounded">● {upDevices} UP</div>
             <div className="text-amber-400 font-bold bg-amber-500/10 py-1 rounded">▲ {warningDevices} WARN</div>
             <div className="text-red-400 font-bold bg-red-500/10 py-1 rounded">■ {downDevices} DOWN</div>
@@ -165,7 +165,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cảnh báo Thời gian thực</span>
+            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Cảnh báo Thời gian thực</span>
             <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
               <ShieldAlert className="w-5 h-5" />
             </div>
@@ -174,7 +174,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             <span className="text-2xl font-black font-mono tracking-tight text-slate-100">{activeAlerts.length}</span>
             <span className="text-xs font-mono text-red-400 font-semibold">{criticalCount} Nguy hiểm</span>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-1 text-[11px] font-mono border-t border-slate-800/60 pt-2 text-center">
+          <div className="mt-3 grid grid-cols-3 gap-1 text-xs font-mono border-t border-slate-800/60 pt-2 text-center">
             <div className="text-red-400 font-bold bg-red-500/10 py-1 rounded">{criticalCount} Crit</div>
             <div className="text-orange-400 font-bold bg-orange-500/10 py-1 rounded">{highCount} High</div>
             <div className="text-amber-400 font-bold bg-amber-500/10 py-1 rounded">{mediumCount} Med</div>
@@ -189,7 +189,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tổng Băng thông Mạng</span>
+            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Tổng Băng thông Mạng</span>
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
               <Activity className="w-5 h-5" />
             </div>
@@ -198,7 +198,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             <span className="text-2xl font-black font-mono tracking-tight text-slate-100">{totalInGbps} Gbps</span>
             <span className="text-xs font-mono text-cyan-400 font-semibold">Out: {totalOutGbps} Gbps</span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] font-mono border-t border-slate-800/60 pt-2 text-slate-400">
+          <div className="mt-3 flex items-center justify-between text-xs font-mono border-t border-slate-800/60 pt-2 text-slate-300">
             <span className="flex items-center text-emerald-400 font-semibold"><ArrowDownLeft className="w-3.5 h-3.5 mr-0.5" /> Inbound</span>
             <span className="flex items-center text-cyan-400 font-semibold"><ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> Outbound</span>
           </div>
@@ -212,7 +212,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Độ trễ Ping & Mất gói</span>
+            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Độ trễ Ping & Mất gói</span>
             <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
               <Clock className="w-5 h-5" />
             </div>
@@ -221,7 +221,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             <span className="text-2xl font-black font-mono tracking-tight text-slate-100">{avgPing} ms</span>
             <span className="text-xs font-mono text-emerald-400 font-semibold">Loss: 0.1%</span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] font-mono border-t border-slate-800/60 pt-2 text-slate-400">
+          <div className="mt-3 flex items-center justify-between text-xs font-mono border-t border-slate-800/60 pt-2 text-slate-300">
             <span>SNMP Timeout: 2.0s</span>
             <span className="text-emerald-400">Jitter: &lt;1ms</span>
           </div>
@@ -242,7 +242,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Lưu lượng Băng thông Tổng (Global SNMP Bandwidth In/Out)</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Biểu đồ tổng hợp Inbound (Vào) & Outbound (Ra) đo bằng Mbps theo thời gian</p>
+              <p className="text-xs text-slate-300 mt-0.5">Biểu đồ tổng hợp Inbound (Vào) & Outbound (Ra) đo bằng Mbps theo thời gian</p>
             </div>
             <div className="flex items-center space-x-4 text-xs font-mono">
               <div className="flex items-center space-x-1.5">
@@ -307,7 +307,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
         }`}>
           <div>
             <h3 className="font-bold text-sm tracking-wide mb-1">Ma trận Trạng thái Thiết bị (NOC Health Matrix)</h3>
-            <p className="text-xs text-slate-400 mb-3">Nhấp vào thiết bị để xem chi tiết thông số SNMP</p>
+            <p className="text-xs text-slate-300 mb-3">Nhấp vào thiết bị để xem chi tiết thông số SNMP</p>
 
             {/* Matrix Items */}
             <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1 scrollbar-thin">
@@ -329,23 +329,23 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                     }`}></span>
                     <div>
                       <h4 className="font-semibold text-xs font-mono text-slate-200">{dev.name}</h4>
-                      <p className="text-[10px] font-mono text-slate-400">{dev.ip} • {dev.vendor} {dev.model}</p>
+                      <p className="text-xs font-mono text-slate-300">{dev.ip} • {dev.vendor} {dev.model}</p>
                     </div>
                   </div>
-                  <div className="text-right font-mono text-[11px]">
+                  <div className="text-right font-mono text-xs">
                     <span className={`font-semibold ${
                       dev.status === 'up' ? 'text-emerald-400' : dev.status === 'warning' ? 'text-amber-400' : 'text-red-400'
                     }`}>
                       {dev.status === 'down' ? 'OFFLINE' : `${dev.pingLatencyMs}ms`}
                     </span>
-                    <p className="text-[10px] text-slate-400">CPU {dev.cpuUsage}%</p>
+                    <p className="text-xs text-slate-300">CPU {dev.cpuUsage}%</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-300">
             <span className="font-mono">Tải CPU TB: 42%</span>
             <button
               onClick={() => onNavigateToTab('devices')}
@@ -365,7 +365,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-sm tracking-wide">Top 5 Cổng Giao diện Tải cao nhất (Top Traffic Ports)</h3>
-            <p className="text-xs text-slate-400">Giám sát các cổng kết nối Uplink, Trunk và Server bị sử dụng trên 40%</p>
+            <p className="text-xs text-slate-300">Giám sát các cổng kết nối Uplink, Trunk và Server bị sử dụng trên 40%</p>
           </div>
           <button
             onClick={() => onNavigateToTab('devices')}
@@ -378,7 +378,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className={`border-b text-slate-400 ${darkMode ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50'}`}>
+              <tr className={`border-b text-slate-300 ${darkMode ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50'}`}>
                 <th className="py-2.5 px-3">Thiết bị</th>
                 <th className="py-2.5 px-3">Tên Cổng</th>
                 <th className="py-2.5 px-3">Mô tả / Đích</th>
@@ -400,10 +400,10 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                   }`}>
                     <td className="py-2.5 px-3 font-semibold text-slate-100">
                       <div>{devName}</div>
-                      <div className="text-[10px] text-slate-500">{devIp}</div>
+                      <div className="text-xs text-slate-400">{devIp}</div>
                     </td>
                     <td className="py-2.5 px-3 text-emerald-400 font-bold">{iface.name}</td>
-                    <td className="py-2.5 px-3 text-slate-400 max-w-xs truncate">{iface.description}</td>
+                    <td className="py-2.5 px-3 text-slate-300 max-w-xs truncate">{iface.description}</td>
                     <td className="py-2.5 px-3">{iface.speed}</td>
                     <td className="py-2.5 px-3 font-bold text-emerald-400">{inMbps} Mbps</td>
                     <td className="py-2.5 px-3 font-bold text-cyan-400">{outMbps} Mbps</td>
@@ -421,7 +421,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-right">
-                      <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase ${
+                      <span className={`px-2 py-0.5 text-xs rounded font-bold uppercase ${
                         iface.operStatus === 'up' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
                       }`}>
                         {iface.operStatus}

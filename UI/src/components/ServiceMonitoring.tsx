@@ -208,7 +208,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
           </div>
           <div>
             <h3 className="font-bold text-sm tracking-wide font-mono text-slate-100">Giám sát Dịch vụ Mạng (Service Poller Checks)</h3>
-            <p className="text-xs text-slate-400">Kiểm tra kết nối HTTP, DNS, SSH, MySQL, BGP Peer theo thời gian thực</p>
+            <p className="text-xs text-slate-300">Kiểm tra kết nối HTTP, DNS, SSH, MySQL, BGP Peer theo thời gian thực</p>
           </div>
         </div>
 
@@ -249,13 +249,13 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-xs text-slate-100 truncate">{group.displayName}</h4>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-300">
                     {group.target} • {group.items.length} phương thức giám sát • {group.healthyCount}/{group.items.length} UP
                   </p>
                 </div>
               </div>
 
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
                 group.overallStatus === 'down'
                   ? 'bg-red-500/20 text-red-400'
                   : group.overallStatus === 'warning'
@@ -275,7 +275,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
                       {svc.port ? ` • Port ${svc.port}` : ''}
                     </p>
                     <div className="flex items-center gap-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold uppercase ${
                         svc.status === 'up'
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : svc.status === 'warning'
@@ -286,7 +286,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
                       </span>
                       <button
                         onClick={() => openEditModal(svc)}
-                        className="text-cyan-400 hover:underline flex items-center space-x-1 font-semibold text-[10px]"
+                        className="text-cyan-400 hover:underline flex items-center space-x-1 font-semibold text-xs"
                         title="Sửa"
                       >
                         <Pencil className="w-3 h-3" />
@@ -294,7 +294,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
                       </button>
                       <button
                         onClick={() => onDeleteService(svc.id)}
-                        className="text-red-400 hover:underline flex items-center space-x-1 font-semibold text-[10px]"
+                        className="text-red-400 hover:underline flex items-center space-x-1 font-semibold text-xs"
                         title="Xóa"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -303,22 +303,22 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
                     </div>
                   </div>
 
-                  <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-[10px] leading-tight">
+                  <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-xs leading-tight">
                     <div>
-                      <span className="text-slate-500">Phản hồi:</span>
+                      <span className="text-slate-400">Phản hồi:</span>
                       <p className="text-emerald-400 font-bold">{svc.status === 'down' ? 'TIMEOUT' : `${svc.responseTimeMs} ms`}</p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Uptime:</span>
+                      <span className="text-slate-400">Uptime:</span>
                       <p className="text-slate-200 font-bold">{svc.uptimePercent}%</p>
                     </div>
                     <div className="col-span-1">
-                      <span className="text-slate-500">Đã kiểm tra:</span>
+                      <span className="text-slate-400">Đã kiểm tra:</span>
                       <p className="text-slate-300 truncate" title={svc.lastCheck}>{svc.lastCheck}</p>
                     </div>
                   </div>
 
-                  <div className="mt-1.5 pt-1.5 border-t border-slate-800/70 flex items-center justify-end gap-2 text-[10px]">
+                  <div className="mt-1.5 pt-1.5 border-t border-slate-800/70 flex items-center justify-end gap-2 text-xs">
                     <button
                       onClick={() => void handleRefreshService(svc.id)}
                       disabled={refreshingServiceIds.has(svc.id)}
@@ -347,7 +347,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Tên Dịch vụ:</label>
+                <label className="block text-slate-300 mb-1">Tên Dịch vụ:</label>
                 <input
                   type="text"
                   required
@@ -361,7 +361,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Trụ sở:</label>
+                <label className="block text-slate-300 mb-1">Trụ sở:</label>
                 <select
                   value={siteId}
                   onChange={(e) => setSiteId(e.target.value)}
@@ -377,7 +377,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Loại Service Check:</label>
+                <label className="block text-slate-300 mb-1">Loại Service Check:</label>
                 <div className={`rounded-lg border p-2.5 space-y-2 ${darkMode ? 'bg-slate-800/60 border-slate-700' : 'bg-slate-50 border-slate-300'}`}>
                   {METHOD_OPTIONS.map((method) => (
                     <label key={method.type} className="flex items-center justify-between gap-3">
@@ -422,14 +422,14 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
                               [method.type]: Number(e.target.value) || (method.defaultPort ?? 1),
                             }))
                           }
-                          className={`w-24 p-1.5 rounded border text-[11px] ${
+                          className={`w-24 p-1.5 rounded border text-xs ${
                             darkMode ? 'bg-slate-900 border-slate-600 text-slate-100' : 'bg-white border-slate-300'
                           }`}
                         />
                       )}
                     </label>
                   ))}
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-300">
                     {editingId
                       ? 'Ở chế độ sửa, chỉ chọn 1 phương thức kiểm tra cho dịch vụ này.'
                       : 'Một đối tượng có thể bật nhiều phương thức kiểm tra cùng lúc. Có thể cấu hình cổng riêng cho từng phương thức.'}
@@ -438,7 +438,7 @@ export const ServiceMonitoring: React.FC<ServiceMonitoringProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Target Host / URL / IP:</label>
+                <label className="block text-slate-300 mb-1">Target Host / URL / IP:</label>
                 <input
                   type="text"
                   required

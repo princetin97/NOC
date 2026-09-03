@@ -190,7 +190,7 @@ const sensorStatusColor = (status: string): string => {
     case 'warning':
       return 'text-amber-400';
     case 'unknown':
-      return 'text-slate-400';
+      return 'text-slate-300';
     default:
       return 'text-emerald-400';
   }
@@ -200,7 +200,7 @@ const sensorStatusColor = (status: string): string => {
 const DeviceSensorsPanel: React.FC<{ sensors: DeviceSensor[] }> = ({ sensors }) => {
   if (!sensors || sensors.length === 0) {
     return (
-      <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 text-xs text-slate-400 font-mono">
+      <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 text-xs text-slate-300 font-mono">
         Chưa có dữ liệu cảm biến sức khỏe. Nhấn "Quét SNMP" và chờ một chu kỳ thu thập.
       </div>
     );
@@ -223,11 +223,11 @@ const DeviceSensorsPanel: React.FC<{ sensors: DeviceSensor[] }> = ({ sensors }) 
         if (items.length === 0) return null;
         return (
           <div key={g.type}>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{g.label}</p>
+            <p className="text-xs text-slate-300 uppercase tracking-wider mb-1.5">{g.label}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {items.map((s) => (
                 <div key={s.id} className="p-2.5 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                  <p className="text-[11px] text-slate-400 truncate font-mono" title={s.description}>{s.description}</p>
+                  <p className="text-xs text-slate-300 truncate font-mono" title={s.description}>{s.description}</p>
                   <p className={`text-base font-black mt-0.5 font-mono ${sensorStatusColor(s.status)}`}>{formatSensorValue(s)}</p>
                 </div>
               ))}
@@ -895,15 +895,15 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   const getStatusBadge = (status: DeviceStatus) => {
     switch (status) {
       case 'up':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">● ONLINE</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">● ONLINE</span>;
       case 'warning':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30">▲ WARN</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30">▲ WARN</span>;
       case 'critical':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-orange-500/20 text-orange-400 border border-orange-500/30 animate-pulse">▲ CRITICAL</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-orange-500/20 text-orange-400 border border-orange-500/30 animate-pulse">▲ CRITICAL</span>;
       case 'down':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">■ DOWN</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">■ DOWN</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-slate-500/20 text-slate-400">MAINT</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-slate-500/20 text-slate-300">MAINT</span>;
     }
   };
 
@@ -935,14 +935,14 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               className="w-3.5 h-3.5 accent-emerald-500"
               title="Chọn để kéo thả nhiều thiết bị"
             />
-            <span className="text-slate-500 cursor-grab active:cursor-grabbing" title="Kéo thả thiết bị sang nhóm khác">::</span>
+            <span className="text-slate-400 cursor-grab active:cursor-grabbing" title="Kéo thả thiết bị sang nhóm khác">::</span>
             <span>{dev.name}</span>
           </div>
         </td>
       )}
       {visibleColumns.ip && <td className="py-3 px-3 text-emerald-400 font-semibold">{dev.ip}</td>}
       {visibleColumns.vendorModel && <td className="py-3 px-3 text-slate-300">{dev.vendor} {dev.model}</td>}
-      {visibleColumns.location && <td className="py-3 px-3 text-slate-400">{dev.location}</td>}
+      {visibleColumns.location && <td className="py-3 px-3 text-slate-300">{dev.location}</td>}
       {visibleColumns.status && <td className="py-3 px-3">{getStatusBadge(dev.status)}</td>}
       {visibleColumns.cpu && (
         <td className="py-3 px-3">
@@ -956,7 +956,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       )}
       {visibleColumns.temperature && <td className={`py-3 px-3 font-bold ${(dev.temperature ?? 0) > 65 ? 'text-red-400' : 'text-orange-400'}`}>{dev.temperature != null ? `${dev.temperature}°C` : 'N/A'}</td>}
       {visibleColumns.ping && <td className="py-3 px-3 text-cyan-400 font-bold">{dev.status === 'down' ? 'N/A' : `${dev.pingLatencyMs}ms`}</td>}
-      {visibleColumns.uptime && <td className="py-3 px-3 text-slate-400">{dev.uptime.split(',')[0]}</td>}
+      {visibleColumns.uptime && <td className="py-3 px-3 text-slate-300">{dev.uptime.split(',')[0]}</td>}
       {visibleColumns.actions && <td className="py-3 px-3 text-right">
         <div className="flex items-center justify-end gap-2">
           <select
@@ -967,7 +967,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               const value = e.target.value || null;
               void handleMoveDeviceGroup(dev.id, value);
             }}
-            className="text-[11px] rounded-md border border-slate-700 bg-slate-800 text-slate-200 px-2 py-1 max-w-[200px]"
+            className="text-xs rounded-md border border-slate-700 bg-slate-800 text-slate-200 px-2 py-1 max-w-[200px]"
             title="Chuyển thiết bị sang nhóm khác"
           >
             <option value="">Chưa phân nhóm</option>
@@ -1055,11 +1055,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
           <td colSpan={tableColSpan} className="py-2 px-3" style={{ paddingLeft: `${12 + depth * 18}px` }}>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-300 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
                 {expanded ? <FolderOpen className="w-4 h-4 shrink-0" style={{ color: node.group.color }} /> : <Folder className="w-4 h-4 shrink-0" style={{ color: node.group.color }} />}
                 <span className="font-bold text-slate-100 truncate">{node.group.name}</span>
-                <span className="text-slate-400 font-normal shrink-0">({visibleCount})</span>
-                {isDropActive && <span className="text-[10px] text-emerald-300 shrink-0">Thả để chuyển thiết bị vào nhóm</span>}
+                <span className="text-slate-300 font-normal shrink-0">({visibleCount})</span>
+                {isDropActive && <span className="text-xs text-emerald-300 shrink-0">Thả để chuyển thiết bị vào nhóm</span>}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
@@ -1103,7 +1103,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
         {/* Search & Filter Controls */}
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative min-w-[200px] flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-300" />
             <input
               type="text"
               value={searchQuery}
@@ -1180,7 +1180,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
-          <div className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-[11px] text-slate-300">
+          <div className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-300">
             Đã chọn: <span className="font-bold text-emerald-400">{selectedDeviceIds.size}</span>
           </div>
           <button
@@ -1231,11 +1231,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             </button>
             {showColumnMenu && (
               <div className={`absolute right-0 mt-2 w-64 rounded-xl border shadow-2xl z-20 p-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2 font-semibold">Tùy chỉnh cột bảng</div>
+                <div className="text-xs uppercase tracking-wider text-slate-300 mb-2 font-semibold">Tùy chỉnh cột bảng</div>
                 <div className="space-y-1">
                   {DEVICE_TABLE_COLUMNS.map((col) => (
                     <label key={col.key} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}>
-                      <span className={`${!col.hideable ? 'text-slate-500' : ''}`}>{col.label}</span>
+                      <span className={`${!col.hideable ? 'text-slate-400' : ''}`}>{col.label}</span>
                       <input
                         type="checkbox"
                         checked={visibleColumns[col.key]}
@@ -1289,7 +1289,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       }`}>
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className={`border-b text-slate-400 ${darkMode ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50'}`}>
+              <tr className={`border-b text-slate-300 ${darkMode ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50'}`}>
                 {visibleTableColumns.map((col) => (
                   <th key={col.key} className={`py-2.5 px-3 ${col.key === 'actions' ? 'text-right' : ''}`}>{col.label}</th>
                 ))}
@@ -1310,11 +1310,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   >
                     <td colSpan={tableColSpan} className="py-2 px-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        {!collapsedGroupIds.has(UNGROUPED_BUCKET_ID) ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                        {!collapsedGroupIds.has(UNGROUPED_BUCKET_ID) ? <ChevronDown className="w-3.5 h-3.5 text-slate-300 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
                         {!collapsedGroupIds.has(UNGROUPED_BUCKET_ID) ? <FolderOpen className="w-4 h-4 shrink-0" style={{ color: '#64748b' }} /> : <Folder className="w-4 h-4 shrink-0" style={{ color: '#64748b' }} />}
                         <span className="font-bold text-slate-100 truncate">Chưa phân nhóm</span>
-                        <span className="text-slate-400 font-normal shrink-0">({ungroupedDevices.length})</span>
-                        {dropTargetGroupId === UNGROUPED_BUCKET_ID && <span className="text-[10px] text-emerald-300 shrink-0">Thả để bỏ nhóm</span>}
+                        <span className="text-slate-300 font-normal shrink-0">({ungroupedDevices.length})</span>
+                        {dropTargetGroupId === UNGROUPED_BUCKET_ID && <span className="text-xs text-emerald-300 shrink-0">Thả để bỏ nhóm</span>}
                       </div>
                     </td>
                   </tr>
@@ -1347,7 +1347,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   setShowEditGroupModal(false);
                   closeAssignGroupModal();
                 }}
-                className="p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="p-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-slate-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1356,19 +1356,19 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             <div className="p-5 space-y-6">
               {/* Existing groups */}
               <div className={`rounded-xl border ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                <div className="p-4 border-b border-inherit font-semibold text-xs uppercase tracking-wider text-slate-400">
+                <div className="p-4 border-b border-inherit font-semibold text-xs uppercase tracking-wider text-slate-300">
                   Danh sách nhóm ({groups.length})
                 </div>
                 <div className="divide-y divide-slate-800/50">
                   {groups.length === 0 ? (
-                    <div className="p-4 text-sm text-slate-500">Chưa có nhóm nào.</div>
+                    <div className="p-4 text-sm text-slate-400">Chưa có nhóm nào.</div>
                   ) : (
                     groups.map((g) => (
                       <div key={g.id} className={`p-4 flex items-center gap-4 ${editGroupId === g.id ? 'bg-emerald-500/5' : ''}`}>
                         <span className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
                         <div className="flex-1">
                           <div className={`font-medium ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{g.name}</div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-300">
                             {g.deviceCount ?? 0} thiết bị
                             {g.siteId ? ` • Trụ sở: ${sites.find((s) => s.id === g.siteId)?.name ?? 'Không rõ'}` : ' • Chưa gán trụ sở'}
                             {g.parentId ? ` • Nhóm cha: ${groups.find((x) => x.id === g.parentId)?.name ?? '—'}` : ''}
@@ -1377,7 +1377,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </div>
                         <button
                           onClick={() => openAssignGroupModal(g.id)}
-                          className={`p-2 rounded-lg ${assignGroupId === g.id && showAssignGroupModal ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-800'}`}
+                          className={`p-2 rounded-lg ${assignGroupId === g.id && showAssignGroupModal ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-300 hover:bg-slate-800'}`}
                           title="Gán thiết bị vào nhóm"
                         >
                           <Server className="w-4 h-4" />
@@ -1399,28 +1399,28 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                 <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                   <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl ${darkMode ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}>
                     <div className={`p-4 border-b flex items-center justify-between ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                      <div className="font-semibold text-xs uppercase tracking-wider text-slate-400">
+                      <div className="font-semibold text-xs uppercase tracking-wider text-slate-300">
                         Gán thiết bị vào: {groups.find((g) => g.id === assignGroupId)?.name}
                       </div>
                       <button
                         onClick={closeAssignGroupModal}
-                        className="p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        className="p-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-slate-200"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="p-4 space-y-3">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <input
                           value={assignDeviceSearch}
                           onChange={(e) => setAssignDeviceSearch(e.target.value)}
                           placeholder="Tìm thiết bị theo tên hoặc IP..."
-                          className={`w-full rounded-lg border pl-8 pr-3 py-2 text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400'}`}
+                          className={`w-full rounded-lg border pl-8 pr-3 py-2 text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-400' : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-300'}`}
                         />
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-slate-300">
                           Đã chọn {selectedInAssignListCount}/{assignableDevices.length} thiết bị trong danh sách lọc
                         </div>
                         <div className="flex items-center gap-2">
@@ -1446,7 +1446,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         {(() => {
                           const assignable = assignableDevices;
                           if (assignable.length === 0) {
-                            return <div className="p-3 text-sm text-slate-500">Không tìm thấy thiết bị phù hợp.</div>;
+                            return <div className="p-3 text-sm text-slate-400">Không tìm thấy thiết bị phù hợp.</div>;
                           }
                           return assignable.map((dev) => {
                             const currentGroupId = effectiveGroupId(dev);
@@ -1466,10 +1466,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                                 />
                                 <div className="flex-1 min-w-0">
                                   <div className={`text-sm font-medium truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{dev.name}</div>
-                                  <div className="text-xs text-slate-400 font-mono truncate">{dev.ip}</div>
+                                  <div className="text-xs text-slate-300 font-mono truncate">{dev.ip}</div>
                                 </div>
                                 {currentGroupId && currentGroupId !== assignGroupId && (
-                                  <span className="text-[10px] text-slate-500 shrink-0">
+                                  <span className="text-xs text-slate-400 shrink-0">
                                     thuộc: {groups.find((g) => g.id === currentGroupId)?.name ?? 'nhóm khác'}
                                   </span>
                                 )}
@@ -1485,10 +1485,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
               {/* Create / edit group */}
               <div className={`rounded-xl border p-4 space-y-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                <div className="font-semibold text-xs uppercase tracking-wider text-slate-400">{editGroupId ? 'Sửa nhóm' : 'Thêm nhóm'}</div>
+                <div className="font-semibold text-xs uppercase tracking-wider text-slate-300">{editGroupId ? 'Sửa nhóm' : 'Thêm nhóm'}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label className="text-sm">
-                    <span className="block mb-1 text-slate-400">Tên nhóm</span>
+                    <span className="block mb-1 text-slate-300">Tên nhóm</span>
                     <input
                       value={newGroupName}
                       onChange={(e) => setNewGroupName(e.target.value)}
@@ -1497,7 +1497,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     />
                   </label>
                   <label className="text-sm">
-                    <span className="block mb-1 text-slate-400">Mô tả</span>
+                    <span className="block mb-1 text-slate-300">Mô tả</span>
                     <input
                       value={newGroupDesc}
                       onChange={(e) => setNewGroupDesc(e.target.value)}
@@ -1505,7 +1505,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     />
                   </label>
                   <label className="text-sm">
-                    <span className="block mb-1 text-slate-400">Màu</span>
+                    <span className="block mb-1 text-slate-300">Màu</span>
                     <input
                       type="color"
                       value={newGroupColor}
@@ -1515,7 +1515,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   </label>
                 </div>
                 <label className="text-sm block">
-                  <span className="block mb-1 text-slate-400">Trụ sở</span>
+                  <span className="block mb-1 text-slate-300">Trụ sở</span>
                   <select
                     value={newGroupSiteId}
                     onChange={(e) => {
@@ -1531,7 +1531,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   </select>
                 </label>
                 <label className="text-sm block">
-                  <span className="block mb-1 text-slate-400">Nhóm cha (tùy chọn)</span>
+                  <span className="block mb-1 text-slate-300">Nhóm cha (tùy chọn)</span>
                   <select
                     value={newGroupParentId}
                     onChange={(e) => setNewGroupParentId(e.target.value)}
@@ -1578,7 +1578,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           setShowEditGroupModal(false);
                           resetGroupForm();
                         }}
-                        className="p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        className="p-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-slate-200"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -1586,7 +1586,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     <div className="p-4 space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <label className="text-sm">
-                          <span className="block mb-1 text-slate-400">Tên nhóm</span>
+                          <span className="block mb-1 text-slate-300">Tên nhóm</span>
                           <input
                             value={newGroupName}
                             onChange={(e) => setNewGroupName(e.target.value)}
@@ -1594,7 +1594,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           />
                         </label>
                         <label className="text-sm">
-                          <span className="block mb-1 text-slate-400">Màu</span>
+                          <span className="block mb-1 text-slate-300">Màu</span>
                           <input
                             type="color"
                             value={newGroupColor}
@@ -1604,7 +1604,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </label>
                       </div>
                       <label className="text-sm block">
-                        <span className="block mb-1 text-slate-400">Mô tả</span>
+                        <span className="block mb-1 text-slate-300">Mô tả</span>
                         <input
                           value={newGroupDesc}
                           onChange={(e) => setNewGroupDesc(e.target.value)}
@@ -1612,7 +1612,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         />
                       </label>
                       <label className="text-sm block">
-                        <span className="block mb-1 text-slate-400">Trụ sở</span>
+                        <span className="block mb-1 text-slate-300">Trụ sở</span>
                         <select
                           value={newGroupSiteId}
                           onChange={(e) => {
@@ -1628,7 +1628,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </select>
                       </label>
                       <label className="text-sm block">
-                        <span className="block mb-1 text-slate-400">Nhóm cha (tùy chọn)</span>
+                        <span className="block mb-1 text-slate-300">Nhóm cha (tùy chọn)</span>
                         <select
                           value={newGroupParentId}
                           onChange={(e) => setNewGroupParentId(e.target.value)}
@@ -1702,7 +1702,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     <h2 className="text-lg font-black font-mono tracking-tight">{selectedDevice.name}</h2>
                     {getStatusBadge(selectedDevice.status)}
                   </div>
-                  <p className="text-xs font-mono text-slate-400">
+                  <p className="text-xs font-mono text-slate-300">
                     IP: <strong className="text-emerald-400">{selectedDevice.ip}</strong> • OS: {selectedDevice.os} • Location: {selectedDevice.location}
                   </p>
                 </div>
@@ -1737,7 +1737,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                 </button>
                 <button
                   onClick={() => onSelectDevice(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-slate-100 hover:bg-slate-800"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1765,7 +1765,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     className={`px-3.5 py-2 text-xs font-semibold font-mono rounded-t-lg flex items-center gap-1.5 border-b-2 transition-colors ${
                       active
                         ? 'border-emerald-500 text-emerald-400'
-                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                        : 'border-transparent text-slate-300 hover:text-slate-200'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -1805,7 +1805,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       {/* Gauges & Telemetry Bar */}
                       <div className="grid grid-cols-2 gap-4 font-mono">
                         <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
                           <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
                             {selectedDevice.cpuUsage}%
                           </p>
@@ -1815,7 +1815,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </div>
 
                         <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
                           <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
                             {selectedDevice.memoryUsage}%
                           </p>
@@ -1825,72 +1825,72 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </div>
 
                         <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Nhiệt độ Ambient</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Nhiệt độ Ambient</span>
                           <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
-                          <p className="text-[10px] text-slate-500 mt-1">Ngưỡng &lt;65°C</p>
+                          <p className="text-xs text-slate-400 mt-1">Ngưỡng &lt;65°C</p>
                         </div>
 
                         <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Độ trễ ICMP</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Độ trễ ICMP</span>
                           <p className="text-xl font-black mt-1 text-cyan-400">
                             {selectedDevice.status === 'down' ? 'N/A' : `${selectedDevice.pingLatencyMs} ms`}
                           </p>
-                          <p className="text-[10px] text-slate-500 mt-1">Packet loss: {selectedDevice.packetLoss}%</p>
+                          <p className="text-xs text-slate-400 mt-1">Packet loss: {selectedDevice.packetLoss}%</p>
                         </div>
                       </div>
 
                       {/* Device identity: name / vendor / model / OS / version */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Tên thiết bị</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Tên thiết bị</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.name}>{selectedDevice.name}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hãng / Model</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Hãng / Model</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={`${selectedDevice.vendor} ${selectedDevice.model}`}>{selectedDevice.vendor} {selectedDevice.model || '—'}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Firmware</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Firmware</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware}>
                             {esxiInventory ? `VMware ESXi${esxiInventory.version ? ` ${esxiInventory.version}` : ''}` : selectedDevice.firmware || '—'}
                           </p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Số Serial</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Số Serial</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.serial}>{selectedDevice.serial || '—'}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Loại thiết bị</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Loại thiết bị</span>
                           <p className="text-slate-100 font-bold mt-0.5">{selectedDevice.type}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Hệ điều hành</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Hệ điều hành</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.osVersion || selectedDevice.os}>{selectedDevice.osVersion || selectedDevice.os || '—'}</p>
                         </div>
                         {esxiInventory && (
                           <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">CPU Model</span>
+                            <span className="text-xs text-slate-300 uppercase tracking-wider">CPU Model</span>
                             <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.cpu_model}>{esxiInventory.cpu_model || '—'}</p>
                           </div>
                         )}
                         {esxiInventory && (
                           <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">NIC vật lý</span>
+                            <span className="text-xs text-slate-300 uppercase tracking-wider">NIC vật lý</span>
                             <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.physical_nics}>{esxiInventory.physical_nics || '—'}</p>
                           </div>
                         )}
                         {esxiInventory && (
                           <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Kho lưu trữ (Inventory)</span>
+                            <span className="text-xs text-slate-300 uppercase tracking-wider">Kho lưu trữ (Inventory)</span>
                             <p className="text-slate-100 font-bold mt-0.5 truncate" title={esxiInventory.datastore_summary}>{esxiInventory.datastore_summary || '—'}</p>
                           </div>
                         )}
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Mô tả hệ thống (sysDescr)</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Mô tả hệ thống (sysDescr)</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.sysDescr}>{selectedDevice.sysDescr || '—'}</p>
                         </div>
                         <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60">
-                          <span className="text-[10px] text-slate-400 uppercase tracking-wider">Vị trí</span>
+                          <span className="text-xs text-slate-300 uppercase tracking-wider">Vị trí</span>
                           <p className="text-slate-100 font-bold mt-0.5 truncate" title={selectedDevice.location}>{selectedDevice.location || '—'}</p>
                         </div>
                       </div>
@@ -1899,7 +1899,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       <DeviceSensorsPanel sensors={detailSensors} />
 
                       {/* Technical Details Footer */}
-                      <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-400">
+                      <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
                         <div className="flex justify-between">
                           <span>System Object ID (sysObjectID):</span>
                           <span className="text-slate-200">{selectedDevice.sysObjectID}</span>
@@ -1948,7 +1948,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => { setShowVirtualInterfaces((v) => !v); setPortPage(1); }}
-                          className={`px-2.5 py-1.5 text-[11px] rounded-lg border font-mono ${
+                          className={`px-2.5 py-1.5 text-xs rounded-lg border font-mono ${
                             showVirtualInterfaces
                               ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
                               : 'border-slate-600 bg-slate-800/60 text-slate-300'
@@ -1957,7 +1957,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           {showVirtualInterfaces ? 'Đang hiện interface ảo' : 'Hiện interface ảo'}
                         </button>
                         <div className="relative">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input
                             type="text"
                             value={portSearch}
@@ -1974,7 +1974,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     <div className="overflow-x-auto border rounded-xl border-slate-800">
                       <table className="w-full text-left text-xs font-mono">
                         <thead>
-                          <tr className="bg-slate-800/80 border-b border-slate-700 text-slate-400">
+                          <tr className="bg-slate-800/80 border-b border-slate-700 text-slate-300">
                             <th className="py-2.5 px-3">Tên Cổng</th>
                             <th className="py-2.5 px-3">Mô tả</th>
                             <th className="py-2.5 px-3">VLAN</th>
@@ -1995,11 +1995,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                               title="Xem chi tiết cổng"
                             >
                               <td className="py-2.5 px-3 font-bold text-emerald-400 underline decoration-dotted underline-offset-2">{iface.name}</td>
-                              <td className="py-2.5 px-3 text-slate-400">{iface.description}</td>
+                              <td className="py-2.5 px-3 text-slate-300">{iface.description}</td>
                               <td className="py-2.5 px-3 text-slate-300">{iface.vlan ?? '—'}</td>
                               <td className="py-2.5 px-3 text-slate-300">{iface.speed}</td>
                               <td className="py-2.5 px-3">
-                                <span className={`px-2 py-0.5 text-[10px] rounded font-bold uppercase ${
+                                <span className={`px-2 py-0.5 text-xs rounded font-bold uppercase ${
                                   iface.operStatus === 'up' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
                                 }`}>
                                   {iface.adminStatus}/{iface.operStatus}
@@ -2012,14 +2012,14 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                                 {(iface.outRateBps / 1e6).toFixed(1)} Mbps
                               </td>
                               <td className="py-2.5 px-3 font-bold">{iface.utilization}%</td>
-                              <td className="py-2.5 px-3 text-slate-400">
+                              <td className="py-2.5 px-3 text-slate-300">
                                 {iface.inErrors}/{iface.inDiscards}
                               </td>
                             </tr>
                           ))}
                           {pagePorts.length === 0 && (
                             <tr>
-                              <td colSpan={9} className="py-6 text-center text-slate-500">Không tìm thấy cổng phù hợp.</td>
+                              <td colSpan={9} className="py-6 text-center text-slate-400">Không tìm thấy cổng phù hợp.</td>
                             </tr>
                           )}
                         </tbody>
@@ -2027,7 +2027,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     </div>
 
                     {/* Pagination controls */}
-                    <div className="flex items-center justify-between mt-3 text-xs font-mono text-slate-400">
+                    <div className="flex items-center justify-between mt-3 text-xs font-mono text-slate-300">
                       <span>Trang {page}/{totalPages} • {allPorts.length} cổng</span>
                       <div className="flex items-center gap-1.5">
                         <button
@@ -2060,7 +2060,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       <span>VLAN được phát hiện qua SNMP (Q-BRIDGE-MIB) ({vlans.length})</span>
                     </h4>
                     {vlans.length === 0 ? (
-                      <div className="p-6 text-center text-sm text-slate-500 border border-dashed rounded-xl border-slate-700">
+                      <div className="p-6 text-center text-sm text-slate-400 border border-dashed rounded-xl border-slate-700">
                         Chưa phát hiện VLAN nào trên thiết bị này. Hãy thử "Quét SNMP" lại, hoặc thiết bị có thể không hỗ trợ Q-BRIDGE-MIB.
                       </div>
                     ) : (
