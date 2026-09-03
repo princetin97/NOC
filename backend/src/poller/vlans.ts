@@ -126,7 +126,11 @@ async function discoverQBridgeVlans(session: snmp.Session, deviceId: string): Pr
   const vendorLower = (device?.vendor ?? '').toLowerCase();
   const modelLower = (device?.model ?? '').toLowerCase();
   const forceMsbBitOrder = vendorLower.includes('cisco');
-  const preferStaticCurrentUnion = /\bc(1200|1300)\b|\bcbs(250|350|550)?\b/.test(modelLower);
+  // Cisco SMB families (SF/SG/CBS/C1200/1300) often expose partial static rows
+  // while current rows carry the full runtime membership for access VLANs.
+  const preferStaticCurrentUnion =
+    /\bc(1200|1300)\b|\bcbs(250|350|550)?\b/.test(modelLower) ||
+    /\b(?:sf|sg|sx)\d+[a-z0-9-]*\b/.test(modelLower);
 
   const [vlanNames, egressPorts, untaggedPorts, basePortIfIndex, currentEgressRows, currentUntaggedRows, pvidRows] =
     await Promise.all([

@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-09-03
+
+### Fixed
+- Một số cổng access VLAN 611 trên switch Cisco dòng SMB (ví dụ SF550X) bị
+  hiển thị trống ở cột VLAN dù trên thiết bị thực tế có gán VLAN.
+  - Nguyên nhân: nhánh Q-BRIDGE cho Cisco SMB chỉ ưu tiên static bitmap khi có
+    dữ liệu một phần, trong khi nhiều model SF/SG/SX lại trả membership đầy đủ
+    ở current bitmap; thêm vào đó regex nhận diện model SMB chưa bắt được mẫu
+    có hậu tố chữ-số như `SF550X-48`.
+  - Sửa: mở rộng nhận diện model SMB và buộc dùng hợp nhất static+current
+    bitmap cho các dòng `SF/SG/SX/CBS/C1200/C1300` trong
+    `backend/src/poller/vlans.ts`.
+  - Kết quả đã xác minh trên `SDC-SWC-ACC-F3-02`: các cổng `fa1/0/7..11`,
+    `fa1/0/15..24`, `fa1/0/30..35`, `fa1/0/38..48` được map đúng `611U`.
+
 ## [0.8.3] - 2026-09-03
 
 ### Fixed
