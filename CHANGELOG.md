@@ -17,6 +17,16 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-09-03
+
+### Fixed
+- Tên (name/hostname) của Device được đồng bộ từ vCenter (ESXi host) bị ghi đè
+  về đúng tên trong vCenter ở mỗi chu kỳ đồng bộ (mặc định 60s/lần), nên đổi tên
+  thủ công qua giao diện (nút Sửa thiết bị) không giữ được. `backend/src/poller/
+  vcenter.ts`, `syncVCenterManager()`: `name`/`hostname` giờ chỉ được gán từ
+  vCenter khi tạo mới Device lần đầu; các lần đồng bộ sau (update) không còn
+  đụng tới 2 trường này nữa, nên tên tùy chỉnh của người dùng được giữ nguyên.
+
 ## [0.7.5] - 2026-09-03
 
 ### Fixed

@@ -160,12 +160,12 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
       hostRows.push({ id: row.id, externalId: row.externalId });
 
       if (groupId) {
-        const hostname = await resolveHostname(h.name, row.deviceId);
         const ip = h.managementIp ?? (isIpLike(h.name) ? h.name : '0.0.0.0');
         const uptimeSeconds = h.bootTime ? Math.max(0, Math.floor((now.getTime() - new Date(h.bootTime).getTime()) / 1000)) : 0;
+        // name/hostname are intentionally excluded here: they're only set from vCenter
+        // when the Device is first created (below), so a user rename via the app's edit
+        // dialog persists across future syncs instead of being overwritten every cycle.
         const deviceData = {
-          name: h.name,
-          hostname,
           ip,
           type: 'server',
           vendor: h.vendor,
@@ -191,7 +191,8 @@ export async function syncVCenterManager(managerId: string): Promise<{ hostCount
           await prisma.device.update({ where: { id: row.deviceId }, data: deviceData });
           deviceId = row.deviceId;
         } else {
-          const device = await prisma.device.create({ data: deviceData });
+          const hostname = await resolveHostname(h.name, row.deviceId);
+          const device = await prisma.device.create({ data: { ...deviceData, name: h.name, hostname } });
           await prisma.virtualizationHost.update({ where: { id: row.id }, data: { deviceId: device.id } });
           deviceId = device.id;
         }
