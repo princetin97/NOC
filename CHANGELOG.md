@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.6] - 2026-09-07
+
+### Changed
+- Cơ chế cảnh báo cho tính năng Service Check được đổi để tránh báo động giả:
+  cảnh báo trạng thái dịch vụ (`service_status`) chỉ được mở khi có **2 lần check
+  thất bại liên tiếp** thay vì fail ngay lần đầu.
+  - Áp dụng tại `backend/src/poller/alerting.ts` trong luồng đánh giá rule service.
+  - Các rule service khác như `service_response_time` và `service_uptime` giữ
+    nguyên hành vi cũ (đánh giá theo ngưỡng ngay mỗi lần check).
+
+### Added
+- Bổ sung biến cấu hình mẫu cho chu kỳ kiểm tra dịch vụ trong file env example:
+  - `SERVICE_CHECK_INTERVAL_SECONDS` (chu kỳ check thường, mặc định 20s)
+  - `SERVICE_CHECK_FAST_INTERVAL_SECONDS` (chu kỳ check nhanh cho service đang down/warning, mặc định 8s)
+
 ## [0.8.5] - 2026-09-03
 
 ### Added

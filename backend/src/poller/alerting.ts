@@ -405,7 +405,14 @@ async function evaluateServiceRule(
     siteId: service.siteId,
   };
 
-  if (breached && !existing) {
+  // Service flaps are common on a single probe timeout. For status-down alerts,
+  // require two consecutive failed checks before opening a new alert.
+  let shouldRaise = breached;
+  if (breached && !existing && rule.metric === 'service_status' && metricValue > 0) {
+    shouldRaise = await hasConsecutiveServiceFailures(service.id, 2);
+  }
+
+  if (shouldRaise && !existing) {
     await raiseAlert(alertSource, rule, metricValue, objectName);
   } else if (!breached && existing) {
     await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue);
@@ -420,6 +427,17 @@ async function evaluateServiceRule(
   for (const dup of duplicateOpenAlerts) {
     await resolveAlert(alertSource, dup.id, dup.status === 'acknowledged', rule);
   }
+}
+
+async function hasConsecutiveServiceFailures(serviceId: string, requiredFailures: number): Promise<boolean> {
+  const rows = await prisma.serviceCheckHistory.findMany({
+    where: { serviceId },
+    orderBy: { timestamp: 'desc' },
+    take: requiredFailures,
+    select: { status: true },
+  });
+  if (rows.length < requiredFailures) return false;
+  return rows.every((row) => row.status === 'down');
 }
 
 type RenotifyDefaults = { critical: number; high: number; medium: number; low: number };
