@@ -17,6 +17,30 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.7] - 2026-09-10
+
+### Fixed
+- Giảm báo động giả trạng thái thiết bị down khi mạng chập chờn bằng cơ chế
+  yêu cầu **thất bại liên tiếp** trước khi hạ trạng thái thiết bị xuống `down`:
+  - Thêm ngưỡng cấu hình `DOWN_FAIL_STREAK_THRESHOLD` (mặc định `2`) trong
+    `backend/src/lib/env.ts` và truyền vào poller qua `docker-compose.yml`.
+  - Cập nhật luồng `pollDevice()` trong `backend/src/poller/metrics.ts`:
+    nếu ping/SNMP thành công thì reset fail streak và lên `up` ngay; chỉ xuống
+    `down` khi số lần fail liên tiếp đạt ngưỡng.
+
+### Changed
+- Tối ưu nhịp giám sát để giảm backlog poll và giảm độ trễ phản ánh trạng thái:
+  - Tăng throughput poll bằng các tham số mẫu mới trong `backend/.env.example`:
+    `POLL_WORKER_CONCURRENCY`, `POLL_QUEUE_BUFFER_MULTIPLIER`,
+    `POLL_FAST_INTERVAL_SECONDS`, `POLL_FAST_BATCH_SIZE`.
+  - Giảm độ trễ timeout SNMP qua `SNMP_TIMEOUT_MS=2000`, giữ `SNMP_RETRIES=1`.
+  - Giảm tần suất discovery mẫu để ưu tiên tài nguyên cho polling trạng thái
+    (`DISCOVERY_INTERVAL_SECONDS`, `DISCOVERY_WORKER_CONCURRENCY`).
+
+- Bổ sung thời gian rõ ngày/giờ vào nội dung tin nhắn cảnh báo:
+  - `backend/src/lib/notifications.ts` thêm dòng `🕒 Thời gian:` với định dạng
+    `dd/mm/yyyy HH:mm:ss (GMT+7)` để dễ đối chiếu với hệ thống khác.
+
 ## [0.8.6] - 2026-09-07
 
 ### Changed

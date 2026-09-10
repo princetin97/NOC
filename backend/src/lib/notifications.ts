@@ -62,7 +62,20 @@ function meetsSeverity(alertSeverity: string, minSeverity: string): boolean {
   return severityMeta(alertSeverity).rank >= severityMeta(minSeverity).rank;
 }
 
-// Builds a detailed, highlighted alert message. No timestamp is included on purpose.
+function formatAlertTimestamp(timestamp: Date): string {
+  return `${new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(timestamp)} (GMT+7)`;
+}
+
+// Builds a detailed, highlighted alert message.
 // Uses only emoji/uppercase/separators so it renders safely on every channel
 // (no Markdown/HTML parse mode, which would break on '<'/'>' threshold conditions).
 function formatText(n: AlertNotification): string {
@@ -76,6 +89,7 @@ function formatText(n: AlertNotification): string {
   lines.push(`🖥️ Đối tượng: ${n.deviceName} (${n.deviceIp})`);
   if (n.ruleName) lines.push(`📋 Nội dung: ${n.ruleName}`);
   if (n.objectName) lines.push(`📍 Thành phần: ${n.objectName}`);
+  lines.push(`🕒 Thời gian: ${formatAlertTimestamp(n.timestamp)}`);
   const stat: string[] = [];
   if (n.threshold) stat.push(`Ngưỡng ${n.threshold}`);
   if (n.currentValue) stat.push(`Hiện tại ${n.currentValue}`);

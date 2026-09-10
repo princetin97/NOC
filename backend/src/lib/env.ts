@@ -37,6 +37,7 @@ export const env = {
   pollQueueBufferMultiplier: parsePositiveInt(process.env.POLL_QUEUE_BUFFER_MULTIPLIER, 3),
   pollFastIntervalSeconds: parsePositiveInt(process.env.POLL_FAST_INTERVAL_SECONDS, 15),
   pollFastBatchSize: parsePositiveInt(process.env.POLL_FAST_BATCH_SIZE, 60),
+  downFailStreakThreshold: parsePositiveInt(process.env.DOWN_FAIL_STREAK_THRESHOLD, 2),
   pollTransitionBoostWindowSeconds: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_WINDOW_SECONDS, 180),
   pollTransitionBoostStepSeconds: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_STEP_SECONDS, 20),
   pollTransitionBoostMaxJobs: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_MAX_JOBS, 9),

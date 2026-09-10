@@ -1,3 +1,4 @@
+import { DeviceStatus } from '@prisma/client';
 import { prisma } from '../lib/db';
 import { logger } from '../lib/logger';
 import { env } from '../lib/env';
@@ -19,6 +20,10 @@ import { publishEvent } from '../lib/events';
 import { evaluateAlertsForDevice } from './alerting';
 import { discoverSensors } from './sensors';
 import { pollProcessors } from './processors';
+
+// Device liveness anti-flap: require N consecutive unreachable polls before
+// switching status to down, while recovering to up immediately on any success.
+const downFailStreakByDevice = new Map<string, number>();
 
 async function scheduleTransitionBoostPolls(deviceId: string, fromStatus: string, toStatus: string): Promise<void> {
   const isTransitionWorthBoost = fromStatus !== toStatus && (fromStatus === 'down' || toStatus === 'down');
@@ -143,7 +148,17 @@ export async function pollDevice(deviceId: string): Promise<void> {
 
   const [pingResult] = await Promise.all([pingPromise, snmpPromise]);
 
-  const status = snmpReachable || pingResult.alive ? (device.disabled ? 'maintenance' : 'up') : 'down';
+  const reachable = snmpReachable || pingResult.alive;
+  let status: DeviceStatus;
+  if (reachable) {
+    downFailStreakByDevice.delete(deviceId);
+    status = 'up';
+  } else {
+    const nextFailStreak = (downFailStreakByDevice.get(deviceId) ?? 0) + 1;
+    downFailStreakByDevice.set(deviceId, nextFailStreak);
+    // Keep a previously-up device as up until it fails enough consecutive polls.
+    status = nextFailStreak >= env.downFailStreakThreshold || device.status === 'down' ? 'down' : 'up';
+  }
   const previousStatus = device.status;
 
   await prisma.device.update({
