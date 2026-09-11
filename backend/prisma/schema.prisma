@@ -227,6 +227,7 @@ model Device {
   packetLoss       Float  @default(0)
 
   disabled   Boolean   @default(false)
+  isPriority Boolean   @default(false)
   lastPolled DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -251,6 +252,7 @@ model Device {
   virtualizationHost VirtualizationHost?
 
   @@index([status])
+  @@index([isPriority])
   @@index([groupId])
   @@index([siteId])
 }

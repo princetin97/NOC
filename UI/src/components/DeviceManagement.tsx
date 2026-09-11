@@ -97,6 +97,7 @@ type DeviceTableColumnKey =
   | 'name'
   | 'ip'
   | 'vendorModel'
+  | 'priority'
   | 'location'
   | 'status'
   | 'cpu'
@@ -116,6 +117,7 @@ const DEVICE_TABLE_COLUMNS: DeviceTableColumn[] = [
   { key: 'name', label: 'Tên thiết bị', hideable: false },
   { key: 'ip', label: 'IP Address', hideable: true },
   { key: 'vendorModel', label: 'Hãng / Model', hideable: true },
+  { key: 'priority', label: 'Ưu tiên', hideable: true },
   { key: 'location', label: 'Vị trí', hideable: true },
   { key: 'status', label: 'Trạng thái', hideable: true },
   { key: 'cpu', label: 'CPU', hideable: true },
@@ -258,6 +260,7 @@ interface DeviceManagementProps {
   onOpenScanSubnet: () => void;
   onAssignGroup: (deviceId: string, groupId: string | null, siteId?: string | null) => Promise<void>;
   onToggleSnmpMonitoring: (deviceId: string, disabled: boolean) => Promise<void>;
+  onTogglePriorityDevice: (deviceId: string, isPriority: boolean) => Promise<void>;
   services: ServiceCheck[];
   onCreateAlertRule: (input: AlertRuleInput) => void;
 }
@@ -280,12 +283,14 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   onOpenScanSubnet,
   onAssignGroup,
   onToggleSnmpMonitoring,
+  onTogglePriorityDevice,
   services,
   onCreateAlertRule,
 }) => {
   const [vendorFilter, setVendorFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'priority' | 'normal'>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [selectedPort, setSelectedPort] = useState<NetworkInterface | null>(null);
@@ -618,6 +623,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   // Tracks which device is currently being scanned so buttons can show a spinner.
   const [pollingId, setPollingId] = useState<string | null>(null);
   const [togglingSnmpId, setTogglingSnmpId] = useState<string | null>(null);
+  const [togglingPriorityId, setTogglingPriorityId] = useState<string | null>(null);
   const [scanDone, setScanDone] = useState<string | null>(null);
   const [deletingSelected, setDeletingSelected] = useState(false);
 
@@ -641,6 +647,16 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       await onToggleSnmpMonitoring(deviceId, disabled);
     } finally {
       setTogglingSnmpId((cur) => (cur === deviceId ? null : cur));
+    }
+  };
+
+  const togglePriorityDevice = async (deviceId: string, isPriority: boolean) => {
+    if (togglingPriorityId) return;
+    setTogglingPriorityId(deviceId);
+    try {
+      await onTogglePriorityDevice(deviceId, isPriority);
+    } finally {
+      setTogglingPriorityId((cur) => (cur === deviceId ? null : cur));
     }
   };
 
@@ -806,10 +822,13 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     const matchesVendor = vendorFilter === 'all' || dev.vendor.toLowerCase() === vendorFilter.toLowerCase();
     const matchesType = typeFilter === 'all' || dev.type === typeFilter;
     const matchesStatus = statusFilter === 'all' || dev.status === statusFilter;
+    const matchesPriority =
+      priorityFilter === 'all' ||
+      (priorityFilter === 'priority' ? dev.isPriority === true : dev.isPriority !== true);
     const validGroupIds = groupFilter === 'all' ? null : groupDescendants.get(groupFilter) ?? new Set<string>([groupFilter]);
     const matchesGroup = validGroupIds ? (dev.groupId ? validGroupIds.has(dev.groupId) : false) : true;
 
-    return matchesSearch && matchesVendor && matchesType && matchesStatus && matchesGroup;
+    return matchesSearch && matchesVendor && matchesType && matchesStatus && matchesPriority && matchesGroup;
   });
 
   useEffect(() => {
@@ -824,7 +843,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   }, [devices]);
 
   const UNGROUPED_BUCKET_ID = '__ungrouped__';
-  const filtersActive = !!searchQuery || vendorFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || groupFilter !== 'all';
+  const filtersActive = !!searchQuery || vendorFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || groupFilter !== 'all';
 
   const allGroupTree = useMemo(() => buildGroupTree(groups, []), [groups]);
   const groupOptions = useMemo(() => flattenGroupOptions(allGroupTree), [allGroupTree]);
@@ -961,6 +980,15 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       )}
       {visibleColumns.ip && <td className="py-3 px-3 text-emerald-400 font-semibold">{dev.ip}</td>}
       {visibleColumns.vendorModel && <td className="py-3 px-3 text-slate-300">{dev.vendor} {dev.model}</td>}
+      {visibleColumns.priority && (
+        <td className="py-3 px-3">
+          {dev.isPriority ? (
+            <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">PRIORITY</span>
+          ) : (
+            <span className="text-xs text-slate-500 font-mono">-</span>
+          )}
+        </td>
+      )}
       {visibleColumns.location && <td className="py-3 px-3 text-slate-300">{dev.location}</td>}
       {visibleColumns.status && <td className="py-3 px-3">{getStatusBadge(dev.status)}</td>}
       {visibleColumns.cpu && (
@@ -994,6 +1022,25 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               <option key={g.id} value={g.id}>{g.label}</option>
             ))}
           </select>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              void togglePriorityDevice(dev.id, !dev.isPriority);
+            }}
+            disabled={togglingPriorityId === dev.id}
+            className={`p-1 rounded border disabled:opacity-60 ${
+              dev.isPriority
+                ? 'bg-fuchsia-500/15 border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/25'
+                : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+            }`}
+            title={dev.isPriority ? 'Thiết bị ưu tiên đang bật. Bấm để tắt.' : 'Bật ưu tiên giám sát cho thiết bị này.'}
+          >
+            {togglingPriorityId === dev.id ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-3.5 h-3.5" />
+            )}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1167,6 +1214,18 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
           </select>
 
           {/* Status Filter */}
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value as 'all' | 'priority' | 'normal')}
+            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+            }`}
+          >
+            <option value="all">Ưu tiên: Tất cả</option>
+            <option value="priority">Ưu tiên: Đang bật</option>
+            <option value="normal">Ưu tiên: Bình thường</option>
+          </select>
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}

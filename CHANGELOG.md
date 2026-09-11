@@ -17,6 +17,23 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.8] - 2026-09-11
+
+### Added
+- Tính năng đánh dấu **thiết bị ưu tiên giám sát** để đẩy nhanh chu kỳ quan sát
+  và phản ánh cảnh báo sát thực tế hơn trên các thiết bị quan trọng.
+  - Backend thêm cờ `Device.isPriority` (mặc định `false`) và migration
+    `20260910093000_device_priority_flag`.
+  - API thiết bị (`POST/PUT /api/devices`, bulk create) nhận và lưu trường
+    `isPriority`.
+  - Poll scheduler ưu tiên các thiết bị có `isPriority=true` trong cả luồng
+    poll thường và poll nhanh (`backend/src/poller/index.ts`), đồng thời đưa
+    nhóm này vào điều kiện chọn của fast cycle.
+  - UI Device Management thêm:
+    - Cột badge `PRIORITY`.
+    - Bộ lọc `Ưu tiên` (tất cả/đang bật/bình thường).
+    - Nút bật/tắt ưu tiên theo từng thiết bị ngay trên bảng.
+
 ## [0.8.7] - 2026-09-10
 
 ### Fixed

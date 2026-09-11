@@ -43,6 +43,7 @@ export interface CreateDeviceInput {
   snmpCommunity?: string;
   snmpPort?: number;
   pingOnly?: boolean;
+  isPriority?: boolean;
 }
 
 export interface CreateServiceInput {

@@ -579,6 +579,14 @@ export default function App() {
       })
       .catch((err) => console.error('Failed to toggle SNMP monitoring', err));
 
+  const handleTogglePriorityDevice = (deviceId: string, isPriority: boolean): Promise<void> =>
+    api.devices
+      .update(deviceId, { isPriority })
+      .then(() => {
+        refreshDevices();
+      })
+      .catch((err) => console.error('Failed to toggle priority device', err));
+
   // Delete device (with confirmation)
   const handleDeleteDevice = (dev: NetworkDevice) => {
     if (!window.confirm(`Xóa thiết bị "${dev.name}" (${dev.ip})? Toàn bộ dữ liệu polling, cổng và cảnh báo liên quan sẽ bị xóa.`)) {
@@ -744,6 +752,7 @@ export default function App() {
             onOpenScanSubnet={() => setIsScanOpen(true)}
             onAssignGroup={handleAssignDeviceGroup}
             onToggleSnmpMonitoring={handleToggleSnmpMonitoring}
+            onTogglePriorityDevice={handleTogglePriorityDevice}
             services={filteredServices}
             onCreateAlertRule={handleCreateRule}
             trafficChartMode={trafficChartMode}

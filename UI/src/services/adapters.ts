@@ -70,6 +70,7 @@ export interface RawDevice {
   pingLatencyMs?: number | null;
   packetLoss: number;
   disabled?: boolean;
+  isPriority?: boolean;
   lastPolled?: string | null;
   groupId?: string | null;
   siteId?: string | null;
@@ -295,6 +296,7 @@ export function mapDevice(raw: RawDevice): NetworkDevice {
     pingLatencyMs: raw.pingLatencyMs ?? 0,
     packetLoss: raw.packetLoss ?? 0,
     disabled: raw.disabled ?? false,
+    isPriority: raw.isPriority ?? false,
     interfacesCount: ports.length,
     interfaces: ports.map((p) => mapPortToInterface(p, vlanByPortId)),
     sensors: (raw.sensors ?? []).map((s) => ({

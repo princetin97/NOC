@@ -45,6 +45,7 @@ const createDeviceSchema = z.object({
   snmpV3PrivPass: z.string().optional(),
   pingOnly: z.boolean().optional(),
   disabled: z.boolean().optional(),
+  isPriority: z.boolean().optional(),
 });
 
 const bulkDeleteDevicesSchema = z.object({
@@ -623,6 +624,7 @@ const bulkDeviceSchema = z.object({
         type: z.string().default('server'),
         siteId: z.string().nullish(),
         groupId: z.string().nullish(),
+        isPriority: z.boolean().optional(),
         snmpVersion: z.enum(['v1', 'v2c', 'v3']).default('v2c'),
         snmpCommunity: z.string().optional(),
         snmpPort: z.number().int().optional(),
@@ -661,6 +663,7 @@ devicesRouter.post('/bulk', async (req: AuthedRequest, res) => {
           type: d.type,
           siteId: targetSiteId,
           groupId: targetGroupId,
+          isPriority: d.isPriority,
           snmpVersion: d.snmpVersion,
           snmpCommunity: d.pingOnly ? null : d.snmpCommunity,
           ...(d.pingOnly ? { snmpPort: 0 } : d.snmpPort ? { snmpPort: d.snmpPort } : {}),

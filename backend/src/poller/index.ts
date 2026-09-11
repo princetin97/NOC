@@ -30,7 +30,8 @@ for (const worker of [pollWorker, discoveryWorker, serviceWorker]) {
   worker.on('failed', (job, err) => logger.warn({ err, jobId: job?.id, queue: worker.name }, 'Job failed'));
 }
 
-function pollPriorityScore(device: { status: string; packetLoss: number; lastPolled: Date | null }): number {
+function pollPriorityScore(device: { isPriority: boolean; status: string; packetLoss: number; lastPolled: Date | null }): number {
+  if (device.isPriority) return -1;
   if (device.status === 'down') return 0;
   if (device.status === 'warning') return 1;
   if (device.packetLoss > 0) return 2;
@@ -39,8 +40,8 @@ function pollPriorityScore(device: { status: string; packetLoss: number; lastPol
 }
 
 function byPollPriority(
-  a: { status: string; packetLoss: number; lastPolled: Date | null },
-  b: { status: string; packetLoss: number; lastPolled: Date | null },
+  a: { isPriority: boolean; status: string; packetLoss: number; lastPolled: Date | null },
+  b: { isPriority: boolean; status: string; packetLoss: number; lastPolled: Date | null },
 ): number {
   const scoreDiff = pollPriorityScore(a) - pollPriorityScore(b);
   if (scoreDiff !== 0) return scoreDiff;
@@ -65,7 +66,7 @@ async function schedulePollCycle(): Promise<void> {
       disabled: false,
       OR: [{ lastPolled: null }, { lastPolled: { lt: dueBefore } }],
     },
-    select: { id: true, status: true, packetLoss: true, lastPolled: true },
+    select: { id: true, isPriority: true, status: true, packetLoss: true, lastPolled: true },
     take: Math.max(toAdd * 4, toAdd),
     orderBy: [{ lastPolled: 'asc' }],
   });
@@ -76,12 +77,13 @@ async function schedulePollCycle(): Promise<void> {
     // lower than the fast/boost recheck jobs (priority: 1) or it would starve them.
     await pollQueue.add('poll', { deviceId: device.id }, {
       jobId: `poll-${device.id}`,
-      priority: 5,
+      priority: device.isPriority ? 2 : 5,
       removeOnComplete: true,
       removeOnFail: true,
     });
   }
-  logger.info({ count: devices.length, inflight, bufferTarget }, 'Poll cycle scheduled');
+  const priorityCount = devices.filter((d) => d.isPriority).length;
+  logger.info({ count: devices.length, priorityCount, inflight, bufferTarget }, 'Poll cycle scheduled');
 }
 
 async function scheduleFastPollCycle(): Promise<void> {
@@ -90,6 +92,7 @@ async function scheduleFastPollCycle(): Promise<void> {
     where: {
       disabled: false,
       OR: [
+        { isPriority: true },
         { status: 'down' },
         { status: 'warning' },
         { packetLoss: { gt: 0 } },
@@ -97,7 +100,7 @@ async function scheduleFastPollCycle(): Promise<void> {
         { lastPolled: { lt: fastDueBefore } },
       ],
     },
-    select: { id: true, status: true, packetLoss: true, lastPolled: true },
+    select: { id: true, isPriority: true, status: true, packetLoss: true, lastPolled: true },
     take: env.pollFastBatchSize,
     orderBy: [{ lastPolled: 'asc' }],
   });
@@ -114,7 +117,8 @@ async function scheduleFastPollCycle(): Promise<void> {
   }
 
   if (devices.length > 0) {
-    logger.debug({ count: devices.length, fastInterval: env.pollFastIntervalSeconds }, 'Fast poll cycle scheduled');
+    const priorityCount = devices.filter((d) => d.isPriority).length;
+    logger.debug({ count: devices.length, priorityCount, fastInterval: env.pollFastIntervalSeconds }, 'Fast poll cycle scheduled');
   }
 }
 

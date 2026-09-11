@@ -202,6 +202,7 @@ export interface NetworkDevice {
   pingLatencyMs: number;
   packetLoss: number; // percentage
   disabled: boolean;
+  isPriority?: boolean;
   interfacesCount: number;
   interfaces: NetworkInterface[];
   sensors?: DeviceSensor[];
