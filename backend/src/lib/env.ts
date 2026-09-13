@@ -48,7 +48,7 @@ export const env = {
   // Faster re-check cadence applied only to services currently down/warning, so a
   // failing service gets re-verified/recovered sooner than the base interval.
   serviceCheckFastIntervalSeconds: parsePositiveInt(process.env.SERVICE_CHECK_FAST_INTERVAL_SECONDS, 8),
-  corsOrigin: process.env.CORS_ORIGIN ?? '*',
+  corsOrigin: (process.env.CORS_ORIGIN ?? '*').trim(),
   // Time-series retention (days). Rows older than this are pruned by the poller.
   metricRetentionDays: Number(process.env.METRIC_RETENTION_DAYS ?? 7),
   eventRetentionDays: Number(process.env.EVENT_RETENTION_DAYS ?? 30),
@@ -56,8 +56,8 @@ export const env = {
   cleanupIntervalMinutes: Number(process.env.CLEANUP_INTERVAL_MINUTES ?? 60),
   // Optional Basic Auth account for Nagstamon Alertmanager bridge.
   // Leave empty to disable auth on /alertmanager routes (not recommended for public exposure).
-  nagstamonUser: process.env.NAGSTAMON_USER ?? '',
-  nagstamonPassword: process.env.NAGSTAMON_PASSWORD ?? '',
+  nagstamonUser: (process.env.NAGSTAMON_USER ?? '').trim(),
+  nagstamonPassword: (process.env.NAGSTAMON_PASSWORD ?? '').trim(),
   // Export acknowledged alerts to Alertmanager bridge. Default true so Nagstamon
   // can show the same unresolved set as the web UI (active + acknowledged).
   nagstamonIncludeAcknowledged: parseBoolean(process.env.NAGSTAMON_INCLUDE_ACKNOWLEDGED, true),

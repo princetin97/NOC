@@ -17,6 +17,15 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.10] - 2026-09-13
+
+### Fixed
+- Public UI proxy chuyển tiếp các route `/alertmanager` tới backend để Nagstamon
+  truy cập được Alertmanager bridge.
+- Chuẩn hóa các biến môi trường có thể chứa CRLF (`CORS_ORIGIN` và Basic Auth
+  Nagstamon), tránh lỗi healthcheck API và lỗi xác thực khi deploy bằng `.env`
+  định dạng Windows.
+
 ## [0.8.9] - 2026-09-13
 
 ### Fixed

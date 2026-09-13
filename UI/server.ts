@@ -75,7 +75,7 @@ Hãy trình bày theo định dạng JSON với cấu trúc:
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Proxy remaining REST API and WebSocket traffic to the backend so the
+  // Proxy remaining REST API, Alertmanager bridge, and WebSocket traffic to the backend so the
   // browser only ever talks to this single origin (avoids CORS and hardcoded
   // backend URLs). Registered after the routes above so they take precedence.
   // NOTE: mounted at root with `pathFilter` (not `app.use('/api', ...)`) because
@@ -92,7 +92,7 @@ Hãy trình bày theo định dạng JSON với cấu trúc:
     createProxyMiddleware({
       target: API_PROXY_TARGET,
       changeOrigin: true,
-      pathFilter: '/api',
+      pathFilter: ['/api', '/alertmanager'],
       proxyTimeout: 10000,
       timeout: 10000,
       on: { error: proxyErrorHandler as never },
