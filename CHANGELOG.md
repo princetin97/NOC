@@ -17,6 +17,20 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.11] - 2026-09-13
+
+### Changed
+- Tối ưu cấu hình runtime để giảm tải CPU/RAM nhưng vẫn giữ giám sát gần realtime:
+  - `POLL_WORKER_CONCURRENCY`: `32` -> `16`
+  - `POLL_QUEUE_BUFFER_MULTIPLIER`: `4` -> `2`
+  - `POLL_FAST_INTERVAL_SECONDS`: `10` -> `12`
+  - `POLL_FAST_BATCH_SIZE`: `120` -> `60`
+  - `SNMP_RETRIES`: `1` -> `0`
+  - `DISCOVERY_INTERVAL_SECONDS`: `21600` -> `43200`
+  - `SERVICE_WORKER_CONCURRENCY`: `6`
+  - `SERVICE_CHECK_FAST_INTERVAL_SECONDS`: `8` -> `10`
+  - `VCENTER_SYNC_INTERVAL_SECONDS`: `120`
+
 ## [0.8.10] - 2026-09-13
 
 ### Fixed
