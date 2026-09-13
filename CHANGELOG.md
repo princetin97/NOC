@@ -17,6 +17,13 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.9] - 2026-09-13
+
+### Fixed
+- Cảnh báo port-security từ SNMP trap giờ gắn category `interface` cho cả sự kiện
+  vi phạm và khôi phục, để các kênh Telegram lọc theo loại **Cổng mạng** không bị
+  bỏ qua âm thầm.
+
 ## [0.8.8] - 2026-09-11
 
 ### Added

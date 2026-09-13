@@ -321,6 +321,7 @@ async function upsertPortSecurityAlert(params: {
         siteId: params.siteId ?? null,
         objectName: params.portLabel,
         currentValue: 'Down',
+        category: 'interface',
       });
       return;
     }
@@ -358,6 +359,7 @@ async function upsertPortSecurityAlert(params: {
     siteId: params.siteId ?? null,
     objectName: params.portLabel,
     currentValue: 'Up',
+    category: 'interface',
   });
 }
 
@@ -397,6 +399,7 @@ async function resolvePortSecurityAlertsByLinkUp(params: {
       siteId: params.siteId ?? null,
       objectName: params.portLabel ?? open.interfaceName?.replace('PORT-SECURITY:', '') ?? null,
       currentValue: 'Up',
+      category: 'interface',
     });
   }
 }
