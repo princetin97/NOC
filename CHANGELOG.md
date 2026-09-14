@@ -17,6 +17,15 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.12] - 2026-09-14
+
+### Fixed
+- Sửa định tuyến Telegram cho alert sensor legacy thiếu `sensorType`:
+  - Bổ sung chuẩn hoá category từ `sensorType` alias (ví dụ `temp` -> `temperature`).
+  - Tự suy luận category theo `name/unit/metric` cho rule `sensor_value` cũ.
+  - Hỗ trợ bỏ dấu tiếng Việt khi suy luận để các rule tên như "nhiệt độ" vẫn
+    bắn đúng vào topic Nhiệt độ thay vì rơi vào topic Thiết bị (category `other`).
+
 ## [0.8.11] - 2026-09-13
 
 ### Changed

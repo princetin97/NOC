@@ -59,10 +59,64 @@ function formatMetricValue(metric: string, value: number, unit: string): string 
 // Coarse alert category used to route notifications to different Telegram topics/
 // channels (e.g. "temperature" vs "service"). Sensor-type rules use sensorType
 // directly; everything else falls back to scope or a handful of known metrics.
-function alertCategory(rule: { scope: string; metric: string; sensorType: string | null }): string {
+function normalizeSensorCategory(sensorType: string | null): string | null {
+  if (!sensorType) return null;
+  const raw = sensorType.trim().toLowerCase();
+  if (!raw) return null;
+
+  if (['temperature', 'temp', 'thermal', 'celsius'].includes(raw)) return 'temperature';
+  if (['cpu', 'processor', 'core'].includes(raw)) return 'cpu';
+  if (['memory', 'ram'].includes(raw)) return 'memory';
+  if (['fan', 'fans'].includes(raw)) return 'fan';
+  if (['power', 'psu', 'wattage', 'watt'].includes(raw)) return 'power';
+  if (['voltage', 'volt', 'v'].includes(raw)) return 'voltage';
+  if (['humidity', 'rh'].includes(raw)) return 'humidity';
+  if (['disk', 'storage', 'drive'].includes(raw)) return 'disk';
+  if (raw === 'service') return 'service';
+  if (raw === 'interface') return 'interface';
+  if (raw === 'bgp') return 'bgp';
+  if (raw === 'device_status') return 'device_status';
+  if (raw === 'other') return 'other';
+  return null;
+}
+
+function foldText(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function inferLegacySensorCategory(rule: { metric: string; name: string; unit: string }): string | null {
+  const metric = foldText(rule.metric);
+  const name = foldText(rule.name);
+  const unitRaw = foldText(rule.unit);
+  const unit = unitRaw.replace(/[^a-z0-9%]/g, '');
+
+  if (metric === 'temperature') return 'temperature';
+  if (/nhiet|temperature|temp/.test(name) || ['c', 'f', 'degc', 'degf', 'celsius', 'fahrenheit'].includes(unit)) return 'temperature';
+  if (/cpu|processor|core/.test(name)) return 'cpu';
+  if (/memory|ram/.test(name)) return 'memory';
+  if (/fan|quat|rpm/.test(name) || unit.includes('rpm')) return 'fan';
+  if (/power|nguon|psu/.test(name) || unit === 'w') return 'power';
+  if (/voltage|dien ap|volt/.test(name) || unit === 'v') return 'voltage';
+  if (/humidity|do am/.test(name) || unit.includes('%rh')) return 'humidity';
+  if (/disk|ổ đĩa|storage|drive/.test(name)) return 'disk';
+  return null;
+}
+
+function alertCategory(rule: { scope: string; metric: string; sensorType: string | null; name: string; unit: string }): string {
   if (rule.scope === 'service') return 'service';
   if (rule.scope === 'interface') return 'interface';
-  if (rule.sensorType) return rule.sensorType;
+
+  const normalized = normalizeSensorCategory(rule.sensorType);
+  if (normalized) return normalized;
+
+  if (rule.scope === 'sensor' || rule.metric === 'sensor_value') {
+    const inferred = inferLegacySensorCategory(rule);
+    if (inferred) return inferred;
+  }
+
   switch (rule.metric) {
     case 'device_status':
       return 'device_status';
