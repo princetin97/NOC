@@ -5,6 +5,22 @@ import { snmpGet, snmpWalkColumn, snmpWalkSuffix, varbindToNumber, varbindToStri
 
 type Session = Parameters<typeof snmpWalkColumn>[0];
 
+interface ProcessorDeviceContext {
+  vendor?: string | null;
+  sysDescr?: string | null;
+  sysObjectId?: string | null;
+}
+
+function isHpe1910(ctx?: ProcessorDeviceContext): boolean {
+  const descr = (ctx?.sysDescr ?? '').toLowerCase();
+  const vendor = (ctx?.vendor ?? '').toLowerCase();
+  const oid = ctx?.sysObjectId ?? '';
+  return (
+    vendor === 'hpe' &&
+    (oid.startsWith('1.3.6.1.4.1.25506.11.1.136') || /\b1910-\d+\b|\bjg540a\b/.test(descr))
+  );
+}
+
 // A processor must be missing from discovery for this long (not just one poll cycle)
 // before it's pruned — protects its historical trend from single-cycle SNMP hiccups.
 const STALE_PROCESSOR_GRACE_MS = 30 * 60 * 1000;
@@ -26,7 +42,11 @@ function pct(v: number | undefined): number | undefined {
  * per-CPU breakdown (unlike the legacy aggregate). Tries the same vendor OID chain
  * as the old single-value reader and returns the first source that yields entries.
  */
-export async function readProcessors(session: Session, deviceId: string): Promise<DiscoveredProcessor[]> {
+export async function readProcessors(
+  session: Session,
+  deviceId: string,
+  ctx?: ProcessorDeviceContext,
+): Promise<DiscoveredProcessor[]> {
   // Some devices expose multiple CPU MIBs where a generic table reports all-zero
   // values while a vendor-specific table has real usage. Keep all-zero reads as a
   // fallback, but prefer the first source that has at least one non-zero value.
@@ -37,6 +57,21 @@ export async function readProcessors(session: Session, deviceId: string): Promis
     if (!allZeroFallback) allZeroFallback = rows;
     return null;
   };
+
+  // HPE 1910 (Comware) often exposes many placeholder hrProcessorLoad rows that stay at 0.
+  // Prefer the vendor scalar CPU OID for a realistic single CPU reading.
+  if (isHpe1910(ctx)) {
+    try {
+      const hp = await snmpGet(session, [OID.hpSwitchCpuStat]);
+      const usage = pct(varbindToNumber(hp[0]));
+      if (usage !== undefined) {
+        const picked = choose([{ index: 'hp-0', description: 'CPU', usage }]);
+        if (picked) return picked;
+      }
+    } catch (err) {
+      logger.debug({ err, deviceId }, 'HP-ICF-MIB (HPE 1910 priority) processor read failed');
+    }
+  }
 
   // 1) HOST-RESOURCES-MIB hrProcessorLoad — one entry per logical CPU (Linux/Windows/appliances).
   try {
@@ -230,8 +265,9 @@ export async function readProcessors(session: Session, deviceId: string): Promis
 export async function pollProcessors(
   session: Session,
   deviceId: string,
+  ctx?: ProcessorDeviceContext,
 ): Promise<{ avgUsage: number; count: number; processors: DiscoveredProcessor[] } | undefined> {
-  const processors = await readProcessors(session, deviceId);
+  const processors = await readProcessors(session, deviceId, ctx);
   if (processors.length === 0) return undefined;
 
   const now = new Date();

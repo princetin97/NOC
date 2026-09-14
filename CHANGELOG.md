@@ -17,6 +17,15 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.13] - 2026-09-14
+
+### Fixed
+- Sửa hiển thị CPU/Memory sensor 0% hàng loạt trên HPE 1910-48 (JG540A):
+  - `pollProcessors()` ưu tiên đọc `HP-ICF-MIB::hpSwitchCpuStat` cho HPE 1910,
+    tránh dùng `hrProcessorLoad` có nhiều index placeholder 0%.
+  - Nhánh `HH3C-ENTITY-EXT-MIB` bỏ qua sensor CPU/Memory có giá trị `0%` để
+    không tạo danh sách sensor nhiễu (`CPU 62`, `Memory 14`, ...).
+
 ## [0.8.12] - 2026-09-14
 
 ### Fixed

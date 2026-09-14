@@ -333,7 +333,7 @@ async function readHh3cSensors(session: Session): Promise<DiscoveredSensor[]> {
   }
   for (const [idx, vb] of cpus) {
     const value = varbindToNumber(vb);
-    if (value === undefined || value < 0 || value > 100) continue;
+    if (value === undefined || value <= 0 || value > 100) continue;
     sensors.push({
       type: 'cpu',
       index: `hh3c-cpu-${idx}`,
@@ -345,7 +345,7 @@ async function readHh3cSensors(session: Session): Promise<DiscoveredSensor[]> {
   }
   for (const [idx, vb] of mems) {
     const value = varbindToNumber(vb);
-    if (value === undefined || value < 0 || value > 100) continue;
+    if (value === undefined || value <= 0 || value > 100) continue;
     sensors.push({
       type: 'memory',
       index: `hh3c-mem-${idx}`,

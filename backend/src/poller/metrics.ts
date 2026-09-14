@@ -110,7 +110,11 @@ export async function pollDevice(deviceId: string): Promise<void> {
       if (uptimeTicks !== undefined) uptimeSeconds = Math.floor(uptimeTicks / 100);
       snmpReachable = true;
 
-      const cpuResult = await pollProcessors(session, deviceId);
+      const cpuResult = await pollProcessors(session, deviceId, {
+        vendor: device.vendor ?? undefined,
+        sysDescr: device.sysDescr ?? undefined,
+        sysObjectId: device.sysObjectId ?? undefined,
+      });
       cpuUsage = cpuResult?.avgUsage ?? cpuUsage;
       cpuCount = cpuResult?.count ?? cpuCount;
 
