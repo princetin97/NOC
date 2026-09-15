@@ -17,6 +17,16 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.14] - 2026-09-15
+
+### Fixed
+- Chặn lỗi auto-resolve sai của cảnh báo `port_security_trap` khi cổng vẫn
+  `err-disabled`:
+  - `poller/alerting.ts` bỏ qua metric `port_security_trap` trong luồng
+    `evaluateAlertsForDevice()`.
+  - Vòng đời alert port-security chỉ còn do trap collector điều khiển
+    (violation/recovery/linkUp), tránh bị coi là orphan interface và tự đóng.
+
 ## [0.8.13] - 2026-09-14
 
 ### Fixed

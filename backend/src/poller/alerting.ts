@@ -192,6 +192,11 @@ export async function evaluateAlertsForDevice(deviceId: string): Promise<void> {
 
   for (const rule of rules) {
     if (isServiceRule(rule)) continue;
+    // Trap-driven port-security alerts are lifecycle-managed in trap.ts (violation/new,
+    // recovery or linkUp/resolved). They must not go through periodic interface
+    // evaluation, otherwise they'll be treated as "orphan" object names and get
+    // auto-resolved even while the port is still err-disabled.
+    if (rule.metric === 'port_security_trap') continue;
     // Global rules (siteId=null) are templates only and must not generate alerts.
     if (!rule.siteId) continue;
     // Multi-device target takes precedence over single deviceId
