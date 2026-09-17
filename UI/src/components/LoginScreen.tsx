@@ -40,7 +40,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ darkMode, onLoginSucce
         }`}
       >
         <div className="flex flex-col items-center space-y-2 mb-6">
-          <div className="h-16 w-16 rounded-xl bg-slate-800 border border-slate-700 shadow-md shadow-emerald-500/20 overflow-hidden flex items-center justify-center">
+          <div className="h-[4.5rem] w-[4.5rem] rounded-xl bg-slate-800 border border-slate-700 shadow-md shadow-emerald-500/20 overflow-hidden flex items-center justify-center">
             <img src="/logo-noc.png" alt="NOC logo" className="h-full w-full object-contain" />
           </div>
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">

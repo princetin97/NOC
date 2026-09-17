@@ -17,6 +17,15 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.17] - 2026-09-17
+
+### Changed
+- Đồng bộ lại bộ nhận diện mới từ thư mục `Logo/` vào `UI/public/` để UI sử dụng
+  đúng phiên bản logo và favicon mới nhất.
+- Tăng nhẹ kích thước logo hiển thị trên giao diện:
+  - Header: `40px` -> `44px`.
+  - Màn hình đăng nhập: `64px` -> `72px`.
+
 ## [0.8.16] - 2026-09-17
 
 ### Changed

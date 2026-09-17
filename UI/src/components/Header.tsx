@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Left logo and product title */}
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center">
+            <div className="h-11 w-11 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center">
               <img src="/logo-noc.png" alt="NOC logo" className="h-full w-full object-contain" />
             </div>
             <div>
