@@ -17,6 +17,33 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.15] - 2026-09-17
+
+### Added
+- Thiết lập workflow chuẩn cho GitHub Copilot ngay trong repo để áp dụng theo
+  hướng incremental + verification-first:
+  - Thêm [copilot instructions](.github/copilot-instructions.md) cho ngữ cảnh
+    backend/UI, ranh giới an toàn, checklist xác minh và lệnh chuẩn của dự án.
+  - Thêm 4 core skills dưới `.github/skills/`:
+    `context-engineering`, `incremental-implementation`,
+    `test-driven-development`, `code-review-and-quality`.
+  - Thêm 3 specialized agent personas dưới `.github/agents/`:
+    `code-reviewer`, `test-engineer`, `security-auditor`.
+  - Thêm prompt workflow ngắn tại `.github/prompts/nm-workflow.prompt.md` để
+    gọi chuỗi thực thi an toàn hằng ngày.
+
+### Changed
+- Cải tiến cấu hình widget `Top Interfaces` trong Dashboard Builder:
+  - Bổ sung tải danh sách `DeviceGroup` theo site đang chọn.
+  - Bộ lọc nhóm chuyển sang `select` thay vì nhập tay ID nhóm.
+  - Bổ sung chọn thiết bị theo ngữ cảnh nhóm cho widget `top-interfaces`.
+  - Logic render dữ liệu `Top Interfaces` hỗ trợ lọc theo cả `groupId` và
+    `deviceId` ngay trong widget config.
+
+### Docs
+- Chỉnh lại sơ đồ ASCII trong `deploy/README.md` để canh lề nhất quán hơn ở
+  khối PostgreSQL/Redis/poller workers.
+
 ## [0.8.14] - 2026-09-15
 
 ### Fixed

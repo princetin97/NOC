@@ -12,15 +12,15 @@
                       └───┬─────┬───┘
               ┌───────────┘     └────────────┐
        ┌──────▼──────┐                ┌──────▼──────┐
-       │  PostgreSQL  │                │    Redis     │
-       └──────────────┘                └──────┬──────┘
-                                               │ BullMQ jobs
-                    ┌───────────────┬──────────┴─────────┬───────────────┐
+       │  PostgreSQL │                │    Redis    │
+       └─────────────┘                └──────┬──────┘
+                                             │ BullMQ jobs
+                    ┌───────────────┬────────┴─────────┬───────────────┐
              ┌──────▼──────┐ ┌──────▼──────┐      ┌───────▼──────┐ ┌─────▼──────┐
-             │   poller     │ │syslog-collect│      │trap-collector│ │  (workers)  │
-             │(SNMP/ping/   │ │  :514/udp    │      │   :162/udp   │ │             │
-             │ discovery)   │ └─────────────┘      └──────────────┘ └────────────┘
-             └──────────────┘
+             │   poller    │ │syslog-collec│      │trap-collector│ │  (workers) │
+             │(SNMP/ping/  │ │  :514/udp   │      │   :162/udp   │ │            │
+             │ discovery)  │ └─────────────┘      └──────────────┘ └────────────┘
+             └─────────────┘
 ```
 
 - **api**: REST API, JWT auth, WebSocket bridge (re-broadcasts events published by poller/collectors via Redis pub/sub).

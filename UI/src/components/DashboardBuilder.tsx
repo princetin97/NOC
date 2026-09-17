@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from 'react';
-import { NetworkDevice, NetworkAlert, GlobalTrafficPoint, Dashboard, DashboardWidget, WidgetType, StatMetric, PortMetricPoint, DeviceMetric, PortSortBy, TrafficSource, SiteInfo } from '../types';
+import { NetworkDevice, NetworkAlert, GlobalTrafficPoint, Dashboard, DashboardWidget, WidgetType, StatMetric, PortMetricPoint, DeviceMetric, PortSortBy, TrafficSource, SiteInfo, DeviceGroup } from '../types';
 import { api } from '../services/api';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
@@ -109,6 +109,7 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [editingWidget, setEditingWidget] = useState<DashboardWidget | null>(null);
   const [showManage, setShowManage] = useState(false);
+  const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [devicesWithInterfaces, setDevicesWithInterfaces] = useState<NetworkDevice[]>(devices);
   const [hydratingInterfaces, setHydratingInterfaces] = useState(false);
 
@@ -191,6 +192,11 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({
   useEffect(() => {
     loadDashboards();
   }, [loadDashboards]);
+
+  useEffect(() => {
+    const siteFilter = typeof selectedSiteId === 'undefined' ? undefined : selectedSiteId;
+    api.deviceGroups.list(siteFilter).then(setGroups).catch(() => setGroups([]));
+  }, [selectedSiteId]);
 
   const activeDashboard = dashboards.find((d) => d.id === activeId) ?? null;
 
@@ -481,6 +487,7 @@ export const DashboardBuilder: React.FC<DashboardBuilderProps> = ({
         <WidgetConfigModal
           widget={editingWidget}
           devices={effectiveDevices}
+          groups={groups}
           darkMode={darkMode}
           onSave={(cfg) => { updateWidget(editingWidget.id, { config: cfg }); setEditingWidget(null); }}
           onClose={() => setEditingWidget(null)}
@@ -956,6 +963,8 @@ const AlertListWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> = ({ 
 const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> = ({ widget, ctx }) => {
   const sortBy = (widget.config.sortBy ?? 'utilization') as PortSortBy;
   const limit = widget.config.limit ?? 6;
+  const groupId = (widget.config.groupId as string | null | undefined) ?? null;
+  const deviceId = (widget.config.deviceId as string | undefined) ?? '';
   const title = widget.config.title || (sortBy === 'bandwidth' ? 'Top cổng theo băng thông' : 'Top cổng theo tải');
   const [fallbackRows, setFallbackRows] = useState<{ dev: string; name: string; desc: string; util: number; inBps: number; outBps: number }[]>([]);
   const [fallbackLoading, setFallbackLoading] = useState(false);
@@ -963,7 +972,11 @@ const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> =
 
   const extractRows = useCallback((devices: NetworkDevice[]) => {
     const rows: { dev: string; name: string; desc: string; util: number; inBps: number; outBps: number }[] = [];
-    devices.forEach((d) =>
+    let filtered = devices;
+    if (groupId) filtered = filtered.filter((d) => d.groupId === groupId);
+    if (deviceId) filtered = filtered.filter((d) => d.id === deviceId);
+
+    filtered.forEach((d) =>
       d.interfaces.forEach((i) => {
         rows.push({
           dev: d.name,
@@ -976,7 +989,7 @@ const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> =
       }),
     );
     return rows;
-  }, []);
+  }, [deviceId, groupId]);
 
   const baseRows = useMemo(() => extractRows(ctx.devices), [ctx.devices, extractRows]);
 
@@ -1168,10 +1181,11 @@ const WidgetPickerModal: React.FC<{ darkMode: boolean; onPick: (t: WidgetType) =
 const WidgetConfigModal: React.FC<{
   widget: DashboardWidget;
   devices: NetworkDevice[];
+  groups: DeviceGroup[];
   darkMode: boolean;
   onSave: (cfg: DashboardWidget['config']) => void;
   onClose: () => void;
-}> = ({ widget, devices, darkMode, onSave, onClose }) => {
+}> = ({ widget, devices, groups, darkMode, onSave, onClose }) => {
   const [cfg, setCfg] = useState<DashboardWidget['config']>({ ...widget.config });
   const set = (patch: Partial<DashboardWidget['config']>) => setCfg((p) => ({ ...p, ...patch }));
   const inputCls = `w-full px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-300 text-slate-800'}`;
@@ -1180,7 +1194,8 @@ const WidgetConfigModal: React.FC<{
   const needsDevice = widget.type === 'device-gauges';
   const needsStatMetric = widget.type === 'stat';
   const needsLimit = widget.type === 'alert-list' || widget.type === 'top-interfaces' || widget.type === 'top-devices';
-  const needsGroup = widget.type === 'device-status';
+  const needsGroup = widget.type === 'device-status' || widget.type === 'top-interfaces';
+  const needsTopInterfaceDevice = widget.type === 'top-interfaces';
   const needsText = widget.type === 'text';
   const needsAccent = widget.type === 'stat' || widget.type === 'clock' || widget.type === 'text';
   const needsTraffic = widget.type === 'traffic-chart';
@@ -1188,6 +1203,10 @@ const WidgetConfigModal: React.FC<{
   const needsDeviceMetric = widget.type === 'top-devices';
 
   const trafficDev = devices.find((d) => d.id === cfg.deviceId);
+  const candidateDevices = useMemo(
+    () => (cfg.groupId ? devices.filter((d) => d.groupId === cfg.groupId) : devices),
+    [cfg.groupId, devices],
+  );
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
@@ -1269,7 +1288,36 @@ const WidgetConfigModal: React.FC<{
         {needsGroup && (
           <label className="block">
             <span className="text-xs font-medium text-slate-400">Lọc theo nhóm (tùy chọn)</span>
-            <input className={inputCls} value={(cfg.groupId as string) ?? ''} onChange={(e) => set({ groupId: e.target.value || null })} placeholder="ID nhóm, để trống = tất cả" />
+            <select
+              className={inputCls}
+              value={(cfg.groupId as string) ?? ''}
+              onChange={(e) => {
+                const nextGroupId = e.target.value || null;
+                const nextDeviceId = cfg.deviceId && nextGroupId
+                  ? devices.some((d) => d.id === cfg.deviceId && d.groupId === nextGroupId)
+                    ? cfg.deviceId
+                    : ''
+                  : cfg.deviceId;
+                set({ groupId: nextGroupId, deviceId: nextDeviceId });
+              }}
+            >
+              <option value="">Tất cả nhóm</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {needsTopInterfaceDevice && (
+          <label className="block">
+            <span className="text-xs font-medium text-slate-400">Thiết bị (tùy chọn)</span>
+            <DevicePickerButton
+              devices={candidateDevices}
+              darkMode={darkMode}
+              value={cfg.deviceId ?? ''}
+              onChange={(id) => set({ deviceId: id || '' })}
+            />
           </label>
         )}
 
