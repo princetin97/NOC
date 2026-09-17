@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Network, Lock, User, Loader2 } from 'lucide-react';
+import { Lock, User, Loader2 } from 'lucide-react';
 import { login } from '../services/authService';
 import type { AuthUser } from '../services/authService';
 
@@ -40,11 +40,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ darkMode, onLoginSucce
         }`}
       >
         <div className="flex flex-col items-center space-y-2 mb-6">
-          <div className="p-3 rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-500/20">
-            <Network className="w-7 h-7" />
+          <div className="h-16 w-16 rounded-xl bg-slate-800 border border-slate-700 shadow-md shadow-emerald-500/20 overflow-hidden flex items-center justify-center">
+            <img src="/logo-noc.png" alt="NOC logo" className="h-full w-full object-contain" />
           </div>
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-            LibreNMS NOC
+            NOC
           </span>
           <p className="text-xs text-slate-400 text-center">Đăng nhập để truy cập Hệ thống Giám sát Mạng</p>
         </div>

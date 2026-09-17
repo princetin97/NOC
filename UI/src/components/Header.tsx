@@ -1,5 +1,5 @@
 import React from 'react';
-import { Network, Volume2, VolumeX, RefreshCw, LogOut } from 'lucide-react';
+import { Volume2, VolumeX, RefreshCw, LogOut } from 'lucide-react';
 import { AlertSeverity } from '../types';
 
 interface HeaderProps {
@@ -55,18 +55,18 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Left Logo & NOC Title */}
+          {/* Left logo and product title */}
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-emerald-600 text-white shadow-md shadow-emerald-500/20 flex items-center justify-center">
-              <Network className="w-6 h-6" />
+            <div className="h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center">
+              <img src="/logo-noc.png" alt="NOC logo" className="h-full w-full object-contain" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                  LibreNMS
+                  NOC
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  NOC v24.7
+                  v24.7
                 </span>
               </div>
               <p className="text-xs text-slate-400">Hệ thống Giám sát Mạng & Hạ tầng Thời gian thực</p>

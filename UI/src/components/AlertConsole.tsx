@@ -529,7 +529,7 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
         }`}>
           <div className="mb-4 space-y-3">
             <div>
-              <h3 className="font-bold text-sm tracking-wide">Cấu hình Quy tắc Cảnh báo LibreNMS</h3>
+              <h3 className="font-bold text-sm tracking-wide">Cấu hình Quy tắc Cảnh báo NOC</h3>
               <p className="text-xs text-slate-300">Quản lý ngưỡng kích hoạt cảnh báo SNMP Polling và ICMP Health Checks</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px_auto] gap-2">

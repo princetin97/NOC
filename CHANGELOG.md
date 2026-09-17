@@ -17,6 +17,27 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.16] - 2026-09-17
+
+### Changed
+- Đổi nhận diện sản phẩm trên UI sang thương hiệu `NOC`:
+  - Cập nhật tiêu đề trang trong `UI/index.html` thành `NOC`.
+  - Cập nhật tên/miêu tả ứng dụng trong `UI/metadata.json`.
+  - Cập nhật branding hiển thị trên Header và màn hình đăng nhập.
+  - Cập nhật nhãn xuất báo cáo (`NOC_Report`, `NOC_Devices`) và trường
+    metadata `system` trong file export.
+  - Cập nhật tiêu đề phần cấu hình quy tắc cảnh báo sang `NOC`.
+
+### Added
+- Tích hợp bộ logo và favicon mới từ thư mục `Logo/` vào UI static assets:
+  - `UI/public/logo-noc.png`
+  - `UI/public/favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`
+  - `UI/public/apple-touch-icon.png`
+  - `UI/public/android-chrome-192x192.png`, `android-chrome-512x512.png`
+  - `UI/public/site.webmanifest` với `name`/`short_name` là `NOC`.
+- Bổ sung các thẻ favicon và manifest trong `UI/index.html` để trình duyệt sử
+  dụng đúng bộ icon mới.
+
 ## [0.8.15] - 2026-09-17
 
 ### Added

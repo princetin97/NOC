@@ -22,7 +22,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const downloadJSON = () => {
     const data = {
       exportTime: new Date().toISOString(),
-      system: 'LibreNMS Network Monitoring',
+      system: 'NOC Network Monitoring',
       totalDevices: devices.length,
       devices,
       alerts,
@@ -31,7 +31,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `LibreNMS_Report_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `NOC_Report_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -45,7 +45,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `LibreNMS_Devices_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `NOC_Devices_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -67,7 +67,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         <div className="mt-4 space-y-4 text-xs">
           <p className="text-slate-300">
-            Tải dữ liệu giám sát LibreNMS bao gồm danh sách {devices.length} thiết bị, thông số băng thông SNMP và {alerts.length} lịch sử cảnh báo.
+            Tải dữ liệu giám sát NOC bao gồm danh sách {devices.length} thiết bị, thông số băng thông SNMP và {alerts.length} lịch sử cảnh báo.
           </p>
 
           <div className="space-y-2">
