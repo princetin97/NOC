@@ -129,19 +129,36 @@ async function discoverQBridgeVlans(session: snmp.Session, deviceId: string): Pr
   // Cisco SMB families (SF/SG/CBS/C1200/1300) often expose partial static rows
   // while current rows carry the full runtime membership for access VLANs.
   const preferStaticCurrentUnion =
-    /\bc(1200|1300)\b|\bcbs(250|350|550)?\b/.test(modelLower) ||
+    /\bc(1200|1300)\b|\bcbs(?:\d+)?\b/.test(modelLower) ||
     /\b(?:sf|sg|sx)\d+[a-z0-9-]*\b/.test(modelLower);
 
-  const [vlanNames, egressPorts, untaggedPorts, basePortIfIndex, currentEgressRows, currentUntaggedRows, pvidRows] =
-    await Promise.all([
-      snmpWalkColumn(session, OID.dot1qVlanStaticName),
-      snmpWalkColumn(session, OID.dot1qVlanStaticEgressPorts),
-      snmpWalkColumn(session, OID.dot1qVlanStaticUntaggedPorts),
-      snmpWalkColumn(session, OID.dot1dBasePortIfIndex),
-      snmpWalkSuffix(session, OID.dot1qVlanCurrentEgressPorts),
-      snmpWalkSuffix(session, OID.dot1qVlanCurrentUntaggedPorts),
-      snmpWalkSuffix(session, OID.dot1qPvid),
-    ]);
+  // Some SNMP agents are fragile with concurrent subtree walks on one session.
+  // Fetch sequentially and tolerate per-OID failures so VLAN discovery can still
+  // proceed with partial data.
+  const walkColumnSafe = async (oid: string, label: string): Promise<Map<number, VarBind>> => {
+    try {
+      return await snmpWalkColumn(session, oid);
+    } catch (err) {
+      logger.debug({ err, deviceId, oid }, `VLAN discovery: failed to walk ${label}`);
+      return new Map<number, VarBind>();
+    }
+  };
+  const walkSuffixSafe = async (oid: string, label: string): Promise<Map<string, VarBind>> => {
+    try {
+      return await snmpWalkSuffix(session, oid);
+    } catch (err) {
+      logger.debug({ err, deviceId, oid }, `VLAN discovery: failed to walk ${label}`);
+      return new Map<string, VarBind>();
+    }
+  };
+
+  const vlanNames = await walkColumnSafe(OID.dot1qVlanStaticName, 'dot1qVlanStaticName');
+  const egressPorts = await walkColumnSafe(OID.dot1qVlanStaticEgressPorts, 'dot1qVlanStaticEgressPorts');
+  const untaggedPorts = await walkColumnSafe(OID.dot1qVlanStaticUntaggedPorts, 'dot1qVlanStaticUntaggedPorts');
+  const basePortIfIndex = await walkColumnSafe(OID.dot1dBasePortIfIndex, 'dot1dBasePortIfIndex');
+  const currentEgressRows = await walkSuffixSafe(OID.dot1qVlanCurrentEgressPorts, 'dot1qVlanCurrentEgressPorts');
+  const currentUntaggedRows = await walkSuffixSafe(OID.dot1qVlanCurrentUntaggedPorts, 'dot1qVlanCurrentUntaggedPorts');
+  const pvidRows = await walkSuffixSafe(OID.dot1qPvid, 'dot1qPvid');
   const currentEgressPorts = keyCurrentTableByVlanId(currentEgressRows);
   const currentUntaggedPorts = keyCurrentTableByVlanId(currentUntaggedRows);
 
@@ -151,6 +168,20 @@ async function discoverQBridgeVlans(session: snmp.Session, deviceId: string): Pr
   for (const [basePort, vb] of basePortIfIndex) {
     const ifIndex = varbindToNumber(vb);
     if (ifIndex) basePortByIfIndex.set(ifIndex, basePort);
+  }
+
+  const resolveIfIndexFromBasePort = (basePort: number): number | undefined => {
+    const ifIndexFromBridge = varbindToNumber(basePortIfIndex.get(basePort));
+    if (ifIndexFromBridge) return ifIndexFromBridge;
+    // Some Cisco SMB devices expose VLAN bitmaps and dot1qPvid but no dot1dBasePortIfIndex.
+    // In that case, bitmap indexes match physical ifIndex values directly.
+    return portIdByIfIndex.has(basePort) ? basePort : undefined;
+  };
+
+  if (basePortByIfIndex.size === 0) {
+    for (const ifIndex of portIdByIfIndex.keys()) {
+      if (ifIndex > 0 && ifIndex <= 4094) basePortByIfIndex.set(ifIndex, ifIndex);
+    }
   }
 
   // Different vendors index dot1qPvid inconsistently (ifIndex on some 3Com/H3C,
@@ -168,7 +199,7 @@ async function discoverQBridgeVlans(session: snmp.Session, deviceId: string): Pr
       continue;
     }
 
-    const ifIndex = varbindToNumber(basePortIfIndex.get(idx));
+    const ifIndex = resolveIfIndexFromBasePort(idx);
     if (ifIndex && portIdByIfIndex.has(ifIndex)) pvidByIfIndex.set(ifIndex, pvid);
   }
 
@@ -284,7 +315,7 @@ async function discoverQBridgeVlans(session: snmp.Session, deviceId: string): Pr
     for (const [basePort, candidates] of untaggedCandidatesByBasePort) {
       if (candidates.length <= 1) continue;
 
-      const ifIndex = varbindToNumber(basePortIfIndex.get(basePort));
+      const ifIndex = resolveIfIndexFromBasePort(basePort);
       const pvid = ifIndex ? pvidByIfIndex.get(ifIndex) : undefined;
 
       // Prefer PVID when it matches one of the candidate VLANs.
@@ -308,7 +339,7 @@ async function discoverQBridgeVlans(session: snmp.Session, deviceId: string): Pr
 
     const hasUntaggedBitmapForVlan = untaggedBase.size > 0;
     for (const basePort of egressBase) {
-      const ifIndex = varbindToNumber(basePortIfIndex.get(basePort));
+      const ifIndex = resolveIfIndexFromBasePort(basePort);
       if (!ifIndex) continue;
       const portId = portIdByIfIndex.get(ifIndex);
       if (!portId) continue;

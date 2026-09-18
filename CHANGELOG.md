@@ -17,6 +17,22 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.19] - 2026-09-18
+
+### Fixed
+- Khôi phục discovery VLAN cho Cisco CBS220/Cisco SMB khi thiết bị không expose
+  `dot1dBasePortIfIndex`:
+  - Mở rộng nhận diện model CBS để áp dụng nhánh xử lý SMB.
+  - Bổ sung fallback map `basePort -> ifIndex` trực tiếp khi bridge-port map rỗng.
+  - Đổi luồng walk Q-BRIDGE sang tuần tự và chịu lỗi theo từng OID để tránh
+    fail toàn bộ discovery do một nhánh SNMP timeout/lỗi.
+
+### Notes
+- Với thiết bị `10.3.16.7` (CBS220-16P-2G), sau bản vá đã ghi nhận lại VLAN trong DB
+  (`9` VLAN, `76` bản ghi `PortVlan`).
+- CPU/RAM vẫn chưa có do thiết bị không trả dữ liệu ở các nhánh CPU/RAM MIB đang dùng
+  (HOST-RESOURCES, UCD, CISCO-PROCESS, CISCO-MEMPOOL, CISCOSB root).
+
 ## [0.8.18] - 2026-09-18
 
 ### Added
