@@ -12,11 +12,13 @@ import { canAccessSite, deviceSiteWhere, isGlobalAdmin } from '../middleware/sit
 
 export const devicesRouter = Router();
 
-const DEVICE_LIST_CACHE_TTL_MS = 3000;
+const DEVICE_LIST_CACHE_TTL_MS = 5000;
 const deviceListCache = new Map<string, { expiresAt: number; payload: unknown }>();
+const inFlightDeviceList = new Map<string, Promise<unknown>>();
 
 function invalidateDeviceListCache() {
   deviceListCache.clear();
+  inFlightDeviceList.clear();
 }
 
 function scopeCacheKey(req: AuthedRequest): string {
@@ -66,40 +68,62 @@ async function ensureGroupMatchesSite(groupId: string | null | undefined, siteId
 }
 
 devicesRouter.get('/', async (req: AuthedRequest, res) => {
-  const full = req.query.include === 'full';
-  const requestedSiteIdRaw = req.query.siteId;
-  const requestedSiteId = typeof requestedSiteIdRaw === 'string' && requestedSiteIdRaw.length > 0 ? requestedSiteIdRaw : undefined;
-  if (requestedSiteId && !canAccessSite(req, requestedSiteId)) {
-    res.status(403).json({ error: 'Bạn không có quyền truy cập trụ sở này' });
-    return;
-  }
+  let requestCacheKey: string | null = null;
+  try {
+    const full = req.query.include === 'full';
+    const requestedSiteIdRaw = req.query.siteId;
+    const requestedSiteId = typeof requestedSiteIdRaw === 'string' && requestedSiteIdRaw.length > 0 ? requestedSiteIdRaw : undefined;
+    if (requestedSiteId && !canAccessSite(req, requestedSiteId)) {
+      res.status(403).json({ error: 'Bạn không có quyền truy cập trụ sở này' });
+      return;
+    }
 
-  const cacheKey = `${scopeCacheKey(req)}|full:${full ? '1' : '0'}|site:${requestedSiteId ?? 'all'}`;
-  const now = Date.now();
-  const cached = deviceListCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    res.json(cached.payload);
-    return;
-  }
+    const cacheKey = `${scopeCacheKey(req)}|full:${full ? '1' : '0'}|site:${requestedSiteId ?? 'all'}`;
+    requestCacheKey = cacheKey;
+    const now = Date.now();
+    const cached = deviceListCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      res.json(cached.payload);
+      return;
+    }
 
-  const devices = await prisma.device.findMany({
-    where: {
-      ...(deviceSiteWhere(req) ?? {}),
-      ...(requestedSiteId ? { siteId: requestedSiteId } : {}),
-    },
-    orderBy: { name: 'asc' },
-    include: full
-      ? {
-          ports: true,
-          vlans: {
-            orderBy: { vlanId: 'asc' },
-            include: { ports: { include: { port: { select: { id: true, ifName: true } } } } },
-          },
-        }
-      : undefined,
-  });
-  deviceListCache.set(cacheKey, { expiresAt: now + DEVICE_LIST_CACHE_TTL_MS, payload: devices });
-  res.json(devices);
+    let loadPromise = inFlightDeviceList.get(cacheKey);
+    if (!loadPromise) {
+      loadPromise = prisma.device.findMany({
+        where: {
+          ...(deviceSiteWhere(req) ?? {}),
+          ...(requestedSiteId ? { siteId: requestedSiteId } : {}),
+        },
+        orderBy: { name: 'asc' },
+        include: full
+          ? {
+              ports: true,
+              vlans: {
+                orderBy: { vlanId: 'asc' },
+                include: { ports: { include: { port: { select: { id: true, ifName: true } } } } },
+              },
+            }
+          : undefined,
+      });
+      inFlightDeviceList.set(cacheKey, loadPromise);
+    }
+
+    const devices = await loadPromise;
+    if (inFlightDeviceList.get(cacheKey) === loadPromise) {
+      inFlightDeviceList.delete(cacheKey);
+    }
+    deviceListCache.set(cacheKey, { expiresAt: now + DEVICE_LIST_CACHE_TTL_MS, payload: devices });
+    res.json(devices);
+  } catch (error) {
+    if (requestCacheKey) inFlightDeviceList.delete(requestCacheKey);
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error({ err: error }, 'Failed to list devices');
+    if (message.includes('Timed out fetching a new connection from the connection pool')) {
+      res.status(503).json({ error: 'Database is busy, please retry shortly.' });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to load devices' });
+  }
 });
 
 devicesRouter.get('/:id', async (req: AuthedRequest, res) => {

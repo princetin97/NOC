@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { NetworkDevice, DeviceStatus, DeviceType, NetworkInterface, DeviceGroup, DeviceSensor, DeviceVlan, AlertRuleInput, ServiceCheck, SiteInfo } from '../types';
-import { Server, Search, Filter, RefreshCw, Cpu, HardDrive, Thermometer, Clock, ShieldCheck, Activity, Cable, Terminal, ArrowDownLeft, ArrowUpRight, X, Pencil, Trash2, Radar, Boxes, Plus, CheckCircle, AlertTriangle, ChevronDown, ChevronRight, Folder, FolderOpen, Network, Columns3, PauseCircle, PlayCircle, History } from 'lucide-react';
+import { Server, Search, Filter, RefreshCw, Cpu, HardDrive, Thermometer, Clock, ShieldCheck, Activity, Cable, Terminal, ArrowDownLeft, ArrowUpRight, X, Pencil, Trash2, Radar, Boxes, Plus, CheckCircle, AlertTriangle, ChevronDown, ChevronRight, Folder, FolderOpen, Network, Columns3, PauseCircle, PlayCircle, History, FileSpreadsheet } from 'lucide-react';
 import { DeviceMetricsHistory } from './DeviceMetricsHistory';
 import { DeviceNeighbors } from './DeviceNeighbors';
 import { DeviceAlertHistory } from './DeviceAlertHistory';
@@ -2029,6 +2029,34 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   iface.name.toLowerCase().includes(q) ||
                   (iface.description ?? '').toLowerCase().includes(q)
                 );
+
+                const exportPortMappingExcel = () => {
+                  const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+                  const sourceDevice = (selectedDevice.name || selectedDevice.ip || 'Unknown Device').trim();
+                  const rows = allPorts.map((iface) => {
+                    const status = iface.adminStatus === 'up' && iface.operStatus === 'up' ? 'up' : 'down';
+                    return [
+                      sourceDevice,
+                      iface.name || '',
+                      iface.description || '',
+                      vlanLabelForPort(iface.id, iface.vlan),
+                      status,
+                    ];
+                  });
+
+                  const header = ['Source Device', 'Source Port', 'Description', 'VLAN', 'Status'];
+                  const csvLines = [header, ...rows].map((cols) => cols.map((c) => escapeCsv(String(c ?? ''))).join(','));
+                  const csv = `\uFEFF${csvLines.join('\n')}`;
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  const safeDevice = (selectedDevice.name || 'device').replace(/[^a-zA-Z0-9._-]+/g, '_');
+                  a.href = url;
+                  a.download = `${safeDevice}_port_mapping_${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                };
+
                 const totalPages = Math.max(1, Math.ceil(allPorts.length / PAGE_SIZE));
                 const page = Math.min(portPage, totalPages);
                 const pagePorts = allPorts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -2041,6 +2069,18 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         <span>Danh sách Cổng Giao diện SNMP ({allPorts.length})</span>
                       </h4>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={exportPortMappingExcel}
+                          className={`px-2.5 py-1.5 text-xs rounded-lg border font-mono inline-flex items-center gap-1.5 ${
+                            darkMode
+                              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                              : 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                          title="Xuất danh sách cổng làm port mapping (Excel/CSV)"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>Xuất Excel</span>
+                        </button>
                         <button
                           onClick={() => { setShowVirtualInterfaces((v) => !v); setPortPage(1); }}
                           className={`px-2.5 py-1.5 text-xs rounded-lg border font-mono ${

@@ -17,6 +17,35 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.18] - 2026-09-18
+
+### Added
+- Tab `Interfaces` trong chi tiết thiết bị có thêm nút `Xuất Excel` để phục vụ
+  lập port mapping.
+- File xuất chứa các thông tin phục vụ port mapping: tên thiết bị, tên cổng, mô
+  tả, VLAN, trạng thái `up/down`.
+
+### Changed
+- Chuẩn hóa header file port mapping theo định dạng dễ đọc trong Excel:
+  `Source Device`, `Source Port`, `Description`, `VLAN`, `Status`.
+
+### Fixed
+- Khắc phục trường hợp `api` bị restart khi tải danh sách thiết bị dưới tải cao:
+  - Nguyên nhân: Prisma timeout khi lấy kết nối DB (`Timed out fetching a new connection from the connection pool`).
+  - Bọc xử lý lỗi endpoint `GET /api/devices` để trả về `503` khi DB bận thay vì làm tiến trình API thoát.
+  - Tăng cấu hình pool Prisma trong `docker-compose.yml`:
+    - `api`: `connection_limit=25`, `pool_timeout=30`
+    - `poller`: `connection_limit=10`, `pool_timeout=30`
+
+### Performance
+- Tối ưu truy vấn danh sách thiết bị để giảm tải DB mà không đổi hành vi nghiệp vụ:
+  - Tăng TTL cache ngắn từ `3s` lên `5s` cho `GET /api/devices`.
+  - Thêm cơ chế gộp request đồng thời cùng scope (`in-flight dedup`) để tránh
+    nhiều truy vấn giống nhau chạy song song trong cùng thời điểm.
+- Tối ưu logging API:
+  - Bỏ auto-log cho `GET /api/health`.
+  - Giữ cấu hình logging ổn định để tránh ảnh hưởng runtime.
+
 ## [0.8.17] - 2026-09-17
 
 ### Changed

@@ -33,7 +33,14 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
-app.use(pinoHttp({ logger }));
+app.use(
+  pinoHttp({
+    logger,
+    autoLogging: {
+      ignore: (req) => req.url === '/api/health',
+    },
+  }),
+);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
