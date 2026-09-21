@@ -189,6 +189,7 @@ export interface NetworkDevice {
   sysDescr?: string;
   location: string;
   rack: string;
+  adminNote?: string;
   status: DeviceStatus;
   uptime: string; // e.g., '142 days, 06:12:45'
   uptimeSeconds: number;

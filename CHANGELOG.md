@@ -17,6 +17,16 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.21] - 2026-09-21
+
+### Added
+- Bổ sung tính năng ghi chú quản trị theo từng thiết bị để lưu nhanh thông tin
+  vận hành như địa chỉ truy cập, tài khoản và lưu ý thao tác.
+  - Backend thêm trường `Device.adminNote` (nullable text) + migration tương ứng.
+  - API thiết bị (`POST/PUT /api/devices`) nhận và cập nhật trường `adminNote`.
+  - UI thêm ô nhập `Ghi chú quản trị` trong form Thêm/Sửa thiết bị.
+  - Modal chi tiết thiết bị hiển thị khối `Ghi chú quản trị` trong tab Trạng thái hệ thống.
+
 ## [0.8.20] - 2026-09-21
 
 ### Fixed

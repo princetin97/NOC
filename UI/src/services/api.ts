@@ -37,6 +37,7 @@ export interface CreateDeviceInput {
   type?: string; // optional: auto-detected via SNMP discovery when omitted
   location?: string;
   rack?: string;
+  adminNote?: string | null;
   groupId?: string | null;
   siteId?: string | null;
   snmpVersion: 'v1' | 'v2c' | 'v3';

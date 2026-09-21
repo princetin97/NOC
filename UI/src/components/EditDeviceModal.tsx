@@ -16,6 +16,7 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ device, darkMo
   const [ip, setIp] = useState('');
   const [location, setLocation] = useState('');
   const [rack, setRack] = useState('');
+  const [adminNote, setAdminNote] = useState('');
   const [snmpVersion, setSnmpVersion] = useState<'v1' | 'v2c' | 'v3'>('v2c');
   const [community, setCommunity] = useState('');
   const [groupId, setGroupId] = useState('');
@@ -28,6 +29,7 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ device, darkMo
       setIp(device.ip);
       setLocation(device.location ?? '');
       setRack(device.rack ?? '');
+      setAdminNote(device.adminNote ?? '');
       setSnmpVersion(device.snmpVersion);
       setCommunity(device.community ?? '');
       setGroupId(device.groupId ?? '');
@@ -72,6 +74,7 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ device, darkMo
       ip,
       location: location || undefined,
       rack: rack || undefined,
+      adminNote: adminNote.trim() ? adminNote : null,
       siteId: siteId || null,
       snmpVersion,
       snmpCommunity: community || undefined,
@@ -129,6 +132,16 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ device, darkMo
               <label className="block text-slate-400 mb-1">Rack:</label>
               <input type="text" value={rack} onChange={(e) => setRack(e.target.value)} className={inputCls} />
             </div>
+          </div>
+          <div>
+            <label className="block text-slate-400 mb-1">Ghi chú quản trị:</label>
+            <textarea
+              value={adminNote}
+              onChange={(e) => setAdminNote(e.target.value)}
+              rows={3}
+              placeholder="Địa chỉ truy cập, tài khoản quản trị, lưu ý vận hành..."
+              className={inputCls}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

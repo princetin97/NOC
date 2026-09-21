@@ -35,6 +35,7 @@ const createDeviceSchema = z.object({
   type: z.string().default('server'),
   location: z.string().optional(),
   rack: z.string().optional(),
+  adminNote: z.string().trim().max(5000).nullish(),
   groupId: z.string().nullish(),
   siteId: z.string().nullish(),
   snmpVersion: z.enum(['v1', 'v2c', 'v3']).default('v2c'),

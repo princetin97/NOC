@@ -58,6 +58,7 @@ export interface RawDevice {
   sysDescr?: string | null;
   location?: string | null;
   rack?: string | null;
+  adminNote?: string | null;
   status: string;
   uptimeSeconds: number;
   snmpVersion: string;
@@ -283,6 +284,7 @@ export function mapDevice(raw: RawDevice): NetworkDevice {
     sysDescr: raw.sysDescr ?? '',
     location: raw.location ?? '',
     rack: raw.rack ?? '',
+    adminNote: raw.adminNote ?? '',
     status: (raw.status as DeviceStatus) ?? 'down',
     uptime: formatUptime(raw.uptimeSeconds),
     uptimeSeconds: raw.uptimeSeconds ?? 0,

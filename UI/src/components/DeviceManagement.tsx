@@ -1974,6 +1974,13 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </div>
                       </div>
 
+                      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/60 font-mono text-xs">
+                        <span className="text-xs text-slate-300 uppercase tracking-wider">Ghi chú quản trị</span>
+                        <p className="text-slate-100 mt-1 whitespace-pre-wrap break-words">
+                          {selectedDevice.adminNote?.trim() ? selectedDevice.adminNote : 'Chưa có ghi chú'}
+                        </p>
+                      </div>
+
                       {/* Health sensors (temperature/fan/voltage/power/CPU/memory/disk...) — LibreNMS parity */}
                       <DeviceSensorsPanel sensors={detailSensors} />
 

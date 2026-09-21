@@ -29,6 +29,7 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
   const [name, setName] = useState('');
   const [ip, setIp] = useState('');
   const [location, setLocation] = useState('Datacenter Hanoi - Rack 02');
+  const [adminNote, setAdminNote] = useState('');
   const [snmpVersion, setSnmpVersion] = useState<'v1' | 'v2c' | 'v3'>('v2c');
   const [community, setCommunity] = useState('public_ro');
   const [pingOnly, setPingOnly] = useState(false);
@@ -87,6 +88,7 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
       os: 'Đang nhận diện...',
       sysObjectID: '.1.3.6.1.4.1.9.1.1001',
       location,
+      adminNote,
       rack: 'Rack 02B (U15)',
       status: 'up',
       uptime: '0 ngày, 00:01:00',
@@ -231,6 +233,19 @@ export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className={`w-full p-2 rounded-lg border ${
+                darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-300'
+              }`}
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-400 mb-1">Ghi chú quản trị (địa chỉ truy cập, tài khoản, lưu ý):</label>
+            <textarea
+              value={adminNote}
+              onChange={(e) => setAdminNote(e.target.value)}
+              rows={3}
+              placeholder="Ví dụ: https://10.0.0.10:8443 | user: noc-admin | liên hệ: ca trực NOC"
+              className={`w-full p-2 rounded-lg border resize-y ${
                 darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-300'
               }`}
             />

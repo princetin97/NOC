@@ -543,6 +543,7 @@ export default function App() {
         hostname: newDev.hostname,
         ip: newDev.ip,
         location: newDev.location,
+        adminNote: newDev.adminNote,
         snmpVersion: newDev.snmpVersion,
         snmpCommunity: newDev.community,
         groupId: extra?.groupId,

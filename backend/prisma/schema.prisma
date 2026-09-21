@@ -217,6 +217,7 @@ model Device {
   sshUsername       String?
   sshPassword       String?
   sshEnablePassword String?
+  adminNote         String?
 
   cpuUsage         Float  @default(0)
   cpuCount         Int?
