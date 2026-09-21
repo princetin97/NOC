@@ -550,7 +550,9 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
     const readings: { name: string; celsius: number }[] = [];
     for (const [idx, nameVb] of names) {
       const name = (varbindToString(nameVb) ?? '').trim();
-      if (!/temp/i.test(name)) continue;
+      // Newer FortiGate models (e.g. 201G) often label temperature probes as
+      // "TMP ..." instead of "Temp ...", so include both naming styles.
+      if (!/(temp|\btmp\b|thermal)/i.test(name)) continue;
       const value = varbindToNumber(values.get(idx));
       if (value !== undefined && value > 0 && value < 150) readings.push({ name, celsius: value });
     }

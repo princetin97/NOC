@@ -17,6 +17,22 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.22] - 2026-09-21
+
+### Fixed
+- Sửa nhận diện sensor nhiệt độ cho Fortinet FortiGate 201G.
+  - Nguyên nhân: một số probe nhiệt độ của dòng này được đặt tên `TMP ...`
+    (ví dụ `TMP 1 CPUTIN`, `TMP 2 PECI`) nên logic cũ chỉ lọc theo `temp`
+    đã bỏ sót.
+  - Mở rộng rule phân loại sensor Fortinet để nhận cả `TMP`/`thermal` ở:
+    - luồng tính `Device.temperature`
+    - luồng lưu `Sensor` loại `temperature`
+
+### Verified
+- Thiết bị `HQO-FWL-FG` (`192.168.24.1`, `FortiGate 201G`) sau khi poll lại đã có:
+  - `Device.temperature = 45.6`
+  - `2` sensor nhiệt độ: `TMP 1 CPUTIN`, `TMP 2 PECI`
+
 ## [0.8.21] - 2026-09-21
 
 ### Added

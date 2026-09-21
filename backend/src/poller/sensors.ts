@@ -207,7 +207,7 @@ async function readCiscoFruSensors(session: Session): Promise<DiscoveredSensor[]
 
 function classifyFortiSensor(name: string): { type: string; unit: string } {
   if (/fan/i.test(name)) return { type: 'fan', unit: 'rpm' };
-  if (/temp/i.test(name)) return { type: 'temperature', unit: '°C' };
+  if (/(temp|\btmp\b|thermal)/i.test(name)) return { type: 'temperature', unit: '°C' };
   if (/(?:volt|vcc|vin|vout|\b\d+v\b)/i.test(name)) return { type: 'voltage', unit: 'V' };
   if (/current|amp/i.test(name)) return { type: 'current', unit: 'A' };
   if (/power|watt/i.test(name)) return { type: 'power', unit: 'W' };
