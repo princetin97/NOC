@@ -966,12 +966,29 @@ const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> =
   const groupId = (widget.config.groupId as string | null | undefined) ?? null;
   const deviceId = (widget.config.deviceId as string | undefined) ?? '';
   const title = widget.config.title || (sortBy === 'bandwidth' ? 'Top cổng theo băng thông' : 'Top cổng theo tải');
-  const [fallbackRows, setFallbackRows] = useState<{ dev: string; name: string; desc: string; util: number; inBps: number; outBps: number }[]>([]);
+  const [fallbackRows, setFallbackRows] = useState<{ dev: string; name: string; desc: string; util: number; inBps: number; outBps: number; speedBps: number }[]>([]);
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [fallbackError, setFallbackError] = useState<string | null>(null);
 
+  // Some switch models intermittently report an unexpectedly low ifSpeed (e.g. 10 Mbps)
+  // for Gigabit ports, which makes utilization spike to 100% visually. Use an
+  // effective capacity floor inferred from interface naming to keep the top-% view sane.
+  const inferCapacityFromName = (name: string): number => {
+    const n = name.trim().toLowerCase();
+    if (/^(te|tengigabitethernet|ten-gigabitethernet|xge|xe)/.test(n)) return 10_000_000_000;
+    if (/^(gi|gigabitethernet)/.test(n)) return 1_000_000_000;
+    if (/^(fa|fastethernet)/.test(n)) return 100_000_000;
+    return 0;
+  };
+  const computeDisplayUtil = (row: { name: string; util: number; inBps: number; outBps: number; speedBps: number }): number => {
+    const inferred = inferCapacityFromName(row.name);
+    const effectiveSpeed = Math.max(row.speedBps || 0, inferred);
+    if (effectiveSpeed <= 0) return row.util;
+    return Math.min(100, Math.round((Math.max(row.inBps, row.outBps) / effectiveSpeed) * 100));
+  };
+
   const extractRows = useCallback((devices: NetworkDevice[]) => {
-    const rows: { dev: string; name: string; desc: string; util: number; inBps: number; outBps: number }[] = [];
+    const rows: { dev: string; name: string; desc: string; util: number; inBps: number; outBps: number; speedBps: number }[] = [];
     let filtered = devices;
     if (groupId) filtered = filtered.filter((d) => d.groupId === groupId);
     if (deviceId) filtered = filtered.filter((d) => d.id === deviceId);
@@ -985,6 +1002,7 @@ const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> =
           util: i.utilization,
           inBps: i.inRateBps,
           outBps: i.outRateBps,
+          speedBps: i.speedBps,
         });
       }),
     );
@@ -1026,7 +1044,9 @@ const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> =
 
   const sourceRows = baseRows.length > 0 ? baseRows : fallbackRows;
   const top = sourceRows
-    .sort((a, b) => sortBy === 'bandwidth' ? (b.inBps + b.outBps) - (a.inBps + a.outBps) : b.util - a.util)
+    .sort((a, b) => sortBy === 'bandwidth'
+      ? (b.inBps + b.outBps) - (a.inBps + a.outBps)
+      : computeDisplayUtil(b) - computeDisplayUtil(a))
     .slice(0, limit);
   const fmt = (bps: number) => bps >= 1e9 ? `${(bps / 1e9).toFixed(2)} Gbps` : bps >= 1e6 ? `${(bps / 1e6).toFixed(1)} Mbps` : `${(bps / 1e3).toFixed(0)} Kbps`;
   const maxRate = Math.max(1, ...top.map((t) => Math.max(t.inBps, t.outBps)));
@@ -1038,10 +1058,15 @@ const TopInterfacesWidget: React.FC<{ widget: DashboardWidget; ctx: GridCtx }> =
       <div className="flex-1 min-h-0 overflow-auto space-y-2">
         {top.map((t, idx) => (
           <div key={idx} className="px-2 py-1.5 rounded-lg bg-slate-800/40">
+            {(() => {
+              const displayUtil = computeDisplayUtil(t);
+              return (
             <div className="flex justify-between items-center gap-2">
               <span className="text-xs text-slate-200 truncate">{t.dev} · {t.name}</span>
-              <span className="text-[11px] font-mono text-slate-400 shrink-0">{sortBy === 'utilization' ? `${t.util.toFixed(0)}%` : fmt(t.inBps + t.outBps)}</span>
+              <span className="text-[11px] font-mono text-slate-400 shrink-0">{sortBy === 'utilization' ? `${displayUtil.toFixed(0)}%` : fmt(t.inBps + t.outBps)}</span>
             </div>
+              );
+            })()}
             {t.desc && <div className="text-[10px] text-slate-500 truncate mb-1" title={t.desc}>{t.desc}</div>}
             {/* In line */}
             <div className="flex items-center gap-1.5 mt-1">

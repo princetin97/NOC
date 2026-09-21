@@ -17,6 +17,16 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.20] - 2026-09-21
+
+### Fixed
+- Sửa hiển thị sai ở widget `Top cổng theo tải` khi nhiều cổng có băng thông thực tế
+  thấp nhưng vẫn hiện `100%`.
+  - Nguyên nhân: một số thiết bị/switch có thể báo `ifSpeed` thấp bất thường cho
+    cổng `Gi/Fa/Te` làm % utilization bị đội lên.
+  - Cập nhật logic hiển thị/sắp xếp trong widget Top cổng để tính theo tốc độ
+    hiệu dụng, có chuẩn hoá theo loại cổng (`Gi/Fa/Te`) nhằm tránh 100% giả.
+
 ## [0.8.19] - 2026-09-18
 
 ### Fixed
