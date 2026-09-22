@@ -17,6 +17,18 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.23] - 2026-09-22
+
+### Fixed
+- Sửa biểu đồ `Traffic In/Out` ở màn chi tiết Interface khi chọn `7 ngày`:
+  - Dữ liệu lịch sử không còn bị cụt do giới hạn lấy 2000 bản ghi gần nhất.
+  - Backend `GET /api/ports/:id/metrics?hours=...` với khoảng thời gian dài
+    được gom bucket theo thời gian (5/10/15 phút) để luôn phủ đủ toàn bộ cửa sổ
+    thời gian yêu cầu và vẫn đảm bảo hiệu năng.
+- Cải thiện hiển thị trục thời gian trên biểu đồ Interface:
+  - Với mốc dài (24h, 7 ngày) trục X hiển thị kèm ngày để phân biệt mốc thời gian.
+  - Tooltip hiển thị đầy đủ `ngày/tháng/năm giờ:phút` thay vì chỉ giờ.
+
 ## [0.8.22] - 2026-09-21
 
 ### Fixed

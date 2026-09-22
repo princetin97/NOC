@@ -42,8 +42,26 @@ export const PortDetail: React.FC<PortDetailProps> = ({ port, darkMode, trafficC
     };
   }, [port.id, hours]);
 
+  const formatXAxisTick = (iso: string): string => {
+    const dt = new Date(iso);
+    if (hours >= 168) return dt.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit' });
+    if (hours >= 24) return dt.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit' });
+    return dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatTooltipLabel = (iso: string): string => {
+    const dt = new Date(iso);
+    return dt.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const baseData = data.map((p) => ({
-    time: new Date(p.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    timestamp: p.timestamp,
     inMbps: Number((Math.abs(p.inRateBps) / 1e6).toFixed(2)),
     outMbps: Number((Math.abs(p.outRateBps) / 1e6).toFixed(2)),
   }));
@@ -149,7 +167,13 @@ export const PortDetail: React.FC<PortDetailProps> = ({ port, darkMode, trafficC
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={10} minTickGap={30} />
+                  <XAxis
+                    dataKey="timestamp"
+                    stroke="#64748b"
+                    fontSize={10}
+                    minTickGap={hours >= 168 ? 24 : 30}
+                    tickFormatter={formatXAxisTick}
+                  />
                   <YAxis
                     stroke="#64748b"
                     fontSize={10}
@@ -161,6 +185,7 @@ export const PortDetail: React.FC<PortDetailProps> = ({ port, darkMode, trafficC
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }}
+                    labelFormatter={(value) => formatTooltipLabel(String(value))}
                     formatter={(value: number, name: string) => [`${Math.abs(Number(value)).toFixed(2)} Mbps`, name]}
                   />
                   {trafficChartMode === 'mirrored' && <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />}
