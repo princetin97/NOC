@@ -53,6 +53,8 @@ export const env = {
   pollTransitionBoostWindowSeconds: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_WINDOW_SECONDS, 180),
   pollTransitionBoostStepSeconds: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_STEP_SECONDS, 20),
   pollTransitionBoostMaxJobs: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_MAX_JOBS, 9),
+  pollFailureBackoffBaseSeconds: parsePositiveInt(process.env.POLL_FAILURE_BACKOFF_BASE_SECONDS, 60),
+  pollFailureBackoffMaxSeconds: parsePositiveInt(process.env.POLL_FAILURE_BACKOFF_MAX_SECONDS, 900),
   snmpTimeoutMs: parsePositiveInt(process.env.SNMP_TIMEOUT_MS, 3000),
   snmpRetries: parsePositiveInt(process.env.SNMP_RETRIES, 1),
   // Base interval for HTTP/TCP/DNS/PING service checks (was hardcoded to 60s).

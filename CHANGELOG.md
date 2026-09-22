@@ -17,6 +17,28 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.26] - 2026-09-22
+
+### Performance
+- Tối ưu scheduler poller để giảm tải Redis và tăng throughput:
+  - Chuyển enqueue job từ tuần tự (`add`) sang theo lô (`addBulk`) cho poll,
+    fast-poll, discovery và service-check queues.
+  - Trải đều `device-discovery` jobs theo toàn bộ chu kỳ discovery bằng `delay`
+    ngẫu nhiên để tránh dồn burst tại cùng một thời điểm.
+
+### Stability
+- Bổ sung cơ chế cooldown/backoff thích ứng cho thiết bị unreachable:
+  - Khi thiết bị thất bại liên tiếp, poller tạm giãn khoảng cách poll theo hàm mũ
+    (`base * 2^n`, có trần), giúp giảm retry storm và SNMP timeout flood.
+  - Khi thiết bị phục hồi, cooldown được xoá ngay và quay lại nhịp poll bình thường.
+- Scheduler bỏ qua tạm thời các thiết bị đang trong cooldown thay vì tiếp tục xếp
+  queue dày đặc cho cùng endpoint lỗi.
+
+### Config
+- Thêm biến cấu hình poll backoff:
+  - `POLL_FAILURE_BACKOFF_BASE_SECONDS` (mặc định `60`)
+  - `POLL_FAILURE_BACKOFF_MAX_SECONDS` (mặc định `900`)
+
 ## [0.8.25] - 2026-09-22
 
 ### Security

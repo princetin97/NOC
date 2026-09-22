@@ -10,6 +10,7 @@ import { runServiceCheck } from './service-check';
 import { runRetentionCleanup } from './cleanup';
 import { resolveAlertsFromGlobalTemplateRules } from './alerting';
 import { syncAllEnabledVCenterManagers } from './vcenter';
+import { shouldPollDeviceNow, getPollCooldownRemainingMs } from './cooldown';
 
 const pollWorker = new Worker('device-poll', async (job) => pollDevice(job.data.deviceId), {
   connection: redisConnection,
@@ -50,6 +51,20 @@ function byPollPriority(
   return aTs - bTs;
 }
 
+function pickEligibleDevices<T extends { id: string }>(candidates: T[], maxCount: number): { picked: T[]; skippedCooldown: number } {
+  const picked: T[] = [];
+  let skippedCooldown = 0;
+  for (const device of candidates) {
+    if (picked.length >= maxCount) break;
+    if (!shouldPollDeviceNow(device.id)) {
+      skippedCooldown += 1;
+      continue;
+    }
+    picked.push(device);
+  }
+  return { picked, skippedCooldown };
+}
+
 async function schedulePollCycle(): Promise<void> {
   const counts = await pollQueue.getJobCounts('waiting', 'active');
   const inflight = (counts.waiting ?? 0) + (counts.active ?? 0);
@@ -67,23 +82,30 @@ async function schedulePollCycle(): Promise<void> {
       OR: [{ lastPolled: null }, { lastPolled: { lt: dueBefore } }],
     },
     select: { id: true, isPriority: true, status: true, packetLoss: true, lastPolled: true },
-    take: Math.max(toAdd * 4, toAdd),
+    take: Math.max(toAdd * 8, toAdd),
     orderBy: [{ lastPolled: 'asc' }],
   });
-  const devices = candidates.sort(byPollPriority).slice(0, toAdd);
-  for (const device of devices) {
-    // jobId dedupes so a slow poll doesn't pile up duplicate jobs for the same device.
-    // BullMQ treats unprioritized jobs as highest priority, so this must be explicitly
-    // lower than the fast/boost recheck jobs (priority: 1) or it would starve them.
-    await pollQueue.add('poll', { deviceId: device.id }, {
-      jobId: `poll-${device.id}`,
-      priority: device.isPriority ? 2 : 5,
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+  const sorted = candidates.sort(byPollPriority);
+  const { picked: devices, skippedCooldown } = pickEligibleDevices(sorted, toAdd);
+  if (devices.length > 0) {
+    await pollQueue.addBulk(
+      devices.map((device) => ({
+        name: 'poll',
+        data: { deviceId: device.id },
+        opts: {
+          // jobId dedupes so a slow poll doesn't pile up duplicate jobs for the same device.
+          // BullMQ treats unprioritized jobs as highest priority, so this must be explicitly
+          // lower than the fast/boost recheck jobs (priority: 1) or it would starve them.
+          jobId: `poll-${device.id}`,
+          priority: device.isPriority ? 2 : 5,
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      })),
+    );
   }
   const priorityCount = devices.filter((d) => d.isPriority).length;
-  logger.info({ count: devices.length, priorityCount, inflight, bufferTarget }, 'Poll cycle scheduled');
+  logger.info({ count: devices.length, priorityCount, skippedCooldown, inflight, bufferTarget }, 'Poll cycle scheduled');
 }
 
 async function scheduleFastPollCycle(): Promise<void> {
@@ -101,46 +123,76 @@ async function scheduleFastPollCycle(): Promise<void> {
       ],
     },
     select: { id: true, isPriority: true, status: true, packetLoss: true, lastPolled: true },
-    take: env.pollFastBatchSize,
+    take: Math.max(env.pollFastBatchSize * 6, env.pollFastBatchSize),
     orderBy: [{ lastPolled: 'asc' }],
   });
 
-  const devices = candidates.sort(byPollPriority);
-  for (const device of devices) {
-    // Re-use the same poll jobId to avoid duplicate jobs for one device.
-    await pollQueue.add('poll-fast', { deviceId: device.id }, {
-      jobId: `poll-${device.id}`,
-      priority: 1,
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+  const sorted = candidates.sort(byPollPriority);
+  const { picked: devices, skippedCooldown } = pickEligibleDevices(sorted, env.pollFastBatchSize);
+  if (devices.length > 0) {
+    await pollQueue.addBulk(
+      devices.map((device) => ({
+        name: 'poll-fast',
+        data: { deviceId: device.id },
+        opts: {
+          // Re-use the same poll jobId to avoid duplicate jobs for one device.
+          jobId: `poll-${device.id}`,
+          priority: 1,
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      })),
+    );
   }
 
   if (devices.length > 0) {
     const priorityCount = devices.filter((d) => d.isPriority).length;
-    logger.debug({ count: devices.length, priorityCount, fastInterval: env.pollFastIntervalSeconds }, 'Fast poll cycle scheduled');
+    const maxCooldownSeconds = Math.max(
+      0,
+      ...sorted.map((d) => Math.floor(getPollCooldownRemainingMs(d.id) / 1000)),
+    );
+    logger.debug({ count: devices.length, priorityCount, skippedCooldown, maxCooldownSeconds, fastInterval: env.pollFastIntervalSeconds }, 'Fast poll cycle scheduled');
   }
 }
 
 async function scheduleDiscoveryCycle(): Promise<void> {
   const devices = await prisma.device.findMany({ where: { disabled: false }, select: { id: true } });
-  for (const device of devices) {
-    await discoveryQueue.add('discover', { deviceId: device.id }, { jobId: `discover-${device.id}`, removeOnComplete: true, removeOnFail: true });
+  const windowMs = Math.max(1, env.discoveryIntervalSeconds * 1000);
+  if (devices.length > 0) {
+    await discoveryQueue.addBulk(
+      devices.map((device) => ({
+        name: 'discover',
+        data: { deviceId: device.id },
+        opts: {
+          jobId: `discover-${device.id}`,
+          // Spread discovery jobs over the full interval to avoid synchronized bursts.
+          delay: Math.floor(Math.random() * windowMs),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      })),
+    );
   }
   logger.info({ count: devices.length }, 'Discovery cycle scheduled');
 }
 
 async function scheduleServiceCheckCycle(): Promise<void> {
   const services = await prisma.serviceCheck.findMany({ where: { enabled: true }, select: { id: true } });
-  for (const service of services) {
-    // See the poll queue's 'poll' job above: unprioritized jobs are treated as highest
-    // priority by BullMQ, so this needs an explicit lower priority than 'check-fast'.
-    await serviceCheckQueue.add('check', { serviceId: service.id }, {
-      jobId: `check-${service.id}`,
-      priority: 5,
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+  if (services.length > 0) {
+    await serviceCheckQueue.addBulk(
+      services.map((service) => ({
+        name: 'check',
+        data: { serviceId: service.id },
+        opts: {
+          // See the poll queue's 'poll' job above: unprioritized jobs are treated as highest
+          // priority by BullMQ, so this needs an explicit lower priority than 'check-fast'.
+          jobId: `check-${service.id}`,
+          priority: 5,
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      })),
+    );
   }
 }
 
@@ -152,13 +204,19 @@ async function scheduleServiceCheckFastCycle(): Promise<void> {
     where: { enabled: true, status: { in: ['down', 'warning'] } },
     select: { id: true },
   });
-  for (const service of services) {
-    await serviceCheckQueue.add('check-fast', { serviceId: service.id }, {
-      jobId: `check-${service.id}`,
-      priority: 1,
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+  if (services.length > 0) {
+    await serviceCheckQueue.addBulk(
+      services.map((service) => ({
+        name: 'check-fast',
+        data: { serviceId: service.id },
+        opts: {
+          jobId: `check-${service.id}`,
+          priority: 1,
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      })),
+    );
   }
 }
 
