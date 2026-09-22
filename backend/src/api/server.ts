@@ -12,6 +12,7 @@ patchBigIntSerialization();
 import { initWebsocket, broadcast } from '../lib/websocket';
 import { subscribeEvents } from '../lib/events';
 import { requireAuth, requireWriteAccess } from './middleware/auth';
+import { createSensitiveRateLimit } from './middleware/sensitiveRateLimit';
 import { authRouter } from './routes/auth';
 import { devicesRouter } from './routes/devices';
 import { portsRouter } from './routes/ports';
@@ -29,6 +30,7 @@ import { sitesRouter } from './routes/sites';
 import { vcenterRouter } from './routes/vcenter';
 
 const app = express();
+const sensitiveWriteLimiter = createSensitiveRateLimit({ windowMs: 60_000, maxAttempts: 120, scope: 'sensitive-write' });
 
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin }));
@@ -52,13 +54,13 @@ app.use('/api/alert-rules', requireAuth, requireWriteAccess, alertRulesRouter);
 app.use('/api/services', requireAuth, requireWriteAccess, servicesRouter);
 app.use('/api/events', requireAuth, requireWriteAccess, eventsRouter);
 app.use('/api/topology', requireAuth, requireWriteAccess, topologyRouter);
-app.use('/api/notification-channels', requireAuth, requireWriteAccess, notificationsRouter);
-app.use('/api/users', requireAuth, requireWriteAccess, usersRouter);
+app.use('/api/notification-channels', requireAuth, requireWriteAccess, sensitiveWriteLimiter, notificationsRouter);
+app.use('/api/users', requireAuth, requireWriteAccess, sensitiveWriteLimiter, usersRouter);
 app.use('/api/poller-health', requireAuth, requireWriteAccess, healthRouter);
 app.use('/api/device-groups', requireAuth, requireWriteAccess, groupsRouter);
 app.use('/api/dashboards', requireAuth, requireWriteAccess, dashboardsRouter);
-app.use('/api/sites', requireAuth, requireWriteAccess, sitesRouter);
-app.use('/api/vcenter', requireAuth, requireWriteAccess, vcenterRouter);
+app.use('/api/sites', requireAuth, requireWriteAccess, sensitiveWriteLimiter, sitesRouter);
+app.use('/api/vcenter', requireAuth, requireWriteAccess, sensitiveWriteLimiter, vcenterRouter);
 app.use('/alertmanager', nagstamonRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

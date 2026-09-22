@@ -12,6 +12,34 @@ interface AuthTokenPayload {
   role: string;
 }
 
+interface AttemptState {
+  count: number;
+  resetAt: number;
+}
+
+const aiDiagnoseAttempts = new Map<string, AttemptState>();
+
+function aiDiagnoseRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const state = aiDiagnoseAttempts.get(ip);
+  if (!state) return false;
+  if (state.resetAt <= now) {
+    aiDiagnoseAttempts.delete(ip);
+    return false;
+  }
+  return state.count >= 30;
+}
+
+function markAiDiagnoseAttempt(ip: string): void {
+  const now = Date.now();
+  const state = aiDiagnoseAttempts.get(ip);
+  if (!state || state.resetAt <= now) {
+    aiDiagnoseAttempts.set(ip, { count: 1, resetAt: now + 60_000 });
+    return;
+  }
+  state.count += 1;
+}
+
 function verifyBearer(req: express.Request): AuthTokenPayload | null {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) return null;
@@ -34,8 +62,16 @@ async function startServer() {
   // consume the request stream before the /api proxy below can forward it,
   // causing proxied POST requests (e.g. login) to hang forever.
   app.post('/api/ai-diagnose', express.json(), async (req, res) => {
+    const sourceIp = (req.ip ?? 'unknown').trim().toLowerCase();
+    if (aiDiagnoseRateLimited(sourceIp)) {
+      console.warn('[security] ai-diagnose rate-limited', { ip: sourceIp });
+      return res.status(429).json({ success: false, error: 'Too many AI requests. Please retry later.' });
+    }
+    markAiDiagnoseAttempt(sourceIp);
+
     const token = verifyBearer(req);
     if (!token) {
+      console.warn('[security] ai-diagnose unauthorized', { ip: sourceIp });
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 

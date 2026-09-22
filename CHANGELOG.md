@@ -17,6 +17,29 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.25] - 2026-09-22
+
+### Security
+- Triển khai pha 2 hardening theo checklist:
+  - Thêm audit log cho các trường hợp đăng nhập thất bại, login bị rate-limit,
+    bootstrap bị từ chối và websocket auth bị từ chối.
+  - Tăng bảo vệ endpoint `/api/ai-diagnose` bằng rate-limit theo IP
+    (tối đa 30 request/phút) ở UI server.
+- Bổ sung rate-limit cho nhóm API nhạy cảm (chỉ áp dụng với thao tác ghi):
+  - `/api/users`
+  - `/api/notification-channels`
+  - `/api/sites`
+  - `/api/vcenter`
+
+### Added
+- Thêm test tự động tối thiểu cho hardening:
+  - bootstrap token check
+  - sliding-window limiter behavior
+  - socket token extraction for websocket auth
+- Bổ sung script test backend:
+  - `npm run test`
+  - `npm run test:unit`
+
 ## [0.8.24] - 2026-09-22
 
 ### Security

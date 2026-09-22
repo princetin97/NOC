@@ -30,6 +30,10 @@ function isProductionLike(): boolean {
   return (process.env.NODE_ENV ?? '').trim().toLowerCase() === 'production';
 }
 
+function isApiProcess(): boolean {
+  return !!process.env.API_PORT;
+}
+
 export const env = {
   databaseUrl: required('DATABASE_URL'),
   redisUrl: required('REDIS_URL', 'redis://localhost:6379'),
@@ -83,7 +87,7 @@ if (isProductionLike() && !env.allowInsecureDefaults) {
   if (insecureSecrets.has(env.jwtSecret)) {
     throw new Error('Refusing to start in production with insecure JWT_SECRET. Set a strong JWT_SECRET or ALLOW_INSECURE_DEFAULTS=true.');
   }
-  if (env.corsOrigin === '*') {
+  if (isApiProcess() && env.corsOrigin === '*') {
     throw new Error('Refusing to start in production with CORS_ORIGIN=* . Set an explicit allowed origin or ALLOW_INSECURE_DEFAULTS=true.');
   }
 }
