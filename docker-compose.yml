@@ -52,6 +52,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public&connection_limit=25&pool_timeout=30
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      AUTH_BOOTSTRAP_TOKEN: ${AUTH_BOOTSTRAP_TOKEN:-}
+      ALLOW_INSECURE_DEFAULTS: ${ALLOW_INSECURE_DEFAULTS:-false}
       API_PORT: 4000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       NAGSTAMON_USER: ${NAGSTAMON_USER:-}
@@ -80,6 +82,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public&connection_limit=10&pool_timeout=30
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      ALLOW_INSECURE_DEFAULTS: ${ALLOW_INSECURE_DEFAULTS:-false}
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
       DISCOVERY_INTERVAL_SECONDS: ${DISCOVERY_INTERVAL_SECONDS:-3600}
       POLL_WORKER_CONCURRENCY: ${POLL_WORKER_CONCURRENCY:-16}
@@ -110,6 +113,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      ALLOW_INSECURE_DEFAULTS: ${ALLOW_INSECURE_DEFAULTS:-false}
       SYSLOG_UDP_PORT: 514
       RUN_MIGRATIONS: "false"
     command: ["node", "dist/collectors/syslog.js"]
@@ -126,6 +130,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      ALLOW_INSECURE_DEFAULTS: ${ALLOW_INSECURE_DEFAULTS:-false}
       SNMPTRAP_UDP_PORT: 162
       RUN_MIGRATIONS: "false"
     command: ["node", "dist/collectors/trap.js"]
@@ -140,6 +145,7 @@ services:
     restart: unless-stopped
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
       NODE_ENV: production
       API_PROXY_TARGET: http://api:4000
     ports:

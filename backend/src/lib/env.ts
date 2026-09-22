@@ -22,6 +22,14 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return rounded > 0 ? rounded : fallback;
 }
 
+function parseString(value: string | undefined, fallback = ''): string {
+  return (value ?? fallback).trim();
+}
+
+function isProductionLike(): boolean {
+  return (process.env.NODE_ENV ?? '').trim().toLowerCase() === 'production';
+}
+
 export const env = {
   databaseUrl: required('DATABASE_URL'),
   redisUrl: required('REDIS_URL', 'redis://localhost:6379'),
@@ -65,4 +73,17 @@ export const env = {
   nagstamonSourceWindow: parsePositiveInt(process.env.NAGSTAMON_SOURCE_WINDOW, 500),
   // How often the poller re-syncs ESXi host/VM inventory from each enabled vCenter manager.
   vcenterSyncIntervalSeconds: parsePositiveInt(process.env.VCENTER_SYNC_INTERVAL_SECONDS, 300),
+  // One-time token used only for the first admin bootstrap via /api/auth/bootstrap.
+  authBootstrapToken: parseString(process.env.AUTH_BOOTSTRAP_TOKEN),
+  allowInsecureDefaults: parseBoolean(process.env.ALLOW_INSECURE_DEFAULTS, false),
 };
+
+if (isProductionLike() && !env.allowInsecureDefaults) {
+  const insecureSecrets = new Set(['dev-secret-change-me', 'change-me-to-a-long-random-string']);
+  if (insecureSecrets.has(env.jwtSecret)) {
+    throw new Error('Refusing to start in production with insecure JWT_SECRET. Set a strong JWT_SECRET or ALLOW_INSECURE_DEFAULTS=true.');
+  }
+  if (env.corsOrigin === '*') {
+    throw new Error('Refusing to start in production with CORS_ORIGIN=* . Set an explicit allowed origin or ALLOW_INSECURE_DEFAULTS=true.');
+  }
+}

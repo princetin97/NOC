@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NetworkAlert, EventLog } from '../types';
 import { Sparkles, Terminal, AlertTriangle, ShieldCheck, CheckCircle, RefreshCw, Send } from 'lucide-react';
+import { apiClient } from '../services/apiClient';
 
 interface AIAnomalyAssistantProps {
   alerts: NetworkAlert[];
@@ -29,18 +30,18 @@ export const AIAnomalyAssistant: React.FC<AIAnomalyAssistantProps> = ({
   const handleRunDiagnosis = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/ai-diagnose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await apiClient.post<{
+        success: boolean;
+        source?: string;
+        diagnosis?: string;
+        recommendations?: string[];
+        rawText?: string;
+      }>('/ai-diagnose', {
           deviceName,
           alertMessage,
           syslogSnippet,
           metricStats: { time: new Date().toISOString() },
-        }),
       });
-
-      const data = await response.json();
       setDiagnosisResult(data);
     } catch {
       setDiagnosisResult({

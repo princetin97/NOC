@@ -721,11 +721,13 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
   const showVlanTab = useMemo(() => {
     if (!selectedDevice) return false;
+    // If VLAN data was discovered, always expose the VLAN tab regardless of device type.
+    if (detailVlans.length > 0) return true;
     if (selectedDevice.type === 'switch' || selectedDevice.type === 'router' || selectedDevice.type === 'firewall') return true;
 
     const fingerprint = `${selectedDevice.vendor ?? ''} ${selectedDevice.model ?? ''} ${selectedDevice.os ?? ''} ${selectedDevice.sysDescr ?? ''}`.toLowerCase();
-    return /\bc1000\b|catalyst|\bws-c\d+|\b2960\b|\bswitch\b|cisco ios/.test(fingerprint);
-  }, [selectedDevice]);
+    return /\bc1000\b|catalyst|\bws-c\d+|\b2960\b|\bswitch\b|cisco ios|\bharuba\b|\bhpe\b|hewlett\s*packard|\bhp\b|procurve|comware|\b18(10|20)\b|\b19(10|20)\b|\b25(30|40)\b|\b29(30|40)\b|e\s?cos-?3/.test(fingerprint);
+  }, [selectedDevice, detailVlans]);
 
   // vCenter-synced ESXi hosts carry a "key=value • key=value" inventory dump in
   // sysDescr (see poller/vcenter.ts buildInventorySummary) — parse it to show

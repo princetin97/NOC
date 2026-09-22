@@ -17,6 +17,32 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.24] - 2026-09-22
+
+### Security
+- Gia cố luồng xác thực và khởi tạo tài khoản:
+  - Bỏ cơ chế tự tạo `admin` khi login lần đầu qua `/api/auth/login`.
+  - Thêm endpoint bootstrap một lần `/api/auth/bootstrap` yêu cầu `AUTH_BOOTSTRAP_TOKEN`.
+  - Nếu chưa có user, login thường sẽ bị chặn và yêu cầu bootstrap trước.
+- Bổ sung giới hạn chống brute-force cho login:
+  - Theo cặp `IP + username` trong cửa sổ 15 phút.
+  - Từ lần sai thứ 11 sẽ trả `429 Too Many Requests`.
+- Bắt buộc xác thực JWT cho kết nối Socket.IO realtime:
+  - Websocket không có token hợp lệ sẽ bị từ chối handshake.
+
+### Backend
+- Bổ sung guard cấu hình an toàn khi chạy production:
+  - Từ chối khởi động nếu vẫn dùng `JWT_SECRET` mặc định hoặc `CORS_ORIGIN=*`
+    (có thể override bằng `ALLOW_INSECURE_DEFAULTS=true` khi cần).
+- Cập nhật `docker-compose.yml` để truyền các biến môi trường mới:
+  - `AUTH_BOOTSTRAP_TOKEN`
+  - `ALLOW_INSECURE_DEFAULTS`
+
+### UI
+- Bảo vệ endpoint AI diagnose trên UI server (`/api/ai-diagnose`) bằng JWT bearer.
+- Cập nhật `AIAnomalyAssistant` dùng `apiClient` để tự động gửi token thay vì gọi `fetch` thẳng.
+- Thêm dependency `jsonwebtoken` cho UI server-side auth guard.
+
 ## [0.8.23] - 2026-09-22
 
 ### Fixed

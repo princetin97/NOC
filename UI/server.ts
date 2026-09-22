@@ -4,6 +4,26 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { GoogleGenAI } from '@google/genai';
+import jwt from 'jsonwebtoken';
+
+interface AuthTokenPayload {
+  sub: string;
+  username: string;
+  role: string;
+}
+
+function verifyBearer(req: express.Request): AuthTokenPayload | null {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return null;
+  const token = header.slice('Bearer '.length).trim();
+  const secret = (process.env.JWT_SECRET ?? '').trim();
+  if (!secret || secret === 'change-me-to-a-long-random-string' || secret === 'dev-secret-change-me') return null;
+  try {
+    return jwt.verify(token, secret) as AuthTokenPayload;
+  } catch {
+    return null;
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -14,6 +34,11 @@ async function startServer() {
   // consume the request stream before the /api proxy below can forward it,
   // causing proxied POST requests (e.g. login) to hang forever.
   app.post('/api/ai-diagnose', express.json(), async (req, res) => {
+    const token = verifyBearer(req);
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { deviceName, alertMessage, syslogSnippet, metricStats } = req.body;
 
     const apiKey = process.env.GEMINI_API_KEY;
