@@ -13,10 +13,46 @@ function pausedKey(deviceId: string): string {
   return `${PAUSED_KEY_PREFIX}${deviceId}`;
 }
 
+export interface SnmpAutoPauseState {
+  paused: boolean;
+  pausedAt: string | null;
+}
+
+function parsePausedAt(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { pausedAt?: unknown };
+    return typeof parsed.pausedAt === 'string' ? parsed.pausedAt : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function isSnmpAutoPaused(deviceId: string): Promise<boolean> {
   if (!env.snmpAutoPauseEnabled) return false;
   const raw = await redisConnection.get(pausedKey(deviceId));
   return !!raw;
+}
+
+export async function getSnmpAutoPauseState(deviceId: string): Promise<SnmpAutoPauseState> {
+  if (!env.snmpAutoPauseEnabled) return { paused: false, pausedAt: null };
+  const raw = await redisConnection.get(pausedKey(deviceId));
+  if (!raw) return { paused: false, pausedAt: null };
+  return { paused: true, pausedAt: parsePausedAt(raw) };
+}
+
+export async function getSnmpAutoPauseStateMap(deviceIds: string[]): Promise<Map<string, SnmpAutoPauseState>> {
+  const map = new Map<string, SnmpAutoPauseState>();
+  for (const id of deviceIds) map.set(id, { paused: false, pausedAt: null });
+  if (!env.snmpAutoPauseEnabled || deviceIds.length === 0) return map;
+
+  const keys = deviceIds.map((id) => pausedKey(id));
+  const values = await redisConnection.mget(...keys);
+  for (let i = 0; i < deviceIds.length; i += 1) {
+    const raw = values[i] ?? null;
+    map.set(deviceIds[i], { paused: !!raw, pausedAt: parsePausedAt(raw) });
+  }
+  return map;
 }
 
 export async function recordSnmpTimeoutFailure(deviceId: string): Promise<{ streak: number; paused: boolean }> {

@@ -27,6 +27,7 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
   - Khi một thiết bị gặp `SNMP timeout` liên tiếp đến ngưỡng cấu hình, hệ thống tự động tạm dừng SNMP cho thiết bị đó và chuyển sang poll ping-only.
   - Trạng thái tạm dừng SNMP được lưu trên Redis để giữ ổn định qua restart process.
   - Khi quản trị viên cập nhật lại cấu hình SNMP của thiết bị (port/version/community/credential), trạng thái auto-pause sẽ được xoá và SNMP được bật lại.
+  - API và UI hiển thị thêm trạng thái `SNMP AUTO-PAUSED` để nhận diện nhanh thiết bị đang ở chế độ ping-only.
 
 ### Config
 - Thêm biến môi trường:

@@ -195,6 +195,8 @@ export interface NetworkDevice {
   uptimeSeconds: number;
   snmpVersion: 'v1' | 'v2c' | 'v3';
   community?: string;
+  snmpAutoPaused?: boolean;
+  snmpAutoPausedAt?: string | null;
   cpuUsage: number; // percentage
   cpuCount?: number;
   memoryUsage: number; // percentage

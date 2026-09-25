@@ -6,7 +6,7 @@ import { logger } from '../../lib/logger';
 import { discoveryQueue, pollQueue } from '../../lib/queue';
 import { scanSubnet } from '../../lib/subnet-scan';
 import { snmpGetSingle, snmpWalkColumn, varbindToNumber, varbindToString, withSession } from '../../lib/snmp';
-import { clearSnmpAutoPause } from '../../lib/snmpAutoPause';
+import { clearSnmpAutoPause, getSnmpAutoPauseState, getSnmpAutoPauseStateMap } from '../../lib/snmpAutoPause';
 import { toCredentials } from '../../poller/metrics';
 import type { AuthedRequest } from '../middleware/auth';
 import { canAccessSite, deviceSiteWhere, isGlobalAdmin } from '../middleware/site-scope';
@@ -110,12 +110,17 @@ devicesRouter.get('/', async (req: AuthedRequest, res) => {
       inFlightDeviceList.set(cacheKey, loadPromise);
     }
 
-    const devices = await loadPromise;
+    const devices = (await loadPromise) as Array<{ id: string } & Record<string, unknown>>;
+    const pauseMap = await getSnmpAutoPauseStateMap(devices.map((d) => d.id));
+    const devicesWithPause = devices.map((d) => {
+      const pause = pauseMap.get(d.id) ?? { paused: false, pausedAt: null };
+      return { ...d, snmpAutoPaused: pause.paused, snmpAutoPausedAt: pause.pausedAt };
+    });
     if (inFlightDeviceList.get(cacheKey) === loadPromise) {
       inFlightDeviceList.delete(cacheKey);
     }
-    deviceListCache.set(cacheKey, { expiresAt: now + DEVICE_LIST_CACHE_TTL_MS, payload: devices });
-    res.json(devices);
+    deviceListCache.set(cacheKey, { expiresAt: now + DEVICE_LIST_CACHE_TTL_MS, payload: devicesWithPause });
+    res.json(devicesWithPause);
   } catch (error) {
     if (requestCacheKey) inFlightDeviceList.delete(requestCacheKey);
     const message = error instanceof Error ? error.message : String(error);
@@ -144,7 +149,8 @@ devicesRouter.get('/:id', async (req: AuthedRequest, res) => {
     res.status(404).json({ error: 'Device not found' });
     return;
   }
-  res.json(device);
+  const pause = await getSnmpAutoPauseState(device.id);
+  res.json({ ...device, snmpAutoPaused: pause.paused, snmpAutoPausedAt: pause.pausedAt });
 });
 
 devicesRouter.post('/', async (req: AuthedRequest, res) => {

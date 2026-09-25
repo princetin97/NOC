@@ -992,7 +992,18 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
         </td>
       )}
       {visibleColumns.location && <td className="py-3 px-3 text-slate-300">{dev.location}</td>}
-      {visibleColumns.status && <td className="py-3 px-3">{getStatusBadge(dev.status)}</td>}
+      {visibleColumns.status && (
+        <td className="py-3 px-3">
+          <div className="flex flex-col gap-1">
+            {getStatusBadge(dev.status)}
+            {dev.snmpAutoPaused ? (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                SNMP AUTO-PAUSED
+              </span>
+            ) : null}
+          </div>
+        </td>
+      )}
       {visibleColumns.cpu && (
         <td className="py-3 px-3">
           <span className={`inline-flex px-2 py-0.5 rounded font-bold ${metricHeatClass(dev.cpuUsage)}`}>{dev.cpuUsage}%</span>
@@ -1781,6 +1792,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   <div className="flex items-center space-x-2">
                     <h2 className="text-lg font-black font-mono tracking-tight">{selectedDevice.name}</h2>
                     {getStatusBadge(selectedDevice.status)}
+                    {selectedDevice.snmpAutoPaused ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        SNMP AUTO-PAUSED
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-xs font-mono text-slate-300">
                     IP: <strong className="text-emerald-400">{selectedDevice.ip}</strong> • OS: {selectedDevice.os} • Location: {selectedDevice.location}
@@ -1996,6 +2012,18 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           <span>SNMP Community / Credentials:</span>
                           <span className="text-slate-200">{selectedDevice.snmpVersion} ({selectedDevice.community || 'SNMPv3 User'})</span>
                         </div>
+                        <div className="flex justify-between">
+                          <span>SNMP Polling trạng thái:</span>
+                          <span className={selectedDevice.snmpAutoPaused ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold'}>
+                            {selectedDevice.snmpAutoPaused ? 'Auto-paused (ping-only)' : 'Đang hoạt động'}
+                          </span>
+                        </div>
+                        {selectedDevice.snmpAutoPausedAt ? (
+                          <div className="flex justify-between">
+                            <span>Auto-paused từ lúc:</span>
+                            <span className="text-amber-300">{new Date(selectedDevice.snmpAutoPausedAt).toLocaleString('vi-VN')}</span>
+                          </div>
+                        ) : null}
                         <div className="flex justify-between">
                           <span>Thời gian Uptime liên tục:</span>
                           <span className="text-emerald-400 font-bold">{selectedDevice.uptime}</span>
