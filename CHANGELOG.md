@@ -17,6 +17,23 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.34] - 2026-09-25
+
+### Performance
+- Tối ưu an toàn cho Postgres healthcheck trong Docker Compose:
+  - Sửa lệnh `pg_isready` để kiểm tra đúng database cấu hình (`POSTGRES_DB`) thay vì mặc định theo username.
+  - Loại bỏ vòng lặp kết nối lỗi `FATAL: database "monitor" does not exist` gây nhiễu log và làm tăng tải không cần thiết.
+
+### Risk Assessment
+- Thay đổi chỉ tác động vào cơ chế healthcheck của container `postgres`, không thay đổi logic nghiệp vụ API, poller, alerting hoặc UI.
+- Không thay đổi schema/migration, không tác động dữ liệu hiện có.
+- Rủi ro tương thích thấp vì giá trị DB check sử dụng cùng biến môi trường `POSTGRES_DB` đang được toàn bộ service dùng trong `DATABASE_URL`.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Xác nhận sau deploy không còn log `database "monitor" does not exist` trong `postgres`.
+- Trạng thái dịch vụ đều `Up/Healthy`.
+
 ## [0.8.33] - 2026-09-25
 
 ### Performance
