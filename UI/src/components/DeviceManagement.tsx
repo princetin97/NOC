@@ -1204,214 +1204,228 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     <div className="space-y-6 pb-12">
       
       {/* Top Filter Bar */}
-      <div className={`sticky top-16 z-30 p-4 rounded-xl border shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 ${
+      <div className={`sticky top-16 z-30 p-4 rounded-xl border shadow-sm space-y-3 ${
         darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
       }`}>
-        
-        {/* Search & Filter Controls */}
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-300" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Lọc tên, IP, Model, Vị trí..."
-              className={`w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
-              }`}
-            />
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+          <div className="xl:col-span-5">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Tìm kiếm</div>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-300" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Lọc tên, IP, Model, Vị trí..."
+                className={`w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+              />
+            </div>
           </div>
 
-          {/* Type Filter */}
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
-            }`}
-          >
-            <option value="all">Loại thiết bị: Tất cả</option>
-            <option value="router">Router Định tuyến</option>
-            <option value="switch">Switch Chuyển mạch</option>
-            <option value="firewall">Firewall Tường lửa</option>
-            <option value="server">Server Máy chủ</option>
-            <option value="wireless">Wireless AP</option>
-            <option value="storage">Storage SAN/NAS</option>
-            <option value="ups">UPS / Nguồn dự phòng</option>
-          </select>
+          <div className="xl:col-span-7">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Bộ lọc</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                <option value="all">Loại thiết bị: Tất cả</option>
+                <option value="router">Router Định tuyến</option>
+                <option value="switch">Switch Chuyển mạch</option>
+                <option value="firewall">Firewall Tường lửa</option>
+                <option value="server">Server Máy chủ</option>
+                <option value="wireless">Wireless AP</option>
+                <option value="storage">Storage SAN/NAS</option>
+                <option value="ups">UPS / Nguồn dự phòng</option>
+              </select>
 
-          {/* Vendor Filter */}
-          <select
-            value={vendorFilter}
-            onChange={(e) => setVendorFilter(e.target.value)}
-            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
-            }`}
-          >
-            <option value="all">Hãng sản xuất: Tất cả</option>
-            {vendorOptions.map((vendor) => (
-              <option key={vendor} value={vendor}>{vendor}</option>
-            ))}
-          </select>
+              <select
+                value={vendorFilter}
+                onChange={(e) => setVendorFilter(e.target.value)}
+                className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                <option value="all">Hãng sản xuất: Tất cả</option>
+                {vendorOptions.map((vendor) => (
+                  <option key={vendor} value={vendor}>{vendor}</option>
+                ))}
+              </select>
 
-          {/* Status Filter */}
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value as 'all' | 'priority' | 'normal')}
-            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
-            }`}
-          >
-            <option value="all">Ưu tiên: Tất cả</option>
-            <option value="priority">Ưu tiên: Đang bật</option>
-            <option value="normal">Ưu tiên: Bình thường</option>
-          </select>
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value as 'all' | 'priority' | 'normal')}
+                className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                <option value="all">Ưu tiên: Tất cả</option>
+                <option value="priority">Ưu tiên: Đang bật</option>
+                <option value="normal">Ưu tiên: Bình thường</option>
+              </select>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
-            }`}
-          >
-            <option value="all">Trạng thái: Tất cả</option>
-            <option value="up">● Online (UP)</option>
-            <option value="warning">▲ Cảnh báo (WARNING)</option>
-            <option value="down">■ Mất kết nối (DOWN)</option>
-          </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                <option value="all">Trạng thái: Tất cả</option>
+                <option value="up">● Online (UP)</option>
+                <option value="warning">▲ Cảnh báo (WARNING)</option>
+                <option value="down">■ Mất kết nối (DOWN)</option>
+              </select>
 
-          <select
-            value={snmpPauseFilter}
-            onChange={(e) => setSnmpPauseFilter(e.target.value as 'all' | 'paused' | 'active')}
-            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
-            }`}
-          >
-            <option value="all">SNMP Auto-pause: Tất cả</option>
-            <option value="paused">SNMP Auto-pause: Đang pause</option>
-            <option value="active">SNMP Auto-pause: Bình thường</option>
-          </select>
+              <select
+                value={snmpPauseFilter}
+                onChange={(e) => setSnmpPauseFilter(e.target.value as 'all' | 'paused' | 'active')}
+                className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                <option value="all">SNMP Auto-pause: Tất cả</option>
+                <option value="paused">SNMP Auto-pause: Đang pause</option>
+                <option value="active">SNMP Auto-pause: Bình thường</option>
+              </select>
 
-          {/* Group Filter */}
-          {groups.length > 0 && (
-            <select
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-              className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
-                darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
-              }`}
-            >
-              <option value="all">Nhóm: Tất cả</option>
-              {groupOptions.map((g) => (
-                <option key={g.id} value={g.id}>{g.label}</option>
-              ))}
-            </select>
-          )}
+              {groups.length > 0 && (
+                <select
+                  value={groupFilter}
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                  className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+                    darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+                  }`}
+                >
+                  <option value="all">Nhóm: Tất cả</option>
+                  {groupOptions.map((g) => (
+                    <option key={g.id} value={g.id}>{g.label}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center space-x-2">
-          <div className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-300">
-            Đã chọn: <span className="font-bold text-emerald-400">{selectedDeviceIds.size}</span>
-          </div>
-          <button
-            onClick={() => {
-              if (allFilteredSelected) {
-                setSelectedDeviceIds((prev) => {
-                  const next = new Set(prev);
-                  for (const id of filteredDeviceIds) next.delete(id);
-                  return next;
-                });
-                return;
-              }
-              setSelectedDeviceIds((prev) => {
-                const next = new Set(prev);
-                for (const id of filteredDeviceIds) next.add(id);
-                return next;
-              });
-            }}
-            disabled={filteredDeviceIds.length === 0 || assigningBatch}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
-            title="Chọn hoặc bỏ chọn toàn bộ thiết bị đang hiển thị"
-          >
-            {allFilteredSelected ? 'Bỏ chọn hiển thị' : 'Chọn hiển thị'}
-          </button>
-          <button
-            onClick={() => setSelectedDeviceIds(new Set())}
-            disabled={selectedDeviceIds.size === 0 || assigningBatch || deletingSelected}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
-            title="Xóa vùng chọn kéo thả"
-          >
-            Xóa vùng chọn
-          </button>
-          <button
-            onClick={() => { void handleDeleteSelected(); }}
-            disabled={selectedDeviceIds.size === 0 || assigningBatch || deletingSelected}
-            className="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
-            title="Xóa nhiều thiết bị theo vùng tích chọn"
-          >
-            {deletingSelected ? 'Đang xóa...' : `Xóa đã chọn (${selectedDeviceIds.size})`}
-          </button>
-          <div className="relative" ref={columnMenuRef}>
-            <button
-              onClick={() => setShowColumnMenu((v) => !v)}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
-              title="Tùy chọn cột hiển thị"
-            >
-              <Columns3 className="w-3.5 h-3.5" /> Cột hiển thị
-            </button>
-            {showColumnMenu && (
-              <div className={`absolute right-0 mt-2 w-64 rounded-xl border shadow-2xl z-20 p-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="text-xs uppercase tracking-wider text-slate-300 mb-2 font-semibold">Tùy chỉnh cột bảng</div>
-                <div className="space-y-1">
-                  {DEVICE_TABLE_COLUMNS.map((col) => (
-                    <label key={col.key} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}>
-                      <span className={`${!col.hideable ? 'text-slate-400' : ''}`}>{col.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns[col.key]}
-                        onChange={() => toggleTableColumn(col.key)}
-                        disabled={!col.hideable}
-                        className="w-4 h-4 accent-emerald-500 disabled:opacity-50"
-                      />
-                    </label>
-                  ))}
-                </div>
+        <div className={`h-px ${darkMode ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-start xl:items-center">
+          <div className="xl:col-span-6">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Thao tác vùng chọn</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-300">
+                Đã chọn: <span className="font-bold text-emerald-400">{selectedDeviceIds.size}</span>
               </div>
-            )}
+              <button
+                onClick={() => {
+                  if (allFilteredSelected) {
+                    setSelectedDeviceIds((prev) => {
+                      const next = new Set(prev);
+                      for (const id of filteredDeviceIds) next.delete(id);
+                      return next;
+                    });
+                    return;
+                  }
+                  setSelectedDeviceIds((prev) => {
+                    const next = new Set(prev);
+                    for (const id of filteredDeviceIds) next.add(id);
+                    return next;
+                  });
+                }}
+                disabled={filteredDeviceIds.length === 0 || assigningBatch}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
+                title="Chọn hoặc bỏ chọn toàn bộ thiết bị đang hiển thị"
+              >
+                {allFilteredSelected ? 'Bỏ chọn hiển thị' : 'Chọn hiển thị'}
+              </button>
+              <button
+                onClick={() => setSelectedDeviceIds(new Set())}
+                disabled={selectedDeviceIds.size === 0 || assigningBatch || deletingSelected}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
+                title="Xóa vùng chọn kéo thả"
+              >
+                Xóa vùng chọn
+              </button>
+              <button
+                onClick={() => { void handleDeleteSelected(); }}
+                disabled={selectedDeviceIds.size === 0 || assigningBatch || deletingSelected}
+                className="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+                title="Xóa nhiều thiết bị theo vùng tích chọn"
+              >
+                {deletingSelected ? 'Đang xóa...' : `Xóa đã chọn (${selectedDeviceIds.size})`}
+              </button>
+            </div>
           </div>
 
-          <button
-            onClick={() => { setGroupMessage(null); setShowGroupModal(true); }}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
-            title="Quản lý nhóm thiết bị"
-          >
-            <Boxes className="w-3.5 h-3.5" /> Nhóm thiết bị
-          </button>
+          <div className="xl:col-span-6">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Công cụ quản trị</div>
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <div className="relative" ref={columnMenuRef}>
+                <button
+                  onClick={() => setShowColumnMenu((v) => !v)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                  title="Tùy chọn cột hiển thị"
+                >
+                  <Columns3 className="w-3.5 h-3.5" /> Cột hiển thị
+                </button>
+                {showColumnMenu && (
+                  <div className={`absolute right-0 mt-2 w-64 rounded-xl border shadow-2xl z-20 p-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div className="text-xs uppercase tracking-wider text-slate-300 mb-2 font-semibold">Tùy chỉnh cột bảng</div>
+                    <div className="space-y-1">
+                      {DEVICE_TABLE_COLUMNS.map((col) => (
+                        <label key={col.key} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}>
+                          <span className={`${!col.hideable ? 'text-slate-400' : ''}`}>{col.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={visibleColumns[col.key]}
+                            onChange={() => toggleTableColumn(col.key)}
+                            disabled={!col.hideable}
+                            className="w-4 h-4 accent-emerald-500 disabled:opacity-50"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-          <button
-            onClick={openCreateGroupModal}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
-            title="Thêm nhóm mới"
-          >
-            <Plus className="w-3.5 h-3.5" /> Thêm nhóm
-          </button>
+              <button
+                onClick={() => { setGroupMessage(null); setShowGroupModal(true); }}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                title="Quản lý nhóm thiết bị"
+              >
+                <Boxes className="w-3.5 h-3.5" /> Nhóm thiết bị
+              </button>
 
-          <button
-            onClick={onOpenScanSubnet}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
-            title="Quét dải mạng để tìm thiết bị SNMP"
-          >
-            <Radar className="w-3.5 h-3.5" /> Quét Subnet
-          </button>
+              <button
+                onClick={openCreateGroupModal}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                title="Thêm nhóm mới"
+              >
+                <Plus className="w-3.5 h-3.5" /> Thêm nhóm
+              </button>
 
-          <button
-            onClick={onOpenAddDevice}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            + Thêm Thiết Bị
-          </button>
+              <button
+                onClick={onOpenScanSubnet}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                title="Quét dải mạng để tìm thiết bị SNMP"
+              >
+                <Radar className="w-3.5 h-3.5" /> Quét Subnet
+              </button>
+
+              <button
+                onClick={onOpenAddDevice}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                + Thêm Thiết Bị
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
