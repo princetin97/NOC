@@ -14,6 +14,7 @@ import {
 import { publishEvent } from '../lib/events';
 import { discoverNeighbors } from './neighbors';
 import { discoverVlans } from './vlans';
+import { isSnmpAutoPaused } from '../lib/snmpAutoPause';
 
 function toCredentials(device: { ip: string; snmpPort: number; snmpVersion: string; snmpCommunity: string | null; snmpV3User: string | null; snmpV3AuthProto: string | null; snmpV3AuthPass: string | null; snmpV3PrivProto: string | null; snmpV3PrivPass: string | null }): SnmpCredentials {
   return {
@@ -34,6 +35,10 @@ export async function discoverDevice(deviceId: string): Promise<void> {
   const device = await prisma.device.findUnique({ where: { id: deviceId } });
   if (!device) return;
   if (!device.snmpPort || device.snmpPort <= 0) return;
+  if (await isSnmpAutoPaused(deviceId)) {
+    logger.debug({ deviceId }, 'Skipping SNMP discovery because device is auto-paused (ping-only mode)');
+    return;
+  }
 
   const creds = toCredentials(device);
 

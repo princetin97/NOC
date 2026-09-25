@@ -31,6 +31,9 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
   - Bổ sung bộ lọc danh sách thiết bị theo trạng thái SNMP auto-pause (Tất cả/Đang pause/Bình thường).
   - Bổ sung thao tác nhanh "Bật lại SNMP" cho thiết bị auto-pause ngay trên bảng và màn hình chi tiết.
   - Tinh gọn bố cục thanh công cụ quản trị mục Thiết bị: rút gọn ô tìm kiếm, rút ngắn nhãn bộ lọc/nút thao tác để tránh control quá dài và dễ quét mắt hơn.
+  - Giảm tải poller khi bật cơ chế SNMP auto-pause:
+    - Luồng `discovery` bỏ qua thiết bị đang `SNMP AUTO-PAUSED` (ping-only), tránh tiếp tục quét SNMP gây timeout lặp lại.
+    - Chu kỳ xếp job `discovery` chỉ áp dụng cho thiết bị còn bật SNMP (`snmpPort > 0`).
 
 ### Config
 - Thêm biến môi trường:

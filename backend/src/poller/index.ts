@@ -156,7 +156,7 @@ async function scheduleFastPollCycle(): Promise<void> {
 }
 
 async function scheduleDiscoveryCycle(): Promise<void> {
-  const devices = await prisma.device.findMany({ where: { disabled: false }, select: { id: true } });
+  const devices = await prisma.device.findMany({ where: { disabled: false, snmpPort: { gt: 0 } }, select: { id: true } });
   const windowMs = Math.max(1, env.discoveryIntervalSeconds * 1000);
   if (devices.length > 0) {
     await discoveryQueue.addBulk(
