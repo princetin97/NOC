@@ -17,6 +17,19 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.27] - 2026-09-25
+
+### Performance
+- Tiếp tục tối ưu tải poller và DB sau cơ chế SNMP auto-pause:
+  - Thêm cơ chế backoff theo từng `vCenter manager` khi gặp lỗi DNS `ENOTFOUND` lặp lại, giảm retry storm ở chu kỳ sync.
+  - Áp dụng exponential backoff có trần cho lỗi DNS và bỏ qua tạm thời manager trong cửa sổ backoff.
+  - Giảm tần suất ghi `deviceMetric` cho thiết bị đang `SNMP AUTO-PAUSED` (ping-only), chỉ ghi theo nhịp định kỳ thay vì mỗi vòng poll.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Runtime sau deploy ghi nhận log backoff DNS hoạt động đúng (`Applied DNS backoff for vCenter manager`).
+- Snapshot `docker stats --no-stream` sau tối ưu: `poller` duy trì quanh ~14% CPU trong thời điểm kiểm tra.
+
 ### Added
 - Thêm metric cảnh báo mới cho rule thiết bị: `ping_loss_packets` (mất gói ping theo số lượng gói).
   - Cho phép cấu hình ngưỡng theo số gói mất trên mỗi lần probe 3 gói (0..3) để phát hiện mất kết nối nhanh hơn.

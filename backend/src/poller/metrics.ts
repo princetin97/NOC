@@ -23,6 +23,8 @@ import { pollProcessors } from './processors';
 import { markPollFailure, markPollSuccess } from './cooldown';
 import { clearSnmpTimeoutStreak, isSnmpAutoPaused, recordSnmpTimeoutFailure } from '../lib/snmpAutoPause';
 
+const PING_ONLY_METRIC_WRITE_INTERVAL_MS = 5 * 60_000;
+
 // Device liveness anti-flap: require N consecutive unreachable polls before
 // switching status to down, while recovering to up immediately on any success.
 const downFailStreakByDevice = new Map<string, number>();
@@ -197,16 +199,19 @@ export async function pollDevice(deviceId: string): Promise<void> {
     },
   });
 
-  await prisma.deviceMetric.create({
-    data: {
-      deviceId,
-      cpuUsage,
-      memoryUsage,
-      temperature,
-      pingLatencyMs: pingResult.latencyMs ?? undefined,
-      packetLoss: pingResult.packetLoss,
-    },
-  });
+  const shouldWriteMetric = !snmpPaused || !device.lastPolled || Date.now() - device.lastPolled.getTime() >= PING_ONLY_METRIC_WRITE_INTERVAL_MS;
+  if (shouldWriteMetric) {
+    await prisma.deviceMetric.create({
+      data: {
+        deviceId,
+        cpuUsage,
+        memoryUsage,
+        temperature,
+        pingLatencyMs: pingResult.latencyMs ?? undefined,
+        packetLoss: pingResult.packetLoss,
+      },
+    });
+  }
 
   await evaluateAlertsForDevice(deviceId);
   await scheduleTransitionBoostPolls(deviceId, previousStatus, status);

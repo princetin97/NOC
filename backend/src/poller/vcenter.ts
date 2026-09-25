@@ -4,11 +4,27 @@ import * as vsphere from '../lib/vsphere';
 import { evaluateAlertsForDevice } from './alerting';
 
 const VCENTER_DEVICE_GROUP_NAME = 'vCenter Device';
+const VCENTER_DNS_BACKOFF_BASE_MS = 60_000;
+const VCENTER_DNS_BACKOFF_MAX_MS = 30 * 60_000;
 
 // Guards against overlapping sync cycles (e.g. a slow vCenter response taking
 // longer than VCENTER_SYNC_INTERVAL_SECONDS) which could otherwise trigger
 // concurrent syncVCenterManager() runs for the same manager.
 let syncInProgress = false;
+const managerRetryState = new Map<string, { failStreak: number; nextAttemptAt: number }>();
+
+function isDnsResolveError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const code = 'code' in err ? String((err as { code?: unknown }).code ?? '') : '';
+  const message = 'message' in err ? String((err as { message?: unknown }).message ?? '') : '';
+  return code === 'ENOTFOUND' || /ENOTFOUND|getaddrinfo/i.test(message);
+}
+
+function nextDnsBackoffMs(streak: number): number {
+  const exponent = Math.max(0, streak - 1);
+  const delay = VCENTER_DNS_BACKOFF_BASE_MS * 2 ** exponent;
+  return Math.min(VCENTER_DNS_BACKOFF_MAX_MS, delay);
+}
 
 function pctOf(numerator?: number, denominator?: number): number | undefined {
   if (numerator === undefined || denominator === undefined || denominator <= 0) return undefined;
@@ -264,12 +280,27 @@ export async function syncAllEnabledVCenterManagers(): Promise<void> {
   }
   syncInProgress = true;
   try {
+    const now = Date.now();
     const managers = await prisma.virtualizationManager.findMany({ where: { enabled: true }, select: { id: true, name: true } });
     for (const m of managers) {
+      const retry = managerRetryState.get(m.id);
+      if (retry && retry.nextAttemptAt > now) {
+        const waitSeconds = Math.ceil((retry.nextAttemptAt - now) / 1000);
+        logger.debug({ managerId: m.id, name: m.name, waitSeconds, failStreak: retry.failStreak }, 'Skipping vCenter sync due to DNS backoff window');
+        continue;
+      }
       try {
         const result = await syncVCenterManager(m.id);
+        managerRetryState.delete(m.id);
         logger.info({ managerId: m.id, name: m.name, ...result }, 'vCenter sync completed');
       } catch (err) {
+        if (isDnsResolveError(err)) {
+          const prev = managerRetryState.get(m.id);
+          const failStreak = (prev?.failStreak ?? 0) + 1;
+          const delayMs = nextDnsBackoffMs(failStreak);
+          managerRetryState.set(m.id, { failStreak, nextAttemptAt: Date.now() + delayMs });
+          logger.warn({ managerId: m.id, name: m.name, failStreak, backoffSeconds: Math.ceil(delayMs / 1000) }, 'Applied DNS backoff for vCenter manager');
+        }
         logger.warn({ err, managerId: m.id, name: m.name }, 'vCenter sync cycle failed for manager');
       }
     }
