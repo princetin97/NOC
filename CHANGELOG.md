@@ -28,6 +28,8 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
   - Trạng thái tạm dừng SNMP được lưu trên Redis để giữ ổn định qua restart process.
   - Khi quản trị viên cập nhật lại cấu hình SNMP của thiết bị (port/version/community/credential), trạng thái auto-pause sẽ được xoá và SNMP được bật lại.
   - API và UI hiển thị thêm trạng thái `SNMP AUTO-PAUSED` để nhận diện nhanh thiết bị đang ở chế độ ping-only.
+  - Bổ sung bộ lọc danh sách thiết bị theo trạng thái SNMP auto-pause (Tất cả/Đang pause/Bình thường).
+  - Bổ sung thao tác nhanh "Bật lại SNMP" cho thiết bị auto-pause ngay trên bảng và màn hình chi tiết.
 
 ### Config
 - Thêm biến môi trường:

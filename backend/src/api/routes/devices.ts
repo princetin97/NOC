@@ -248,7 +248,7 @@ devicesRouter.put('/:id', async (req: AuthedRequest, res) => {
   }
 
   const device = await prisma.device.update({ where: { id: req.params.id }, data: patch });
-  if (hasSnmpReenablePatch(patch)) {
+  if (shouldClearSnmpAutoPause(patch)) {
     await clearSnmpAutoPause(req.params.id);
     logger.info({ deviceId: req.params.id }, 'Admin updated SNMP settings: cleared SNMP auto-pause state');
   }
@@ -256,7 +256,9 @@ devicesRouter.put('/:id', async (req: AuthedRequest, res) => {
   res.json(device);
 });
 
-function hasSnmpReenablePatch(patch: Partial<z.infer<typeof createDeviceSchema>>): boolean {
+function shouldClearSnmpAutoPause(patch: Partial<z.infer<typeof createDeviceSchema>>): boolean {
+  // Explicitly re-enabling monitoring is treated as an admin intent to retry SNMP.
+  if (patch.disabled === false) return true;
   if (typeof patch.snmpPort === 'number' && patch.snmpPort > 0) return true;
   if (typeof patch.snmpVersion === 'string') return true;
   if (typeof patch.snmpCommunity === 'string' && patch.snmpCommunity.trim().length > 0) return true;

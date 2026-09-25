@@ -291,6 +291,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'priority' | 'normal'>('all');
+  const [snmpPauseFilter, setSnmpPauseFilter] = useState<'all' | 'paused' | 'active'>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [selectedPort, setSelectedPort] = useState<NetworkInterface | null>(null);
@@ -650,6 +651,18 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     }
   };
 
+  const resumeSnmpAutoPause = async (deviceId: string) => {
+    if (togglingSnmpId) return;
+    setTogglingSnmpId(deviceId);
+    try {
+      // Sending disabled=false is interpreted by backend as explicit admin intent
+      // to re-enable SNMP checks and clear auto-pause state.
+      await onToggleSnmpMonitoring(deviceId, false);
+    } finally {
+      setTogglingSnmpId((cur) => (cur === deviceId ? null : cur));
+    }
+  };
+
   const togglePriorityDevice = async (deviceId: string, isPriority: boolean) => {
     if (togglingPriorityId) return;
     setTogglingPriorityId(deviceId);
@@ -827,10 +840,13 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     const matchesPriority =
       priorityFilter === 'all' ||
       (priorityFilter === 'priority' ? dev.isPriority === true : dev.isPriority !== true);
+    const matchesSnmpPause =
+      snmpPauseFilter === 'all' ||
+      (snmpPauseFilter === 'paused' ? dev.snmpAutoPaused === true : dev.snmpAutoPaused !== true);
     const validGroupIds = groupFilter === 'all' ? null : groupDescendants.get(groupFilter) ?? new Set<string>([groupFilter]);
     const matchesGroup = validGroupIds ? (dev.groupId ? validGroupIds.has(dev.groupId) : false) : true;
 
-    return matchesSearch && matchesVendor && matchesType && matchesStatus && matchesPriority && matchesGroup;
+    return matchesSearch && matchesVendor && matchesType && matchesStatus && matchesPriority && matchesSnmpPause && matchesGroup;
   });
 
   useEffect(() => {
@@ -845,7 +861,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   }, [devices]);
 
   const UNGROUPED_BUCKET_ID = '__ungrouped__';
-  const filtersActive = !!searchQuery || vendorFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || groupFilter !== 'all';
+  const filtersActive = !!searchQuery || vendorFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || snmpPauseFilter !== 'all' || groupFilter !== 'all';
 
   const allGroupTree = useMemo(() => buildGroupTree(groups, []), [groups]);
   const groupOptions = useMemo(() => flattenGroupOptions(allGroupTree), [allGroupTree]);
@@ -1079,6 +1095,19 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               <PauseCircle className="w-3.5 h-3.5" />
             )}
           </button>
+          {dev.snmpAutoPaused ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                void resumeSnmpAutoPause(dev.id);
+              }}
+              disabled={togglingSnmpId === dev.id}
+              className="p-1 rounded border border-amber-500/30 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 disabled:opacity-60"
+              title="Thiết bị đang SNMP auto-pause. Bấm để bật lại query SNMP ngay."
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+            </button>
+          ) : null}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1250,6 +1279,18 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             <option value="up">● Online (UP)</option>
             <option value="warning">▲ Cảnh báo (WARNING)</option>
             <option value="down">■ Mất kết nối (DOWN)</option>
+          </select>
+
+          <select
+            value={snmpPauseFilter}
+            onChange={(e) => setSnmpPauseFilter(e.target.value as 'all' | 'paused' | 'active')}
+            className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
+              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
+            }`}
+          >
+            <option value="all">SNMP Auto-pause: Tất cả</option>
+            <option value="paused">SNMP Auto-pause: Đang pause</option>
+            <option value="active">SNMP Auto-pause: Bình thường</option>
           </select>
 
           {/* Group Filter */}
@@ -1805,6 +1846,17 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               </div>
 
               <div className="flex items-center space-x-2">
+                {selectedDevice.snmpAutoPaused ? (
+                  <button
+                    onClick={() => void resumeSnmpAutoPause(selectedDevice.id)}
+                    disabled={togglingSnmpId === selectedDevice.id}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-colors disabled:opacity-60"
+                    title="Bật lại query SNMP cho thiết bị đang auto-pause"
+                  >
+                    <PlayCircle className="w-3.5 h-3.5" />
+                    <span>{togglingSnmpId === selectedDevice.id ? 'Đang bật lại...' : 'Bật lại SNMP'}</span>
+                  </button>
+                ) : null}
                 <button
                   onClick={() => runPoll(selectedDevice.id)}
                   disabled={pollingId === selectedDevice.id}
