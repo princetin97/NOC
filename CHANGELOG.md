@@ -17,6 +17,22 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+### Added
+- Thêm metric cảnh báo mới cho rule thiết bị: `ping_loss_packets` (mất gói ping theo số lượng gói).
+  - Cho phép cấu hình ngưỡng theo số gói mất trên mỗi lần probe 3 gói (0..3) để phát hiện mất kết nối nhanh hơn.
+  - Bổ sung lựa chọn metric này trong form tạo/sửa Alert Rule trên UI.
+
+### Changed
+- Tối ưu tải poller cho thiết bị SNMP lỗi kéo dài:
+  - Khi một thiết bị gặp `SNMP timeout` liên tiếp đến ngưỡng cấu hình, hệ thống tự động tạm dừng SNMP cho thiết bị đó và chuyển sang poll ping-only.
+  - Trạng thái tạm dừng SNMP được lưu trên Redis để giữ ổn định qua restart process.
+  - Khi quản trị viên cập nhật lại cấu hình SNMP của thiết bị (port/version/community/credential), trạng thái auto-pause sẽ được xoá và SNMP được bật lại.
+
+### Config
+- Thêm biến môi trường:
+  - `SNMP_AUTO_PAUSE_ENABLED` (mặc định `true`)
+  - `SNMP_AUTO_PAUSE_TIMEOUT_STREAK` (mặc định `6` lần timeout liên tiếp)
+
 ## [0.8.26] - 2026-09-22
 
 ### Performance

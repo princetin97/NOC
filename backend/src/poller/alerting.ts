@@ -2,6 +2,8 @@ import { prisma } from '../lib/db';
 import { publishEvent } from '../lib/events';
 import { dispatchAlertNotification } from '../lib/notifications';
 
+const PING_SAMPLE_PACKETS = 3;
+
 type RuleRow = {
   id: string;
   name: string;
@@ -287,6 +289,8 @@ async function evaluateInterfaceRule(
     ports: {
       id: string;
       ifName: string;
+      ifAlias: string | null;
+      ifDescr: string | null;
       ifOperStatus: string;
       inRateBps: number;
       outRateBps: number;
@@ -321,16 +325,17 @@ async function evaluateInterfaceRule(
     seenObjects.add(port.ifName);
     const metricValue = await readInterfaceMetric(rule.metric, port);
     if (metricValue === undefined) continue;
+    const interfaceDescription = rule.metric === 'interface_status' ? portDescription(port) : null;
 
     const breached = compare(metricValue, rule.condition, rule.threshold);
     const existing = openByObject.get(port.ifName);
 
     if (breached && !existing) {
-      await raiseAlert(alertSource, rule, metricValue, port.ifName);
+      await raiseAlert(alertSource, rule, metricValue, port.ifName, interfaceDescription);
     } else if (!breached && existing) {
-      await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue);
+      await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue, interfaceDescription);
     } else if (breached && existing) {
-      await maybeRenotify(alertSource, rule, existing, metricValue, port.ifName);
+      await maybeRenotify(alertSource, rule, existing, metricValue, port.ifName, interfaceDescription);
     }
   }
 
@@ -527,6 +532,7 @@ async function maybeRenotify(
   alert: { id: string; status: string; lastNotifiedAt: Date | null; timestamp: Date },
   value: number,
   objectName: string | null,
+  objectDescription: string | null = null,
 ): Promise<void> {
   if (alert.status !== 'active') return;
   const defaults = await getRenotifyDefaults();
@@ -548,6 +554,7 @@ async function maybeRenotify(
     ruleName: rule.name,
     siteId: source.siteId ?? null,
     objectName,
+    objectDescription,
     currentValue: formatMetricValue(rule.metric, rounded, rule.unit),
     threshold: isStatus ? undefined : `${rule.condition} ${rule.threshold}${rule.unit}`,
     category: alertCategory(rule),
@@ -559,6 +566,7 @@ async function raiseAlert(
   rule: RuleRow,
   metricValue: number,
   interfaceName: string | null,
+  interfaceDescription: string | null = null,
 ): Promise<void> {
   const rounded = Math.round(metricValue * 100) / 100;
   const portPart = interfaceName ? ` [${interfaceName}]` : '';
@@ -590,6 +598,7 @@ async function raiseAlert(
     ruleName: rule.name,
     siteId: source.siteId ?? null,
     objectName: interfaceName,
+    objectDescription: interfaceDescription,
     currentValue: valueLabel,
     threshold: isStatus ? undefined : `${rule.condition} ${rule.threshold}${rule.unit}`,
     category: alertCategory(rule),
@@ -602,6 +611,7 @@ async function resolveAlert(
   wasAcknowledged: boolean,
   rule?: Pick<RuleRow, 'name' | 'metric' | 'unit' | 'scope' | 'sensorType'>,
   currentMetricValue?: number,
+  objectDescription?: string | null,
 ): Promise<void> {
   const resolved = await prisma.alert.update({
     where: { id: alertId },
@@ -625,9 +635,17 @@ async function resolveAlert(
     ruleName: rule?.name ?? resolved.rule?.name ?? null,
     siteId: source.siteId ?? null,
     objectName: resolved.interfaceName,
+    objectDescription: objectDescription ?? null,
     currentValue,
     category: rule ? alertCategory(rule) : undefined,
   });
+}
+
+function portDescription(port: { ifAlias: string | null; ifDescr: string | null }): string | null {
+  const alias = (port.ifAlias ?? '').trim();
+  if (alias) return alias;
+  const descr = (port.ifDescr ?? '').trim();
+  return descr || null;
 }
 
 function readServiceMetric(
@@ -661,6 +679,8 @@ function readDeviceMetric(
       return device.temperature ?? undefined;
     case 'packet_loss':
       return device.packetLoss;
+    case 'ping_loss_packets':
+      return Math.max(0, Math.min(PING_SAMPLE_PACKETS, Math.round((device.packetLoss * PING_SAMPLE_PACKETS) / 100)));
     case 'uptime':
       return device.uptimeSeconds;
     case 'device_status':

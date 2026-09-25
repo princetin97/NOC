@@ -25,6 +25,7 @@ export interface AlertNotification {
   ruleName?: string | null;
   siteId?: string | null;
   objectName?: string | null;
+  objectDescription?: string | null;
   currentValue?: string | null;
   threshold?: string | null;
   // Alert category (e.g. "temperature", "service", "cpu"...) used to route to
@@ -89,6 +90,7 @@ function formatText(n: AlertNotification): string {
   lines.push(`🖥️ Đối tượng: ${n.deviceName} (${n.deviceIp})`);
   if (n.ruleName) lines.push(`📋 Nội dung: ${n.ruleName}`);
   if (n.objectName) lines.push(`📍 Thành phần: ${n.objectName}`);
+  if (n.objectDescription) lines.push(`📝 Mô tả cổng: ${n.objectDescription}`);
   lines.push(`🕒 Thời gian: ${formatAlertTimestamp(n.timestamp)}`);
   const stat: string[] = [];
   if (n.threshold) stat.push(`Ngưỡng ${n.threshold}`);

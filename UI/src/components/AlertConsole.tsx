@@ -881,6 +881,7 @@ const METRIC_CONFIG: Record<AlertMetric, MetricConfig> = {
   ping: { label: 'Ping (ms)', unit: 'ms', interface: false, kind: 'threshold', operators: ['>', '<'], defaultCondition: '>', defaultThreshold: 100, min: 0, step: 1, hint: 'Cảnh báo khi độ trễ ping cao.' },
   temperature: { label: 'Nhiệt độ (°C)', unit: '°C', interface: false, kind: 'threshold', operators: ['>', '<'], defaultCondition: '>', defaultThreshold: 65, min: 0, step: 1, hint: 'Cảnh báo khi nhiệt độ vượt ngưỡng.' },
   packet_loss: { label: 'Mất gói ping (%)', unit: '%', interface: false, kind: 'threshold', operators: ['>', '<'], defaultCondition: '>', defaultThreshold: 5, min: 0, max: 100, step: 1, hint: 'Cảnh báo khi tỉ lệ mất gói vượt ngưỡng.' },
+  ping_loss_packets: { label: 'Mất gói ping (gói/3)', unit: 'gói', interface: false, kind: 'threshold', operators: ['>', '<', '=='], defaultCondition: '>', defaultThreshold: 0, min: 0, max: 3, step: 1, hint: 'Cảnh báo theo số gói ping bị mất trong mỗi lần đo 3 gói.' },
   uptime: { label: 'Uptime (giây)', unit: 's', interface: false, kind: 'threshold', operators: ['<', '>'], defaultCondition: '<', defaultThreshold: 600, min: 0, step: 1, hint: 'Uptime < 600s: phát hiện thiết bị vừa khởi động lại.' },
   device_status: {
     label: 'Trạng thái thiết bị', unit: '', interface: false, kind: 'state',
@@ -1205,6 +1206,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
                 <option value="ping">Ping (ms)</option>
                 <option value="temperature">Nhiệt độ (°C)</option>
                 <option value="packet_loss">Mất gói ping (%)</option>
+                <option value="ping_loss_packets">Mất gói ping (gói/3)</option>
                 <option value="uptime">Uptime (giây)</option>
                 <option value="device_status">Trạng thái thiết bị</option>
               </optgroup>

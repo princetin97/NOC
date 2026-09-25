@@ -6,6 +6,7 @@ import { logger } from '../../lib/logger';
 import { discoveryQueue, pollQueue } from '../../lib/queue';
 import { scanSubnet } from '../../lib/subnet-scan';
 import { snmpGetSingle, snmpWalkColumn, varbindToNumber, varbindToString, withSession } from '../../lib/snmp';
+import { clearSnmpAutoPause } from '../../lib/snmpAutoPause';
 import { toCredentials } from '../../poller/metrics';
 import type { AuthedRequest } from '../middleware/auth';
 import { canAccessSite, deviceSiteWhere, isGlobalAdmin } from '../middleware/site-scope';
@@ -241,9 +242,23 @@ devicesRouter.put('/:id', async (req: AuthedRequest, res) => {
   }
 
   const device = await prisma.device.update({ where: { id: req.params.id }, data: patch });
+  if (hasSnmpReenablePatch(patch)) {
+    await clearSnmpAutoPause(req.params.id);
+    logger.info({ deviceId: req.params.id }, 'Admin updated SNMP settings: cleared SNMP auto-pause state');
+  }
   invalidateDeviceListCache();
   res.json(device);
 });
+
+function hasSnmpReenablePatch(patch: Partial<z.infer<typeof createDeviceSchema>>): boolean {
+  if (typeof patch.snmpPort === 'number' && patch.snmpPort > 0) return true;
+  if (typeof patch.snmpVersion === 'string') return true;
+  if (typeof patch.snmpCommunity === 'string' && patch.snmpCommunity.trim().length > 0) return true;
+  if (typeof patch.snmpV3User === 'string' && patch.snmpV3User.trim().length > 0) return true;
+  if (typeof patch.snmpV3AuthPass === 'string' && patch.snmpV3AuthPass.trim().length > 0) return true;
+  if (typeof patch.snmpV3PrivPass === 'string' && patch.snmpV3PrivPass.trim().length > 0) return true;
+  return false;
+}
 
 devicesRouter.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await findScopedDevice(req, req.params.id);

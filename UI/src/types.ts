@@ -291,6 +291,7 @@ export type AlertMetric =
   | 'ping'
   | 'temperature'
   | 'packet_loss'
+  | 'ping_loss_packets'
   | 'uptime'
   | 'interface_traffic'
   | 'interface_traffic_in'

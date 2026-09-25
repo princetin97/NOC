@@ -1,0 +1,52 @@
+import { redisConnection } from './queue';
+import { env } from './env';
+
+const STREAK_KEY_PREFIX = 'snmp:timeout-streak:';
+const PAUSED_KEY_PREFIX = 'snmp:auto-paused:';
+const STREAK_TTL_SECONDS = 24 * 60 * 60;
+
+function streakKey(deviceId: string): string {
+  return `${STREAK_KEY_PREFIX}${deviceId}`;
+}
+
+function pausedKey(deviceId: string): string {
+  return `${PAUSED_KEY_PREFIX}${deviceId}`;
+}
+
+export async function isSnmpAutoPaused(deviceId: string): Promise<boolean> {
+  if (!env.snmpAutoPauseEnabled) return false;
+  const raw = await redisConnection.get(pausedKey(deviceId));
+  return !!raw;
+}
+
+export async function recordSnmpTimeoutFailure(deviceId: string): Promise<{ streak: number; paused: boolean }> {
+  if (!env.snmpAutoPauseEnabled) return { streak: 0, paused: false };
+
+  const key = streakKey(deviceId);
+  const streak = await redisConnection.incr(key);
+  await redisConnection.expire(key, STREAK_TTL_SECONDS);
+
+  if (streak < env.snmpAutoPauseTimeoutStreak) return { streak, paused: false };
+
+  await redisConnection.set(
+    pausedKey(deviceId),
+    JSON.stringify({
+      pausedAt: new Date().toISOString(),
+      reason: 'snmp-timeout-streak',
+      threshold: env.snmpAutoPauseTimeoutStreak,
+      streak,
+    }),
+  );
+  await redisConnection.del(key);
+  return { streak, paused: true };
+}
+
+export async function clearSnmpTimeoutStreak(deviceId: string): Promise<void> {
+  if (!env.snmpAutoPauseEnabled) return;
+  await redisConnection.del(streakKey(deviceId));
+}
+
+export async function clearSnmpAutoPause(deviceId: string): Promise<void> {
+  if (!env.snmpAutoPauseEnabled) return;
+  await redisConnection.del(pausedKey(deviceId), streakKey(deviceId));
+}

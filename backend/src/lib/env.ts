@@ -57,6 +57,10 @@ export const env = {
   pollFailureBackoffMaxSeconds: parsePositiveInt(process.env.POLL_FAILURE_BACKOFF_MAX_SECONDS, 900),
   snmpTimeoutMs: parsePositiveInt(process.env.SNMP_TIMEOUT_MS, 3000),
   snmpRetries: parsePositiveInt(process.env.SNMP_RETRIES, 1),
+  // Auto-pause SNMP polling for a device after repeated SNMP timeout failures.
+  // Device then runs ping-only until an admin updates SNMP settings for that device.
+  snmpAutoPauseEnabled: parseBoolean(process.env.SNMP_AUTO_PAUSE_ENABLED, true),
+  snmpAutoPauseTimeoutStreak: parsePositiveInt(process.env.SNMP_AUTO_PAUSE_TIMEOUT_STREAK, 6),
   // Base interval for HTTP/TCP/DNS/PING service checks (was hardcoded to 60s).
   serviceCheckIntervalSeconds: parsePositiveInt(process.env.SERVICE_CHECK_INTERVAL_SECONDS, 20),
   // Faster re-check cadence applied only to services currently down/warning, so a

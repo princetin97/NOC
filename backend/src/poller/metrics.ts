@@ -21,6 +21,7 @@ import { evaluateAlertsForDevice } from './alerting';
 import { discoverSensors } from './sensors';
 import { pollProcessors } from './processors';
 import { markPollFailure, markPollSuccess } from './cooldown';
+import { clearSnmpTimeoutStreak, isSnmpAutoPaused, recordSnmpTimeoutFailure } from '../lib/snmpAutoPause';
 
 // Device liveness anti-flap: require N consecutive unreachable polls before
 // switching status to down, while recovering to up immediately on any success.
@@ -95,12 +96,13 @@ export async function pollDevice(deviceId: string): Promise<void> {
   let temperature = device.temperature ?? undefined;
   let uptimeSeconds = device.uptimeSeconds;
   let snmpReachable = false;
+  const snmpPaused = device.snmpPort > 0 ? await isSnmpAutoPaused(deviceId) : false;
 
   const creds = toCredentials(device);
 
   const snmpPromise = (async () => {
     try {
-      if (device.snmpPort > 0) {
+      if (device.snmpPort > 0 && !snmpPaused) {
         await withSession(creds, async (session) => {
       // Prefer HOST-RESOURCES hrSystemUptime (real OS boot time); Windows' sysUpTime is only
       // the SNMP service uptime and resets on service restart (LibreNMS uses the same order).
@@ -145,8 +147,18 @@ export async function pollDevice(deviceId: string): Promise<void> {
           processors: cpuResult?.processors,
         });
       });
+      await clearSnmpTimeoutStreak(deviceId);
       }
     } catch (err) {
+      if (isSnmpTimeoutError(err)) {
+        const state = await recordSnmpTimeoutFailure(deviceId);
+        if (state.paused) {
+          logger.warn(
+            { deviceId, name: device.name, ip: device.ip, timeoutStreak: state.streak },
+            'Auto-paused SNMP polling for device after repeated SNMP timeouts; using ping-only until admin re-enables SNMP',
+          );
+        }
+      }
       logger.debug({ err, deviceId }, 'SNMP poll failed, falling back to ping-only status');
     }
   })();
@@ -199,6 +211,12 @@ export async function pollDevice(deviceId: string): Promise<void> {
   await evaluateAlertsForDevice(deviceId);
   await scheduleTransitionBoostPolls(deviceId, previousStatus, status);
   await publishEvent('device:updated', { deviceId, status, cpuUsage, memoryUsage });
+}
+
+function isSnmpTimeoutError(err: unknown): boolean {
+  const name = typeof err === 'object' && err && 'name' in err ? String((err as { name?: unknown }).name ?? '') : '';
+  const message = typeof err === 'object' && err && 'message' in err ? String((err as { message?: unknown }).message ?? '') : '';
+  return name === 'RequestTimedOutError' || /timed out/i.test(message);
 }
 
 const HR_STORAGE_RAM = '1.3.6.1.2.1.25.2.1.2'; // HOST-RESOURCES-TYPES::hrStorageRam
