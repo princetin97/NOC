@@ -30,6 +30,7 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
   - API và UI hiển thị thêm trạng thái `SNMP AUTO-PAUSED` để nhận diện nhanh thiết bị đang ở chế độ ping-only.
   - Bổ sung bộ lọc danh sách thiết bị theo trạng thái SNMP auto-pause (Tất cả/Đang pause/Bình thường).
   - Bổ sung thao tác nhanh "Bật lại SNMP" cho thiết bị auto-pause ngay trên bảng và màn hình chi tiết.
+  - Tinh gọn bố cục thanh công cụ quản trị mục Thiết bị: rút gọn ô tìm kiếm, rút ngắn nhãn bộ lọc/nút thao tác để tránh control quá dài và dễ quét mắt hơn.
 
 ### Config
 - Thêm biến môi trường:

@@ -1208,9 +1208,9 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
         darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
       }`}>
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-          <div className="xl:col-span-5">
+          <div className="xl:col-span-4 2xl:col-span-3">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Tìm kiếm</div>
-            <div className="relative">
+            <div className="relative max-w-xl">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-300" />
               <input
                 type="text"
@@ -1224,7 +1224,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             </div>
           </div>
 
-          <div className="xl:col-span-7">
+          <div className="xl:col-span-8 2xl:col-span-9">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Bộ lọc</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
               <select
@@ -1234,7 +1234,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
                 }`}
               >
-                <option value="all">Loại thiết bị: Tất cả</option>
+                <option value="all">Loại: Tất cả</option>
                 <option value="router">Router Định tuyến</option>
                 <option value="switch">Switch Chuyển mạch</option>
                 <option value="firewall">Firewall Tường lửa</option>
@@ -1251,7 +1251,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
                 }`}
               >
-                <option value="all">Hãng sản xuất: Tất cả</option>
+                <option value="all">Hãng: Tất cả</option>
                 {vendorOptions.map((vendor) => (
                   <option key={vendor} value={vendor}>{vendor}</option>
                 ))}
@@ -1289,9 +1289,9 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
                 }`}
               >
-                <option value="all">SNMP Auto-pause: Tất cả</option>
-                <option value="paused">SNMP Auto-pause: Đang pause</option>
-                <option value="active">SNMP Auto-pause: Bình thường</option>
+                <option value="all">SNMP pause: Tất cả</option>
+                <option value="paused">SNMP pause: Đang pause</option>
+                <option value="active">SNMP pause: Bình thường</option>
               </select>
 
               {groups.length > 0 && (
@@ -1338,15 +1338,15 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   });
                 }}
                 disabled={filteredDeviceIds.length === 0 || assigningBatch}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
+                className="px-3 py-1.5 whitespace-nowrap bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
                 title="Chọn hoặc bỏ chọn toàn bộ thiết bị đang hiển thị"
               >
-                {allFilteredSelected ? 'Bỏ chọn hiển thị' : 'Chọn hiển thị'}
+                {allFilteredSelected ? 'Bỏ chọn' : 'Chọn hiển thị'}
               </button>
               <button
                 onClick={() => setSelectedDeviceIds(new Set())}
                 disabled={selectedDeviceIds.size === 0 || assigningBatch || deletingSelected}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
+                className="px-3 py-1.5 whitespace-nowrap bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
                 title="Xóa vùng chọn kéo thả"
               >
                 Xóa vùng chọn
@@ -1354,10 +1354,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               <button
                 onClick={() => { void handleDeleteSelected(); }}
                 disabled={selectedDeviceIds.size === 0 || assigningBatch || deletingSelected}
-                className="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+                className="px-3 py-1.5 whitespace-nowrap bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
                 title="Xóa nhiều thiết bị theo vùng tích chọn"
               >
-                {deletingSelected ? 'Đang xóa...' : `Xóa đã chọn (${selectedDeviceIds.size})`}
+                {deletingSelected ? 'Đang xóa...' : `Xóa chọn (${selectedDeviceIds.size})`}
               </button>
             </div>
           </div>
@@ -1368,10 +1368,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               <div className="relative" ref={columnMenuRef}>
                 <button
                   onClick={() => setShowColumnMenu((v) => !v)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                  className="px-3 py-1.5 whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
                   title="Tùy chọn cột hiển thị"
                 >
-                  <Columns3 className="w-3.5 h-3.5" /> Cột hiển thị
+                  <Columns3 className="w-3.5 h-3.5" /> Cột
                 </button>
                 {showColumnMenu && (
                   <div className={`absolute right-0 mt-2 w-64 rounded-xl border shadow-2xl z-20 p-3 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
@@ -1396,15 +1396,15 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
               <button
                 onClick={() => { setGroupMessage(null); setShowGroupModal(true); }}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                className="px-3 py-1.5 whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
                 title="Quản lý nhóm thiết bị"
               >
-                <Boxes className="w-3.5 h-3.5" /> Nhóm thiết bị
+                <Boxes className="w-3.5 h-3.5" /> Nhóm
               </button>
 
               <button
                 onClick={openCreateGroupModal}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                className="px-3 py-1.5 whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
                 title="Thêm nhóm mới"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm nhóm
@@ -1412,7 +1412,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
               <button
                 onClick={onOpenScanSubnet}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
+                className="px-3 py-1.5 whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 flex items-center gap-1.5"
                 title="Quét dải mạng để tìm thiết bị SNMP"
               >
                 <Radar className="w-3.5 h-3.5" /> Quét Subnet
@@ -1420,9 +1420,9 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
               <button
                 onClick={onOpenAddDevice}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
+                className="px-3 py-1.5 whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors"
               >
-                + Thêm Thiết Bị
+                + Thiết bị
               </button>
             </div>
           </div>
