@@ -17,7 +17,7 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
-## [0.8.27] - 2026-09-25
+## [0.8.33] - 2026-09-25
 
 ### Performance
 - Tiếp tục tối ưu tải poller và DB sau cơ chế SNMP auto-pause:
