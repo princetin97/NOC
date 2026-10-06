@@ -61,6 +61,9 @@ export const env = {
   // Device then runs ping-only until an admin updates SNMP settings for that device.
   snmpAutoPauseEnabled: parseBoolean(process.env.SNMP_AUTO_PAUSE_ENABLED, true),
   snmpAutoPauseTimeoutStreak: parsePositiveInt(process.env.SNMP_AUTO_PAUSE_TIMEOUT_STREAK, 6),
+  // While SNMP auto-pause is active, periodically probe SNMP again so recovered
+  // devices can automatically resume full SNMP polling.
+  snmpAutoPauseRetryMinutes: parsePositiveInt(process.env.SNMP_AUTO_PAUSE_RETRY_MINUTES, 10),
   // Base interval for HTTP/TCP/DNS/PING service checks (was hardcoded to 60s).
   serviceCheckIntervalSeconds: parsePositiveInt(process.env.SERVICE_CHECK_INTERVAL_SECONDS, 20),
   // Faster re-check cadence applied only to services currently down/warning, so a

@@ -216,6 +216,9 @@ async function ensurePortSecuritySystemRule(): Promise<void> {
       scope: 'interface',
       siteId: null,
       renotifyMinutes: 0,
+      conditions: {
+        create: [{ order: 0, condition: '==', threshold: 1, severity: 'high' }],
+      },
     },
   });
 }
@@ -266,7 +269,45 @@ const ruleSchema = z.object({
   renotifyMinutes: z.number().int().min(0).max(1440).optional(),
   portIds: z.array(z.string()).optional(),
   deviceIds: z.array(z.string()).optional(),
+  conditions: z
+    .array(
+      z.object({
+        condition: z.enum(['>', '<', '==', '!=']),
+        threshold: z.number(),
+        severity: z.enum(['critical', 'high', 'medium', 'low']).default('medium'),
+      }),
+    )
+    .optional(),
 });
+
+type RuleConditionInput = {
+  condition: '>' | '<' | '==' | '!=';
+  threshold: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+};
+
+function normalizeRuleConditions(input: RuleConditionInput[] | undefined, fallback: RuleConditionInput): RuleConditionInput[] {
+  const base = input && input.length > 0 ? input : [fallback];
+  return base.map((c) => ({ condition: c.condition, threshold: c.threshold, severity: c.severity }));
+}
+
+function sameRuleConditions(
+  ruleConds: { condition: string; threshold: number; severity: string; order: number }[] | undefined,
+  dataConds: RuleConditionInput[] | undefined,
+): boolean {
+  const a = (ruleConds ?? [])
+    .slice()
+    .sort((x, y) => x.order - y.order)
+    .map((c) => ({ condition: c.condition, threshold: c.threshold, severity: c.severity }));
+  const b = (dataConds ?? []).map((c) => ({ condition: c.condition, threshold: c.threshold, severity: c.severity }));
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].condition !== b[i].condition) return false;
+    if (a[i].threshold !== b[i].threshold) return false;
+    if (a[i].severity !== b[i].severity) return false;
+  }
+  return true;
+}
 
 const copyRuleToSitesSchema = z.object({
   siteIds: z.array(z.string().min(1)).min(1),
@@ -309,6 +350,7 @@ function isSameRuleSignature(
     portIds: string[];
     serviceIds: string[];
     sensorIds: string[];
+    conditions?: { condition: string; threshold: number; severity: string; order: number }[];
   },
   data: {
     name: string;
@@ -329,6 +371,7 @@ function isSameRuleSignature(
     portIds: string[];
     serviceIds: string[];
     sensorIds: string[];
+    conditions?: RuleConditionInput[];
   },
 ): boolean {
   return (
@@ -349,7 +392,8 @@ function isSameRuleSignature(
     sameStringArray(rule.portIds, data.portIds) &&
     sameStringArray(rule.serviceIds, data.serviceIds) &&
     sameStringArray(rule.sensorIds, data.sensorIds) &&
-    sameStringArray(rule.groupIds, data.groupIds)
+    sameStringArray(rule.groupIds, data.groupIds) &&
+    sameRuleConditions(rule.conditions, data.conditions)
   );
 }
 
@@ -412,6 +456,7 @@ alertRulesRouter.get('/', async (req: AuthedRequest, res) => {
       group: { select: { name: true } },
       service: { select: { name: true, target: true, type: true, port: true } },
       sensor: { select: { description: true, unit: true, type: true } },
+      conditions: { orderBy: { order: 'asc' } },
     },
   });
 
@@ -456,7 +501,36 @@ alertRulesRouter.post('/', async (req: AuthedRequest, res) => {
     }
   }
 
-  res.status(201).json(await prisma.alertRule.create({ data: withRuleTargets(parsed.data) }));
+  const normalizedConditions = normalizeRuleConditions(parsed.data.conditions, {
+    condition: parsed.data.condition,
+    threshold: parsed.data.threshold,
+    severity: parsed.data.severity,
+  });
+  const primaryCondition = normalizedConditions[0];
+  const { conditions: _ignoredConditions, ...parsedWithoutConditions } = parsed.data;
+  const createData = withRuleTargets({
+    ...parsedWithoutConditions,
+    condition: primaryCondition.condition,
+    threshold: primaryCondition.threshold,
+    severity: primaryCondition.severity,
+  });
+
+  const created = await prisma.alertRule.create({
+    data: {
+      ...createData,
+      conditions: {
+        create: normalizedConditions.map((c, index) => ({
+          order: index,
+          condition: c.condition,
+          threshold: c.threshold,
+          severity: c.severity,
+        })),
+      },
+    },
+    include: { conditions: { orderBy: { order: 'asc' } } },
+  });
+
+  res.status(201).json(created);
 });
 
 alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
@@ -465,7 +539,10 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
     return;
   }
 
-  const source = await prisma.alertRule.findFirst({ where: { id: req.params.id, ...(alertRuleScopeWhere(req) ?? {}) } });
+  const source = await prisma.alertRule.findFirst({
+    where: { id: req.params.id, ...(alertRuleScopeWhere(req) ?? {}) },
+    include: { conditions: { orderBy: { order: 'asc' } } },
+  });
   if (!source) {
     res.status(404).json({ error: 'Rule not found' });
     return;
@@ -493,15 +570,20 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
   let updated = 0;
   let skipped = 0;
   let deduplicated = 0;
+  const sourceConditions = normalizeRuleConditions(
+    source.conditions.map((c) => ({ condition: c.condition as RuleConditionInput['condition'], threshold: c.threshold, severity: c.severity as RuleConditionInput['severity'] })),
+    { condition: source.condition as RuleConditionInput['condition'], threshold: source.threshold, severity: source.severity as RuleConditionInput['severity'] },
+  );
+  const primaryCondition = sourceConditions[0];
 
   for (const siteId of targetSiteIds) {
     const copyData = withRuleTargets({
       name: source.name,
       metric: source.metric,
-      condition: source.condition,
-      threshold: source.threshold,
+      condition: primaryCondition.condition,
+      threshold: primaryCondition.threshold,
       unit: source.unit,
-      severity: source.severity,
+      severity: primaryCondition.severity,
       enabled: source.enabled,
       description: source.description ?? undefined,
       scope: source.scope,
@@ -519,6 +601,7 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
       serviceIds: parsed.data.copyTargets ? source.serviceIds : [],
       sensorId: parsed.data.copyTargets ? source.sensorId : null,
       sensorIds: parsed.data.copyTargets ? source.sensorIds : [],
+      conditions: sourceConditions,
     });
 
     if (!parsed.data.copyTargets && source.scope === 'sensor' && !source.sensorType) {
@@ -550,6 +633,7 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
         portIds: true,
         serviceIds: true,
         sensorIds: true,
+        conditions: { select: { condition: true, threshold: true, severity: true, order: true } },
       },
     });
 
@@ -573,6 +657,7 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
         portIds: copyData.portIds ?? [],
         serviceIds: copyData.serviceIds ?? [],
         sensorIds: copyData.sensorIds ?? [],
+        conditions: copyData.conditions,
       }),
     );
 
@@ -581,10 +666,21 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
       await prisma.alertRule.update({
         where: { id: canonical.id },
         data: {
-          severity: copyData.severity,
+          condition: primaryCondition.condition,
+          threshold: primaryCondition.threshold,
+          severity: primaryCondition.severity,
           enabled: copyData.enabled,
           description: copyData.description,
           renotifyMinutes: copyData.renotifyMinutes,
+          conditions: {
+            deleteMany: {},
+            create: sourceConditions.map((c, index) => ({
+              order: index,
+              condition: c.condition,
+              threshold: c.threshold,
+              severity: c.severity,
+            })),
+          },
         },
       });
       updated += 1;
@@ -599,7 +695,19 @@ alertRulesRouter.post('/:id/copy-sites', async (req: AuthedRequest, res) => {
       continue;
     }
 
-    await prisma.alertRule.create({ data: copyData });
+    await prisma.alertRule.create({
+      data: {
+        ...copyData,
+        conditions: {
+          create: sourceConditions.map((c, index) => ({
+            order: index,
+            condition: c.condition,
+            threshold: c.threshold,
+            severity: c.severity,
+          })),
+        },
+      },
+    });
     created += 1;
   }
 
@@ -622,7 +730,10 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
     return;
   }
 
-  const source = await prisma.alertRule.findFirst({ where: { id: req.params.id, ...(alertRuleScopeWhere(req) ?? {}) } });
+  const source = await prisma.alertRule.findFirst({
+    where: { id: req.params.id, ...(alertRuleScopeWhere(req) ?? {}) },
+    include: { conditions: { orderBy: { order: 'asc' } } },
+  });
   if (!source) {
     res.status(404).json({ error: 'Rule not found' });
     return;
@@ -640,14 +751,20 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
     return;
   }
 
+  const sourceConditions = normalizeRuleConditions(
+    source.conditions.map((c) => ({ condition: c.condition as RuleConditionInput['condition'], threshold: c.threshold, severity: c.severity as RuleConditionInput['severity'] })),
+    { condition: source.condition as RuleConditionInput['condition'], threshold: source.threshold, severity: source.severity as RuleConditionInput['severity'] },
+  );
+  const primaryCondition = sourceConditions[0];
+
   const buildCopyData = (siteId: string) =>
     withRuleTargets({
       name: source.name,
       metric: source.metric,
-      condition: source.condition,
-      threshold: source.threshold,
+      condition: primaryCondition.condition,
+      threshold: primaryCondition.threshold,
       unit: source.unit,
-      severity: source.severity,
+      severity: primaryCondition.severity,
       enabled: source.enabled,
       description: source.description ?? undefined,
       scope: source.scope,
@@ -665,6 +782,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
       serviceIds: parsed.data.copyTargets ? source.serviceIds : [],
       sensorId: parsed.data.copyTargets ? source.sensorId : null,
       sensorIds: parsed.data.copyTargets ? source.sensorIds : [],
+      conditions: sourceConditions,
     });
 
   let created = 0;
@@ -697,6 +815,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
         portIds: true,
         serviceIds: true,
         sensorIds: true,
+        conditions: { select: { condition: true, threshold: true, severity: true, order: true } },
       },
     });
 
@@ -720,6 +839,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
         portIds: copyData.portIds ?? [],
         serviceIds: copyData.serviceIds ?? [],
         sensorIds: copyData.sensorIds ?? [],
+        conditions: copyData.conditions,
       }),
     );
 
@@ -728,10 +848,21 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
       await prisma.alertRule.update({
         where: { id: canonical.id },
         data: {
-          severity: copyData.severity,
+          condition: copyData.conditions?.[0]?.condition ?? copyData.condition,
+          threshold: copyData.conditions?.[0]?.threshold ?? copyData.threshold,
+          severity: copyData.conditions?.[0]?.severity ?? copyData.severity,
           enabled: copyData.enabled,
           description: copyData.description,
           renotifyMinutes: copyData.renotifyMinutes,
+          conditions: {
+            deleteMany: {},
+            create: (copyData.conditions ?? []).map((c, index) => ({
+              order: index,
+              condition: c.condition,
+              threshold: c.threshold,
+              severity: c.severity,
+            })),
+          },
         },
       });
       updated += 1;
@@ -744,7 +875,19 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
       continue;
     }
 
-    await prisma.alertRule.create({ data: copyData });
+    await prisma.alertRule.create({
+      data: {
+        ...copyData,
+        conditions: {
+          create: (copyData.conditions ?? []).map((c, index) => ({
+            order: index,
+            condition: c.condition,
+            threshold: c.threshold,
+            severity: c.severity,
+          })),
+        },
+      },
+    });
     created += 1;
   }
 
@@ -777,6 +920,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
       portIds: true,
       serviceIds: true,
       sensorIds: true,
+      conditions: { select: { condition: true, threshold: true, severity: true, order: true } },
     },
   });
 
@@ -804,6 +948,7 @@ alertRulesRouter.post('/:id/apply-sites', async (req: AuthedRequest, res) => {
         portIds: expected.portIds ?? [],
         serviceIds: expected.serviceIds ?? [],
         sensorIds: expected.sensorIds ?? [],
+        conditions: expected.conditions,
       })
     ) {
       await prisma.alertRule.delete({ where: { id: candidate.id } });
@@ -837,8 +982,49 @@ alertRulesRouter.put('/:id', async (req: AuthedRequest, res) => {
     res.status(403).json({ error: 'Bạn không có quyền chuyển rule sang trụ sở này' });
     return;
   }
-  const shouldSyncSeverity = typeof parsed.data.severity !== 'undefined';
-  const rule = await prisma.alertRule.update({ where: { id: req.params.id }, data: withRuleTargets(parsed.data) });
+  const incomingConditions =
+    typeof parsed.data.conditions !== 'undefined'
+      ? normalizeRuleConditions(parsed.data.conditions, {
+          condition: (parsed.data.condition ?? existingForScope.condition) as RuleConditionInput['condition'],
+          threshold: parsed.data.threshold ?? existingForScope.threshold,
+          severity: (parsed.data.severity ?? existingForScope.severity) as RuleConditionInput['severity'],
+        })
+      : undefined;
+  const primaryCondition = incomingConditions?.[0];
+  const shouldSyncSeverity = typeof parsed.data.severity !== 'undefined' && !incomingConditions;
+
+  const { conditions: _ignoredConditions, ...parsedWithoutConditions } = parsed.data;
+  const updateData = withRuleTargets({
+    ...parsedWithoutConditions,
+    ...(primaryCondition
+      ? {
+          condition: primaryCondition.condition,
+          threshold: primaryCondition.threshold,
+          severity: primaryCondition.severity,
+        }
+      : {}),
+  });
+
+  const rule = await prisma.alertRule.update({
+    where: { id: req.params.id },
+    data: {
+      ...(updateData as any),
+      ...(incomingConditions
+        ? {
+            conditions: {
+              deleteMany: {},
+              create: incomingConditions.map((c, index) => ({
+                order: index,
+                condition: c.condition,
+                threshold: c.threshold,
+                severity: c.severity,
+              })),
+            },
+          }
+        : {}),
+    },
+    include: { conditions: { orderBy: { order: 'asc' } } },
+  });
   if (shouldSyncSeverity) {
     // Keep open alerts aligned with the latest rule severity after edits.
     if (rule.metric === 'port_security_trap') {

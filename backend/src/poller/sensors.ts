@@ -458,6 +458,16 @@ async function readPureStorageSensors(session: Session): Promise<DiscoveredSenso
 const HR_STORAGE_FIXED_DISK = '1.3.6.1.2.1.25.2.1.4';
 const HR_STORAGE_VIRTUAL_MEMORY = '1.3.6.1.2.1.25.2.1.3'; // Windows "Virtual Memory" / swap
 
+function mountCandidatesFromDescr(descr: string): string[] {
+  const trimmed = descr.trim();
+  const candidates = new Set<string>();
+  if (trimmed) candidates.add(trimmed);
+  // Many agents keep the mountpoint at the beginning, e.g. "/data" or "/data (/dev/mapper/...)".
+  const firstPath = trimmed.match(/\/[A-Za-z0-9._\-\/]+/);
+  if (firstPath?.[0]) candidates.add(firstPath[0]);
+  return Array.from(candidates);
+}
+
 /** HOST-RESOURCES-MIB hrStorageTable: fixed-disk usage (Junos RE storage, Linux, appliances). */
 async function readStorageSensors(session: Session): Promise<DiscoveredSensor[]> {
   const [storageTypes, descrs, sizes, useds] = await Promise.all([
@@ -467,6 +477,23 @@ async function readStorageSensors(session: Session): Promise<DiscoveredSensor[]>
     snmpWalkColumn(session, OID.hrStorageUsed),
   ]);
 
+  let dskPercentByPath = new Map<string, number>();
+  try {
+    const [dskPaths, dskPercents] = await Promise.all([
+      snmpWalkColumn(session, OID.ucdDskPath),
+      snmpWalkColumn(session, OID.ucdDskPercent),
+    ]);
+    for (const [idx, pathVb] of dskPaths) {
+      const path = varbindToString(pathVb)?.trim();
+      const percent = varbindToNumber(dskPercents.get(idx));
+      if (!path || percent === undefined) continue;
+      if (percent < 0 || percent > 100) continue;
+      dskPercentByPath.set(path, percent);
+    }
+  } catch {
+    // UCD-SNMP disk table is optional; HOST-RESOURCES fallback keeps compatibility.
+  }
+
   const sensors: DiscoveredSensor[] = [];
   for (const [idx, typeVb] of storageTypes) {
     const storageType = varbindToString(typeVb);
@@ -474,8 +501,13 @@ async function readStorageSensors(session: Session): Promise<DiscoveredSensor[]>
     const used = varbindToNumber(useds.get(idx));
     if (storageType === HR_STORAGE_FIXED_DISK) {
       if (!size || used === undefined) continue;
-      const percent = Math.min(100, Math.round((used / size) * 1000) / 10);
       const descr = varbindToString(descrs.get(idx))?.trim() || `Disk ${idx}`;
+      const ucdPercent = mountCandidatesFromDescr(descr)
+        .map((c) => dskPercentByPath.get(c))
+        .find((v): v is number => v !== undefined);
+      // Prefer dskPercent (matches Linux `df` semantics including reserved blocks),
+      // fall back to hrStorageUsed/hrStorageSize for non-UCD agents.
+      const percent = ucdPercent ?? Math.min(100, Math.round((used / size) * 1000) / 10);
       sensors.push({ type: 'disk', index: `hr-${idx}`, description: descr, value: percent, unit: '%', status: percent > 90 ? 'warning' : 'ok' });
     } else if (storageType === HR_STORAGE_VIRTUAL_MEMORY) {
       // Windows pagefile / Unix swap — shown as a separate "memory" gauge like LibreNMS.

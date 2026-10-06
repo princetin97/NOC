@@ -316,6 +316,11 @@ export interface AlertRule {
   metric: AlertMetric;
   condition: '>' | '<' | '==' | '!=';
   threshold: number;
+  conditions?: Array<{
+    condition: '>' | '<' | '==' | '!=';
+    threshold: number;
+    severity: AlertSeverity;
+  }>;
   unit: string;
   severity: AlertSeverity;
   enabled: boolean;
@@ -349,6 +354,11 @@ export interface AlertRuleInput {
   metric: AlertMetric;
   condition: '>' | '<' | '==' | '!=';
   threshold: number;
+  conditions?: Array<{
+    condition: '>' | '<' | '==' | '!=';
+    threshold: number;
+    severity: AlertSeverity;
+  }>;
   unit?: string;
   severity?: AlertSeverity;
   enabled?: boolean;

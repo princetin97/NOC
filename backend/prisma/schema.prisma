@@ -560,6 +560,7 @@ model AlertRule {
   renotifyMinutes Int          @default(0)
 
   alerts Alert[]
+  conditions AlertRuleCondition[]
 
   @@index([deviceId])
   @@index([portId])
@@ -568,6 +569,20 @@ model AlertRule {
   @@index([serviceId])
   @@index([siteId])
   @@index([enabled])
+}
+
+model AlertRuleCondition {
+  id        String        @id @default(uuid())
+  rule      AlertRule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleId    String
+  order     Int           @default(0)
+  condition String
+  threshold Float
+  severity  AlertSeverity @default(medium)
+  createdAt DateTime      @default(now())
+
+  @@index([ruleId])
+  @@index([ruleId, order])
 }
 
 // Global per-severity re-notify defaults, used by a rule when its own renotifyMinutes

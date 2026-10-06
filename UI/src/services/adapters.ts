@@ -142,6 +142,12 @@ export interface RawAlertRule {
   metric: string;
   condition: string;
   threshold: number;
+  conditions?: Array<{
+    condition: string;
+    threshold: number;
+    severity: string;
+    order?: number;
+  }>;
   unit: string;
   severity: string;
   enabled: boolean;
@@ -365,14 +371,27 @@ export function mapAlert(raw: RawAlert): NetworkAlert {
 }
 
 export function mapAlertRule(raw: RawAlertRule): AlertRule {
+  const mappedConditions = (raw.conditions ?? []).map((c) => ({
+    condition: c.condition as AlertRule['condition'],
+    threshold: c.threshold,
+    severity: c.severity as AlertSeverity,
+  }));
+  const primary = mappedConditions[0];
+  const severityRank: Record<AlertSeverity, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+  const strongestSeverity = mappedConditions.length > 0
+    ? mappedConditions
+        .map((c) => c.severity)
+        .sort((a, b) => severityRank[b] - severityRank[a])[0]
+    : null;
   return {
     id: raw.id,
     name: raw.name,
     metric: raw.metric as AlertRule['metric'],
-    condition: raw.condition as AlertRule['condition'],
-    threshold: raw.threshold,
+    condition: (primary?.condition ?? raw.condition) as AlertRule['condition'],
+    threshold: primary?.threshold ?? raw.threshold,
+    conditions: mappedConditions,
     unit: raw.unit,
-    severity: raw.severity as AlertSeverity,
+    severity: (strongestSeverity ?? primary?.severity ?? raw.severity) as AlertSeverity,
     enabled: raw.enabled,
     description: raw.description ?? '',
     scope: (raw.scope as AlertRule['scope']) ?? 'device',

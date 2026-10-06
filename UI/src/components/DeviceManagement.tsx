@@ -199,6 +199,11 @@ const sensorStatusColor = (status: string): string => {
   }
 };
 
+function pickSensorValue(sensors: DeviceSensor[], predicate: (s: DeviceSensor) => boolean): number | null {
+  const hit = sensors.find((s) => predicate(s) && s.value !== null && s.value !== undefined && !Number.isNaN(s.value));
+  return hit?.value ?? null;
+}
+
 // Health panel: groups discovered sensors by category, shown in the overview tab.
 const DeviceSensorsPanel: React.FC<{ sensors: DeviceSensor[] }> = ({ sensors }) => {
   if (!sensors || sensors.length === 0) {
@@ -752,6 +757,25 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     return map.esxi ? map : null;
   }, [selectedDevice]);
 
+  const isUpsDevice = useMemo(() => {
+    if (!selectedDevice) return false;
+    if (selectedDevice.type === 'ups') return true;
+    const fp = `${selectedDevice.vendor} ${selectedDevice.model} ${selectedDevice.os} ${selectedDevice.sysObjectID ?? ''}`.toLowerCase();
+    return /\bups\b|smart-ups|eaton|vertiv|cyberpower|apc/.test(fp) || (selectedDevice.sysObjectID ?? '').startsWith('1.3.6.1.4.1.534');
+  }, [selectedDevice]);
+
+  const upsTelemetry = useMemo(() => {
+    const sensors = detailSensors ?? [];
+    return {
+      batteryPct: pickSensorValue(sensors, (s) => s.index === 'ups-charge' || s.index === 'apc-charge' || (s.type === 'battery' && (s.unit ?? '') === '%')),
+      outputLoadPct: pickSensorValue(sensors, (s) => s.index.startsWith('ups-out-load-') || s.index === 'apc-out-load' || (s.type === 'load' && (s.unit ?? '') === '%')),
+      runtimeMin: pickSensorValue(sensors, (s) => s.index === 'ups-runtime' || s.index === 'apc-runtime' || s.type === 'runtime'),
+      inputVoltage: pickSensorValue(sensors, (s) => s.index.startsWith('ups-in-v-') || s.index === 'apc-in-v'),
+      outputVoltage: pickSensorValue(sensors, (s) => s.index.startsWith('ups-out-v-') || s.index === 'apc-out-v'),
+      batteryTemp: pickSensorValue(sensors, (s) => s.index === 'ups-batt-temp' || s.index === 'apc-batt-temp' || (s.type === 'temperature' && /ac quy|ắc quy|battery/i.test(s.description))),
+    };
+  }, [detailSensors]);
+
   useEffect(() => {
     loadGroups();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1073,41 +1097,36 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (dev.snmpAutoPaused) {
+                void resumeSnmpAutoPause(dev.id);
+                return;
+              }
               void toggleSnmpMonitoring(dev.id, !dev.disabled);
             }}
             disabled={togglingSnmpId === dev.id}
             className={`p-1 rounded border disabled:opacity-60 ${
-              dev.disabled
+              dev.snmpAutoPaused
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                : dev.disabled
                 ? 'bg-red-500/15 border-red-500/30 text-red-300 hover:bg-red-500/25'
                 : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
             }`}
             title={
-              dev.disabled
+              dev.snmpAutoPaused
+                ? 'Thiết bị đang SNMP auto-pause. Bấm để bật lại query SNMP ngay.'
+                : dev.disabled
                 ? 'Thiết bị đang tạm dừng query SNMP. Bấm để bật lại.'
                 : 'Thiết bị đang bật query SNMP. Bấm để tạm dừng.'
             }
           >
             {togglingSnmpId === dev.id ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : dev.disabled ? (
+            ) : dev.snmpAutoPaused || dev.disabled ? (
               <PlayCircle className="w-3.5 h-3.5" />
             ) : (
               <PauseCircle className="w-3.5 h-3.5" />
             )}
           </button>
-          {dev.snmpAutoPaused ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                void resumeSnmpAutoPause(dev.id);
-              }}
-              disabled={togglingSnmpId === dev.id}
-              className="p-1 rounded border border-amber-500/30 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 disabled:opacity-60"
-              title="Thiết bị đang SNMP auto-pause. Bấm để bật lại query SNMP ngay."
-            >
-              <PlayCircle className="w-3.5 h-3.5" />
-            </button>
-          ) : null}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1950,16 +1969,21 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     {/* ==== Cột trái: Biểu đồ ==== */}
                     <div className="lg:col-span-7 space-y-6 min-w-0">
                       {/* Per-processor utilisation trends (Now/Min/Max/Avg) — LibreNMS parity */}
-                      <ProcessorsPanel deviceId={selectedDevice.id} darkMode={darkMode} />
+                      {!isUpsDevice && <ProcessorsPanel deviceId={selectedDevice.id} darkMode={darkMode} />}
 
-                      {/* Historical performance charts (CPU/RAM/temp/ping over time) */}
-                      <div>
-                        <DeviceMetricsHistory deviceId={selectedDevice.id} darkMode={darkMode} />
-                      </div>
+                      {/* Historical performance charts (CPU/RAM/temp/ping over time). */}
+                      {!isUpsDevice && (
+                        <div>
+                          <DeviceMetricsHistory deviceId={selectedDevice.id} darkMode={darkMode} />
+                        </div>
+                      )}
 
-                      {/* UPS output load % history, when the device exposes a load sensor */}
-                      {detailSensors.some((s) => s.type === 'load') && (
-                        <SensorHistoryPanel deviceId={selectedDevice.id} sensorType="load" title="Lịch sử Tải (UPS)" darkMode={darkMode} />
+                      {/* UPS-friendly history charts. */}
+                      {isUpsDevice && detailSensors.some((s) => s.type === 'load') && (
+                        <SensorHistoryPanel deviceId={selectedDevice.id} sensorType="load" title="Lịch sử Tải ngõ ra UPS (%)" darkMode={darkMode} />
+                      )}
+                      {isUpsDevice && detailSensors.some((s) => s.type === 'battery') && (
+                        <SensorHistoryPanel deviceId={selectedDevice.id} sensorType="battery" title="Lịch sử Dung lượng pin UPS (%)" darkMode={darkMode} />
                       )}
                     </div>
 
@@ -1967,39 +1991,83 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     <div className="lg:col-span-5 space-y-6 min-w-0">
                       {/* Gauges & Telemetry Bar */}
                       <div className="grid grid-cols-2 gap-4 font-mono">
-                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-xs text-slate-300 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
-                          <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
-                            {selectedDevice.cpuUsage}%
-                          </p>
-                          <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                            <div className="bg-emerald-400 h-full" style={{ width: `${selectedDevice.cpuUsage}%` }}></div>
-                          </div>
-                        </div>
+                        {isUpsDevice ? (
+                          <>
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Pin UPS còn lại</span>
+                              <p className={`text-xl font-black mt-1 ${((upsTelemetry.batteryPct ?? 0) < 20) ? 'text-red-400' : ((upsTelemetry.batteryPct ?? 0) < 50) ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                {upsTelemetry.batteryPct === null ? 'N/A' : `${Math.round(upsTelemetry.batteryPct)}%`}
+                              </p>
+                              <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                <div className="bg-emerald-400 h-full" style={{ width: `${Math.max(0, Math.min(100, upsTelemetry.batteryPct ?? 0))}%` }}></div>
+                              </div>
+                            </div>
 
-                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-xs text-slate-300 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
-                          <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
-                            {selectedDevice.memoryUsage}%
-                          </p>
-                          <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                            <div className="bg-amber-400 h-full" style={{ width: `${selectedDevice.memoryUsage}%` }}></div>
-                          </div>
-                        </div>
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Tải ngõ ra UPS</span>
+                              <p className={`text-xl font-black mt-1 ${((upsTelemetry.outputLoadPct ?? 0) > 90) ? 'text-red-400' : ((upsTelemetry.outputLoadPct ?? 0) > 75) ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                {upsTelemetry.outputLoadPct === null ? 'N/A' : `${Math.round(upsTelemetry.outputLoadPct)}%`}
+                              </p>
+                              <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                <div className="bg-cyan-400 h-full" style={{ width: `${Math.max(0, Math.min(100, upsTelemetry.outputLoadPct ?? 0))}%` }}></div>
+                              </div>
+                            </div>
 
-                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-xs text-slate-300 uppercase tracking-wider">Nhiệt độ Ambient</span>
-                          <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
-                          <p className="text-xs text-slate-400 mt-1">Ngưỡng &lt;65°C</p>
-                        </div>
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Thời gian pin còn lại</span>
+                              <p className="text-xl font-black mt-1 text-amber-300">
+                                {upsTelemetry.runtimeMin === null ? 'N/A' : `${Math.round(upsTelemetry.runtimeMin)} phút`}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">Nhiệt độ pin: {upsTelemetry.batteryTemp === null ? 'N/A' : `${Math.round(upsTelemetry.batteryTemp)}°C`}</p>
+                            </div>
 
-                        <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
-                          <span className="text-xs text-slate-300 uppercase tracking-wider">Độ trễ ICMP</span>
-                          <p className="text-xl font-black mt-1 text-cyan-400">
-                            {selectedDevice.status === 'down' ? 'N/A' : `${selectedDevice.pingLatencyMs} ms`}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1">Packet loss: {selectedDevice.packetLoss}%</p>
-                        </div>
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Điện áp vào / ra</span>
+                              <p className="text-xl font-black mt-1 text-cyan-300">
+                                {(upsTelemetry.inputVoltage === null && upsTelemetry.outputVoltage === null)
+                                  ? 'N/A'
+                                  : `${upsTelemetry.inputVoltage === null ? '--' : Math.round(upsTelemetry.inputVoltage)}V / ${upsTelemetry.outputVoltage === null ? '--' : Math.round(upsTelemetry.outputVoltage)}V`}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">Ping: {selectedDevice.status === 'down' ? 'N/A' : `${selectedDevice.pingLatencyMs} ms`} • Loss {selectedDevice.packetLoss}%</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
+                              <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {selectedDevice.cpuUsage}%
+                              </p>
+                              <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                <div className="bg-emerald-400 h-full" style={{ width: `${selectedDevice.cpuUsage}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
+                              <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
+                                {selectedDevice.memoryUsage}%
+                              </p>
+                              <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                <div className="bg-amber-400 h-full" style={{ width: `${selectedDevice.memoryUsage}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Nhiệt độ Ambient</span>
+                              <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
+                              <p className="text-xs text-slate-400 mt-1">Ngưỡng &lt;65°C</p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
+                              <span className="text-xs text-slate-300 uppercase tracking-wider">Độ trễ ICMP</span>
+                              <p className="text-xl font-black mt-1 text-cyan-400">
+                                {selectedDevice.status === 'down' ? 'N/A' : `${selectedDevice.pingLatencyMs} ms`}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">Packet loss: {selectedDevice.packetLoss}%</p>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       {/* Device identity: name / vendor / model / OS / version */}

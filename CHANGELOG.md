@@ -17,6 +17,32 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.35] - 2026-10-06
+
+### Performance
+- Tối ưu truy vấn Events theo site để tránh quét sâu bảng `EventLog` khi site có ít hoặc không có thiết bị:
+  - Bổ sung bước prefetch danh sách `deviceId` theo site và lọc `EventLog` theo `deviceId IN (...)`.
+  - Thêm nhánh trả về nhanh khi site không có thiết bị, giảm tải CPU/IO cho Postgres trong các lần phân trang rỗng.
+
+### Added
+- Mở rộng Alert Rules cho phép nhiều điều kiện ngưỡng trên cùng một metric (multi-condition):
+  - Hỗ trợ cấu hình nhiều ngưỡng theo mức cảnh báo (ví dụ `>70 => medium`, `>90 => high`).
+  - Bổ sung model/migration `AlertRuleCondition` và backfill dữ liệu từ cấu trúc rule cũ.
+  - API CRUD/copy/apply-site đã hỗ trợ `conditions` với backward compatibility.
+  - Poller alerting đánh giá điều kiện phù hợp nhất theo mức severity cao nhất và cập nhật severity alert đang mở khi cần.
+
+### Changed
+- Cập nhật UI Alert Console để tạo/sửa/hiển thị nhiều điều kiện ngưỡng trong rule cảnh báo.
+- Cải thiện trang chi tiết thiết bị cho UPS:
+  - Tự nhận diện UPS và ưu tiên hiển thị chỉ số đặc thù: dung lượng pin, tải ngõ ra, thời gian lưu điện, điện áp vào/ra.
+  - Ẩn/giảm nhấn mạnh biểu đồ CPU/RAM không phù hợp với UPS.
+  - Bổ sung lịch sử tải và dung lượng pin UPS khi có sensor tương ứng.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Xác nhận migration multi-condition được áp dụng và dữ liệu điều kiện được backfill.
+- Kiểm tra UPS trong DB: tất cả thiết bị loại `ups` hiện có dữ liệu sensor không rỗng và có thời gian cập nhật gần nhất.
+
 ## [0.8.34] - 2026-09-25
 
 ### Performance

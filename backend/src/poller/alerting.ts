@@ -27,7 +27,58 @@ type RuleRow = {
   sensorType: string | null;
   osFilter: string | null;
   renotifyMinutes: number;
+  conditions: {
+    order: number;
+    condition: string;
+    threshold: number;
+    severity: 'critical' | 'high' | 'medium' | 'low';
+  }[];
 };
+
+type EffectiveCondition = {
+  condition: string;
+  threshold: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+};
+
+const SEVERITY_RANK: Record<EffectiveCondition['severity'], number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4,
+};
+
+function conditionStrictness(condition: string, threshold: number): number {
+  switch (condition) {
+    case '>':
+      return threshold;
+    case '<':
+      return -threshold;
+    default:
+      return 0;
+  }
+}
+
+function allRuleConditions(rule: RuleRow): EffectiveCondition[] {
+  if (rule.conditions && rule.conditions.length > 0) {
+    return rule.conditions
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((c) => ({ condition: c.condition, threshold: c.threshold, severity: c.severity }));
+  }
+  return [{ condition: rule.condition, threshold: rule.threshold, severity: rule.severity }];
+}
+
+function pickMatchingCondition(rule: RuleRow, value: number): EffectiveCondition | null {
+  const matched = allRuleConditions(rule).filter((c) => compare(value, c.condition, c.threshold));
+  if (matched.length === 0) return null;
+  matched.sort((a, b) => {
+    const sevDiff = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
+    if (sevDiff !== 0) return sevDiff;
+    return conditionStrictness(b.condition, b.threshold) - conditionStrictness(a.condition, a.threshold);
+  });
+  return matched[0];
+}
 
 const INTERFACE_METRICS = new Set([
   'interface_traffic',
@@ -157,7 +208,10 @@ let rulesCache: { data: RuleRow[]; expiresAt: number } | null = null;
 
 async function getEnabledRules(): Promise<RuleRow[]> {
   if (rulesCache && rulesCache.expiresAt > Date.now()) return rulesCache.data;
-  const data = (await prisma.alertRule.findMany({ where: { enabled: true } })) as RuleRow[];
+  const data = (await prisma.alertRule.findMany({
+    where: { enabled: true },
+    include: { conditions: { orderBy: { order: 'asc' } } },
+  })) as RuleRow[];
   rulesCache = { data, expiresAt: Date.now() + 30_000 };
   return data;
 }
@@ -266,17 +320,22 @@ async function evaluateDeviceRule(
   const metricValue = readDeviceMetric(rule.metric, device);
   if (metricValue === undefined) return;
 
-  const breached = compare(metricValue, rule.condition, rule.threshold);
+  const matchedCondition = pickMatchingCondition(rule, metricValue);
+  const breached = !!matchedCondition;
+  const effectiveRule = matchedCondition ? { ...rule, ...matchedCondition } : rule;
   const existing = await prisma.alert.findFirst({
     where: { deviceId: device.id, ruleId: rule.id, interfaceName: null, status: { in: ['active', 'acknowledged'] } },
   });
 
   if (breached && !existing) {
-    await raiseAlert(alertSource, rule, metricValue, null);
+    await raiseAlert(alertSource, effectiveRule, metricValue, null);
   } else if (!breached && existing) {
     await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue);
   } else if (breached && existing) {
-    await maybeRenotify(alertSource, rule, existing, metricValue, null);
+    if (existing.severity !== effectiveRule.severity) {
+      await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
+    }
+    await maybeRenotify(alertSource, effectiveRule, existing, metricValue, null);
   }
 }
 
@@ -327,15 +386,20 @@ async function evaluateInterfaceRule(
     if (metricValue === undefined) continue;
     const interfaceDescription = rule.metric === 'interface_status' ? portDescription(port) : null;
 
-    const breached = compare(metricValue, rule.condition, rule.threshold);
+    const matchedCondition = pickMatchingCondition(rule, metricValue);
+    const breached = !!matchedCondition;
+    const effectiveRule = matchedCondition ? { ...rule, ...matchedCondition } : rule;
     const existing = openByObject.get(port.ifName);
 
     if (breached && !existing) {
-      await raiseAlert(alertSource, rule, metricValue, port.ifName, interfaceDescription);
+      await raiseAlert(alertSource, effectiveRule, metricValue, port.ifName, interfaceDescription);
     } else if (!breached && existing) {
       await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue, interfaceDescription);
     } else if (breached && existing) {
-      await maybeRenotify(alertSource, rule, existing, metricValue, port.ifName, interfaceDescription);
+      if (existing.severity !== effectiveRule.severity) {
+        await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
+      }
+      await maybeRenotify(alertSource, effectiveRule, existing, metricValue, port.ifName, interfaceDescription);
     }
   }
 
@@ -415,15 +479,20 @@ async function evaluateSensorRule(
     if (sensor.value === null || sensor.value === undefined) continue;
     seenObjects.add(sensor.description);
 
-    const breached = compare(sensor.value, rule.condition, rule.threshold);
+    const matchedCondition = pickMatchingCondition(rule, sensor.value);
+    const breached = !!matchedCondition;
+    const effectiveRule = matchedCondition ? { ...rule, ...matchedCondition } : rule;
     const existing = openByObject.get(sensor.description);
 
     if (breached && !existing) {
-      await raiseAlert(alertSource, rule, sensor.value, sensor.description);
+      await raiseAlert(alertSource, effectiveRule, sensor.value, sensor.description);
     } else if (!breached && existing) {
       await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, sensor.value);
     } else if (breached && existing) {
-      await maybeRenotify(alertSource, rule, existing, sensor.value, sensor.description);
+      if (existing.severity !== effectiveRule.severity) {
+        await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
+      }
+      await maybeRenotify(alertSource, effectiveRule, existing, sensor.value, sensor.description);
     }
   }
 
@@ -443,7 +512,9 @@ async function evaluateServiceRule(
   const metricValue = readServiceMetric(rule.metric, service);
   if (metricValue === undefined) return;
 
-  const breached = compare(metricValue, rule.condition, rule.threshold);
+  const matchedCondition = pickMatchingCondition(rule, metricValue);
+  const breached = !!matchedCondition;
+  const effectiveRule = matchedCondition ? { ...rule, ...matchedCondition } : rule;
   const objectName = `${service.type}${service.port ? `:${service.port}` : ''}`;
   const openAlerts = await prisma.alert.findMany({
     where: { serviceId: service.id, ruleId: rule.id, status: { in: ['active', 'acknowledged'] } },
@@ -477,11 +548,14 @@ async function evaluateServiceRule(
   }
 
   if (shouldRaise && !existing) {
-    await raiseAlert(alertSource, rule, metricValue, objectName);
+    await raiseAlert(alertSource, effectiveRule, metricValue, objectName);
   } else if (!breached && existing) {
     await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue);
   } else if (breached && existing) {
-    await maybeRenotify(alertSource, rule, existing, metricValue, objectName);
+    if (existing.severity !== effectiveRule.severity) {
+      await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
+    }
+    await maybeRenotify(alertSource, effectiveRule, existing, metricValue, objectName);
   }
 
   for (const [key, alert] of openByObject.entries()) {

@@ -8,6 +8,8 @@ export const eventsRouter = Router();
 const EVENT_LIST_CACHE_TTL_MS = 3000;
 const eventListCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
+const MAX_SITE_DEVICE_IDS_FOR_EVENT_QUERY = 5000;
+
 function eventScopeCacheKey(req: AuthedRequest): string {
   const isSystemAdmin = req.user?.isSystemAdmin === true;
   if (isSystemAdmin) return 'global';
@@ -33,12 +35,30 @@ eventsRouter.get('/', async (req: AuthedRequest, res) => {
     return;
   }
 
+  // For site-filtered event lists, resolve device IDs first so the query can
+  // target EventLog.deviceId directly instead of forcing a broad join scan.
+  let siteScopedDeviceIds: string[] | undefined;
+  if (requestedSiteId && !deviceId) {
+    const devices = await prisma.device.findMany({
+      where: { siteId: requestedSiteId },
+      select: { id: true },
+      take: MAX_SITE_DEVICE_IDS_FOR_EVENT_QUERY,
+    });
+    siteScopedDeviceIds = devices.map((d) => d.id);
+    if (siteScopedDeviceIds.length === 0) {
+      eventListCache.set(cacheKey, { expiresAt: now + EVENT_LIST_CACHE_TTL_MS, payload: [] });
+      res.json([]);
+      return;
+    }
+  }
+
   const scoped = eventScopeWhere(req);
   const events = await prisma.eventLog.findMany({
     where: {
       ...(deviceId ? { deviceId } : {}),
+      ...(siteScopedDeviceIds ? { deviceId: { in: siteScopedDeviceIds } } : {}),
       ...(scoped ?? {}),
-      ...(requestedSiteId ? { device: { siteId: requestedSiteId } } : {}),
+      ...(requestedSiteId && !siteScopedDeviceIds ? { device: { siteId: requestedSiteId } } : {}),
     },
     orderBy: { timestamp: 'desc' },
     include: { device: { select: { name: true } } },

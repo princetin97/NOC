@@ -113,6 +113,9 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
       (rule.sensorIds ?? []).join(','),
       rule.sensorType ?? '',
       rule.osFilter ?? '',
+      (rule.conditions ?? [])
+        .map((c) => `${c.condition}:${c.threshold}:${c.severity}`)
+        .join('|'),
     ].join('::');
 
   const ruleRows = useMemo(() => {
@@ -167,6 +170,9 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
         rule.sensorType ?? '',
         rule.osFilter ?? '',
         String(rule.threshold),
+        (rule.conditions ?? [])
+          .map((c) => `${c.condition} ${c.threshold} ${c.severity}`)
+          .join(' '),
         rule.unit ?? '',
         siteLabels,
       ]
@@ -624,7 +630,10 @@ export const AlertConsole: React.FC<AlertConsoleProps> = ({
                       <p className="text-emerald-400 leading-4">
                         Ngưỡng: {rule.scope === 'sensor'
                           ? `Đối tượng [${rule.sensorType ? `${sensorTypeLabel(rule.sensorType)} (toàn bộ)` : rule.sensorIds && rule.sensorIds.length > 1 ? `${rule.sensorIds.length} đối tượng` : rule.sensorLabel ?? '—'}]`
-                          : `Metric [${rule.metric}]`} {rule.condition} {rule.threshold} {rule.unit}
+                          : `Metric [${rule.metric}]`}{' '}
+                        {(rule.conditions && rule.conditions.length > 0
+                          ? rule.conditions.map((c) => `${c.condition} ${c.threshold}${rule.unit} (${c.severity})`).join(' • ')
+                          : `${rule.condition} ${rule.threshold} ${rule.unit}`)}
                       </p>
                       <p className="text-slate-400 leading-4">
                         Áp dụng: {rule.sensorType
@@ -965,11 +974,28 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
   const editing = !!existingRule;
   const initMetric = (existingRule?.metric as AlertMetric) ?? prefillMetric ?? 'interface_traffic_in';
   const initCfg = METRIC_CONFIG[initMetric];
+  const initialConditions =
+    existingRule?.conditions && existingRule.conditions.length > 0
+      ? existingRule.conditions
+      : [
+          {
+            condition: (existingRule?.condition as Operator) ?? initCfg.defaultCondition ?? '>',
+            threshold: existingRule?.threshold ?? initCfg.defaultThreshold ?? 800,
+            severity: existingRule?.severity ?? 'high',
+          },
+        ];
 
   const [name, setName] = useState(existingRule?.name ?? '');
   const [metric, setMetric] = useState<AlertMetric>(initMetric);
-  const [condition, setCondition] = useState<Operator>((existingRule?.condition as Operator) ?? initCfg.defaultCondition ?? '>');
-  const [threshold, setThreshold] = useState<number>(existingRule?.threshold ?? initCfg.defaultThreshold ?? 800);
+  const [condition, setCondition] = useState<Operator>((initialConditions[0]?.condition as Operator) ?? '>');
+  const [threshold, setThreshold] = useState<number>(initialConditions[0]?.threshold ?? initCfg.defaultThreshold ?? 800);
+  const [conditionRows, setConditionRows] = useState<Array<{ condition: Operator; threshold: number; severity: AlertSeverity }>>(
+    initialConditions.map((c) => ({
+      condition: c.condition as Operator,
+      threshold: c.threshold,
+      severity: c.severity,
+    })),
+  );
   const [stateIndex, setStateIndex] = useState<number>(() => {
     if (existingRule && initCfg.kind === 'state' && initCfg.states) {
       const i = initCfg.states.findIndex((s) => s.condition === existingRule.condition && s.threshold === existingRule.threshold);
@@ -977,7 +1003,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     }
     return 0;
   });
-  const [severity, setSeverity] = useState<AlertSeverity>(existingRule?.severity ?? 'high');
+  const [severity, setSeverity] = useState<AlertSeverity>(initialConditions[0]?.severity ?? existingRule?.severity ?? 'high');
   const [description, setDescription] = useState(existingRule?.description ?? '');
   const [siteId, setSiteId] = useState<string>(existingRule?.siteId ?? defaultSiteId ?? '');
 
@@ -1069,8 +1095,18 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     if (selectedUnit !== null && selectedUnit !== s.unit) return;
     if (sensorIds.length === 0) {
       const meta = SENSOR_TYPE_META[s.type];
-      if (meta?.condition) setCondition(meta.condition);
-      if (meta?.threshold !== undefined) setThreshold(meta.threshold);
+      if (meta?.condition) {
+        setCondition(meta.condition);
+        setConditionRows((prev) =>
+          prev.length > 0 ? [{ ...prev[0], condition: meta.condition }, ...prev.slice(1)] : [{ condition: meta.condition, threshold, severity }],
+        );
+      }
+      if (meta?.threshold !== undefined) {
+        setThreshold(meta.threshold);
+        setConditionRows((prev) =>
+          prev.length > 0 ? [{ ...prev[0], threshold: meta.threshold }, ...prev.slice(1)] : [{ condition, threshold: meta.threshold, severity }],
+        );
+      }
     }
     setSensorIds([...sensorIds, s.id]);
   };
@@ -1083,8 +1119,18 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
   // Apply a sensor type's suggested condition/threshold (used by the fleet-by-OS mode).
   const applyTypePreset = (t: string) => {
     const meta = SENSOR_TYPE_META[t];
-    if (meta?.condition) setCondition(meta.condition);
-    if (meta?.threshold !== undefined) setThreshold(meta.threshold);
+    if (meta?.condition) {
+      setCondition(meta.condition);
+      setConditionRows((prev) =>
+        prev.length > 0 ? [{ ...prev[0], condition: meta.condition }, ...prev.slice(1)] : [{ condition: meta.condition, threshold, severity }],
+      );
+    }
+    if (meta?.threshold !== undefined) {
+      setThreshold(meta.threshold);
+      setConditionRows((prev) =>
+        prev.length > 0 ? [{ ...prev[0], threshold: meta.threshold }, ...prev.slice(1)] : [{ condition, threshold: meta.threshold, severity }],
+      );
+    }
   };
   const handleFleetTypeChange = (t: string) => {
     setSensorType(t);
@@ -1129,10 +1175,28 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     if (cfg.kind === 'state' && cfg.states) {
       setCondition(cfg.states[0].condition);
       setThreshold(cfg.states[0].threshold);
+      setConditionRows([{ condition: cfg.states[0].condition, threshold: cfg.states[0].threshold, severity }]);
     } else {
-      setCondition(cfg.defaultCondition ?? '>');
-      setThreshold(cfg.defaultThreshold ?? 0);
+      const nextCondition = cfg.defaultCondition ?? '>';
+      const nextThreshold = cfg.defaultThreshold ?? 0;
+      setCondition(nextCondition);
+      setThreshold(nextThreshold);
+      setConditionRows([{ condition: nextCondition, threshold: nextThreshold, severity }]);
     }
+  };
+
+  const addConditionRow = () => {
+    const fallbackCondition = (config.defaultCondition ?? condition) as Operator;
+    const fallbackThreshold = threshold || config.defaultThreshold || 0;
+    setConditionRows((prev) => [...prev, { condition: fallbackCondition, threshold: fallbackThreshold, severity: 'medium' }]);
+  };
+
+  const updateConditionRow = (index: number, patch: Partial<{ condition: Operator; threshold: number; severity: AlertSeverity }>) => {
+    setConditionRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+
+  const removeConditionRow = (index: number) => {
+    setConditionRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1142,19 +1206,29 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     if (isObject && objectMode === 'specific' && objectTargetKind === 'device' && (!deviceId || sensorIds.length === 0)) return;
     if (isObject && objectMode === 'specific' && objectTargetKind === 'group' && (groupIds.length === 0 || sensorIds.length === 0)) return;
     if (isObject && objectMode === 'fleet' && !sensorType) return;
-    const effCondition = isState && config.states ? config.states[stateIndex].condition : condition;
-    const effThreshold = isState && config.states ? config.states[stateIndex].threshold : threshold;
+    const normalizedRows = isState
+      ? config.states
+        ? [{ condition: config.states[stateIndex].condition, threshold: config.states[stateIndex].threshold, severity }]
+        : [{ condition, threshold, severity }]
+      : conditionRows.length > 0
+      ? conditionRows
+      : [{ condition, threshold, severity }];
+    if (normalizedRows.length === 0) return;
+    const effCondition = normalizedRows[0].condition;
+    const effThreshold = normalizedRows[0].threshold;
+    const effSeverity = normalizedRows[0].severity;
     const input: AlertRuleInput = {
       name,
       metric,
       condition: effCondition,
       threshold: effThreshold,
+      conditions: normalizedRows,
       unit: isObject
         ? isFleet
           ? SENSOR_TYPE_META[sensorType]?.unit ?? ''
           : selectedUnit ?? ''
         : config.unit,
-      severity,
+      severity: effSeverity,
       scope: isService ? 'service' : isObject ? 'sensor' : isInterface ? 'interface' : 'device',
       deviceId: isService ? null : isFleet ? null : isObject ? (objectTargetKind === 'device' ? deviceId || null : null) : targetKind === 'device' ? deviceId || null : null,
       deviceIds: [],
@@ -1261,36 +1335,75 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <label className="block text-slate-300 mb-1">Điều kiện nhiều mức:</label>
+              {conditionRows.map((row, idx) => (
+                <div key={`cond-${idx}`} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                  <div>
+                    <label className="block text-slate-400 mb-1">Điều kiện:</label>
+                    <select
+                      value={row.condition}
+                      onChange={(e) => updateConditionRow(idx, { condition: e.target.value as Operator })}
+                      className={inputCls}
+                    >
+                      {(config.operators ?? ['>', '<', '==', '!=']).map((op) => (
+                        <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Ngưỡng ({(isObject ? (objectMode === 'fleet' ? SENSOR_TYPE_META[sensorType]?.unit : selectedUnit) : config.unit) || 'giá trị'}):</label>
+                    <input
+                      type="number"
+                      step={config.step ?? 'any'}
+                      min={config.min}
+                      max={config.max}
+                      value={row.threshold}
+                      onChange={(e) => {
+                        const nextValue = Number(e.target.value);
+                        updateConditionRow(idx, { threshold: nextValue });
+                        if (idx === 0) setThreshold(nextValue);
+                      }}
+                      className={inputCls}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Mức độ:</label>
+                    <select
+                      value={row.severity}
+                      onChange={(e) => {
+                        const nextSeverity = e.target.value as AlertSeverity;
+                        updateConditionRow(idx, { severity: nextSeverity });
+                        if (idx === 0) setSeverity(nextSeverity);
+                      }}
+                      className={inputCls}
+                    >
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeConditionRow(idx)}
+                    disabled={conditionRows.length <= 1}
+                    className="h-9 px-2 rounded-lg border border-slate-700 text-slate-300 hover:text-red-300 hover:border-red-500 disabled:opacity-40"
+                    title="Xóa điều kiện"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
               <div>
-                <label className="block text-slate-300 mb-1">Điều kiện:</label>
-                <select value={condition} onChange={(e) => setCondition(e.target.value as Operator)} className={inputCls}>
-                  {(config.operators ?? ['>', '<', '==', '!=']).map((op) => (
-                    <option key={op} value={op}>{OPERATOR_LABEL[op]}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1">Ngưỡng ({(isObject ? (objectMode === 'fleet' ? SENSOR_TYPE_META[sensorType]?.unit : selectedUnit) : config.unit) || 'giá trị'}):</label>
-                <input
-                  type="number"
-                  step={config.step ?? 'any'}
-                  min={config.min}
-                  max={config.max}
-                  value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
-                  className={inputCls}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1">Mức độ:</label>
-                <select value={severity} onChange={(e) => setSeverity(e.target.value as AlertSeverity)} className={inputCls}>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
+                <button
+                  type="button"
+                  onClick={addConditionRow}
+                  className="px-2.5 py-1.5 rounded-lg border border-emerald-600 text-emerald-300 hover:bg-emerald-600/20 text-xs font-semibold"
+                >
+                  + Thêm điều kiện
+                </button>
               </div>
             </div>
           )}

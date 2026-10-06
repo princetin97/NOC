@@ -21,7 +21,13 @@ import { evaluateAlertsForDevice } from './alerting';
 import { discoverSensors } from './sensors';
 import { pollProcessors } from './processors';
 import { markPollFailure, markPollSuccess } from './cooldown';
-import { clearSnmpTimeoutStreak, isSnmpAutoPaused, recordSnmpTimeoutFailure } from '../lib/snmpAutoPause';
+import {
+  clearSnmpAutoPause,
+  clearSnmpTimeoutStreak,
+  isSnmpAutoPaused,
+  recordSnmpTimeoutFailure,
+  shouldAttemptSnmpResumeProbe,
+} from '../lib/snmpAutoPause';
 
 const PING_ONLY_METRIC_WRITE_INTERVAL_MS = 5 * 60_000;
 
@@ -98,13 +104,14 @@ export async function pollDevice(deviceId: string): Promise<void> {
   let temperature = device.temperature ?? undefined;
   let uptimeSeconds = device.uptimeSeconds;
   let snmpReachable = false;
-  const snmpPaused = device.snmpPort > 0 ? await isSnmpAutoPaused(deviceId) : false;
+  let snmpPaused = device.snmpPort > 0 ? await isSnmpAutoPaused(deviceId) : false;
+  const allowPausedResumeProbe = snmpPaused && device.snmpPort > 0 ? await shouldAttemptSnmpResumeProbe(deviceId) : false;
 
   const creds = toCredentials(device);
 
   const snmpPromise = (async () => {
     try {
-      if (device.snmpPort > 0 && !snmpPaused) {
+      if (device.snmpPort > 0 && (!snmpPaused || allowPausedResumeProbe)) {
         await withSession(creds, async (session) => {
       // Prefer HOST-RESOURCES hrSystemUptime (real OS boot time); Windows' sysUpTime is only
       // the SNMP service uptime and resets on service restart (LibreNMS uses the same order).
@@ -149,10 +156,15 @@ export async function pollDevice(deviceId: string): Promise<void> {
           processors: cpuResult?.processors,
         });
       });
+      if (snmpPaused) {
+        await clearSnmpAutoPause(deviceId);
+        snmpPaused = false;
+        logger.info({ deviceId, name: device.name, ip: device.ip }, 'SNMP auto-pause cleared after successful resume probe');
+      }
       await clearSnmpTimeoutStreak(deviceId);
       }
     } catch (err) {
-      if (isSnmpTimeoutError(err)) {
+      if (isSnmpTimeoutError(err) && !snmpPaused) {
         const state = await recordSnmpTimeoutFailure(deviceId);
         if (state.paused) {
           logger.warn(
@@ -160,6 +172,8 @@ export async function pollDevice(deviceId: string): Promise<void> {
             'Auto-paused SNMP polling for device after repeated SNMP timeouts; using ping-only until admin re-enables SNMP',
           );
         }
+      } else if (isSnmpTimeoutError(err) && snmpPaused && allowPausedResumeProbe) {
+        logger.debug({ deviceId }, 'SNMP resume probe timed out while auto-paused; keeping ping-only mode');
       }
       logger.debug({ err, deviceId }, 'SNMP poll failed, falling back to ping-only status');
     }

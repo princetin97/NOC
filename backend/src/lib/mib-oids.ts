@@ -48,6 +48,8 @@ export const OID = {
   ucdCpuRawUser: '1.3.6.1.4.1.2021.11.50.0',
   ucdCpuRawSystem: '1.3.6.1.4.1.2021.11.52.0',
   ucdCpuRawIdle: '1.3.6.1.4.1.2021.11.53.0',
+  ucdDskPath: '1.3.6.1.4.1.2021.9.1.2', // walk, mount path (e.g. /data)
+  ucdDskPercent: '1.3.6.1.4.1.2021.9.1.9', // walk, integer usage percent like `df`
 
   // CISCO-PROCESS-MIB / CISCO-ENHANCED-MEMPOOL-MIB (Cisco IOS/IOS-XE routers & switches,
   // which don't implement HOST-RESOURCES-MIB or UCD-SNMP-MIB for CPU/memory).

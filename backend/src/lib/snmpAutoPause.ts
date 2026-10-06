@@ -3,6 +3,7 @@ import { env } from './env';
 
 const STREAK_KEY_PREFIX = 'snmp:timeout-streak:';
 const PAUSED_KEY_PREFIX = 'snmp:auto-paused:';
+const PAUSED_PROBE_LOCK_KEY_PREFIX = 'snmp:auto-paused:probe-lock:';
 const STREAK_TTL_SECONDS = 24 * 60 * 60;
 
 function streakKey(deviceId: string): string {
@@ -11,6 +12,10 @@ function streakKey(deviceId: string): string {
 
 function pausedKey(deviceId: string): string {
   return `${PAUSED_KEY_PREFIX}${deviceId}`;
+}
+
+function pausedProbeLockKey(deviceId: string): string {
+  return `${PAUSED_PROBE_LOCK_KEY_PREFIX}${deviceId}`;
 }
 
 export interface SnmpAutoPauseState {
@@ -84,5 +89,16 @@ export async function clearSnmpTimeoutStreak(deviceId: string): Promise<void> {
 
 export async function clearSnmpAutoPause(deviceId: string): Promise<void> {
   if (!env.snmpAutoPauseEnabled) return;
-  await redisConnection.del(pausedKey(deviceId), streakKey(deviceId));
+  await redisConnection.del(pausedKey(deviceId), streakKey(deviceId), pausedProbeLockKey(deviceId));
+}
+
+/**
+ * Allows one SNMP resume probe per configured retry window for auto-paused devices.
+ * Returns true only for the first poller that acquires the Redis NX lock.
+ */
+export async function shouldAttemptSnmpResumeProbe(deviceId: string): Promise<boolean> {
+  if (!env.snmpAutoPauseEnabled) return false;
+  const ttlSeconds = Math.max(60, env.snmpAutoPauseRetryMinutes * 60);
+  const result = await redisConnection.set(pausedProbeLockKey(deviceId), '1', 'EX', ttlSeconds, 'NX');
+  return result === 'OK';
 }
