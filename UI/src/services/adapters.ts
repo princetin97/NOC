@@ -154,6 +154,7 @@ export interface RawAlertRule {
   description?: string | null;
   scope?: string | null;
   deviceId?: string | null;
+  deviceIds?: string[] | null;
   serviceId?: string | null;
   serviceIds?: string[] | null;
   portId?: string | null;
@@ -396,6 +397,7 @@ export function mapAlertRule(raw: RawAlertRule): AlertRule {
     description: raw.description ?? '',
     scope: (raw.scope as AlertRule['scope']) ?? 'device',
     deviceId: raw.deviceId ?? null,
+    deviceIds: raw.deviceIds ?? [],
     serviceId: raw.serviceId ?? null,
     serviceIds: raw.serviceIds ?? [],
     portId: raw.portId ?? null,

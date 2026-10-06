@@ -108,6 +108,10 @@ export async function pollDevice(deviceId: string): Promise<void> {
   const allowPausedResumeProbe = snmpPaused && device.snmpPort > 0 ? await shouldAttemptSnmpResumeProbe(deviceId) : false;
 
   const creds = toCredentials(device);
+  const isWindowsHost =
+    /windows/i.test(device.os ?? '') ||
+    /windows/i.test(device.sysDescr ?? '') ||
+    /microsoft/i.test(device.vendor ?? '');
 
   const snmpPromise = (async () => {
     try {
@@ -138,6 +142,12 @@ export async function pollDevice(deviceId: string): Promise<void> {
       memoryUsage = memResult.percent ?? memoryUsage;
       totalMemoryBytes = memResult.totalBytes ?? totalMemoryBytes;
 
+      if (isWindowsHost) {
+        const win = await collectWindowsStorageViaIndexedGet(session, deviceId);
+        memoryUsage = win.percent ?? memoryUsage;
+        totalMemoryBytes = win.totalBytes ?? totalMemoryBytes;
+      }
+
       temperature = (await readTemperature(session, deviceId)) ?? temperature;
 
       // FortiGate keeps IPsec interfaces up in IF-MIB even when the tunnel is down;
@@ -149,12 +159,14 @@ export async function pollDevice(deviceId: string): Promise<void> {
 
       await pollInterfaces(session, deviceId, device.ports, tunnelStatus);
 
-        await discoverSensors(session, deviceId, {
-          vendor: device.vendor,
-          sysDescr: device.sysDescr,
-          sysObjectId: device.sysObjectId,
-          processors: cpuResult?.processors,
-        });
+        if (!isWindowsHost) {
+          await discoverSensors(session, deviceId, {
+            vendor: device.vendor,
+            sysDescr: device.sysDescr,
+            sysObjectId: device.sysObjectId,
+            processors: cpuResult?.processors,
+          });
+        }
       });
       if (snmpPaused) {
         await clearSnmpAutoPause(deviceId);
@@ -239,10 +251,129 @@ function isSnmpTimeoutError(err: unknown): boolean {
 }
 
 const HR_STORAGE_RAM = '1.3.6.1.2.1.25.2.1.2'; // HOST-RESOURCES-TYPES::hrStorageRam
+const HR_STORAGE_VIRTUAL_MEMORY = '1.3.6.1.2.1.25.2.1.3';
+const HR_STORAGE_FIXED_DISK = '1.3.6.1.2.1.25.2.1.4';
 
 interface MemoryReading {
   percent?: number;
   totalBytes?: number;
+}
+
+async function readHrStorageRowsByGet(
+  session: Parameters<typeof snmpWalkColumn>[0],
+  maxIndex = 32,
+): Promise<Array<{ index: number; type: string; descr: string; size?: number; used?: number; allocationUnits?: number }>> {
+  const rows: Array<{ index: number; type: string; descr: string; size?: number; used?: number; allocationUnits?: number }> = [];
+  let misses = 0;
+
+  for (let idx = 1; idx <= maxIndex; idx += 1) {
+    const type = varbindToString(await snmpGetSingle(session, `${OID.hrStorageType}.${idx}`));
+    if (!type) {
+      misses += 1;
+      if (rows.length > 0 && misses >= 4) break;
+      continue;
+    }
+
+    misses = 0;
+    rows.push({
+      index: idx,
+      type,
+      descr: varbindToString(await snmpGetSingle(session, `${OID.hrStorageDescr}.${idx}`)) ?? '',
+      size: varbindToNumber(await snmpGetSingle(session, `${OID.hrStorageSize}.${idx}`)),
+      used: varbindToNumber(await snmpGetSingle(session, `${OID.hrStorageUsed}.${idx}`)),
+      allocationUnits: varbindToNumber(await snmpGetSingle(session, `${OID.hrStorageAllocationUnits}.${idx}`)),
+    });
+  }
+
+  return rows;
+}
+
+async function collectWindowsStorageViaIndexedGet(
+  session: Parameters<typeof snmpWalkColumn>[0],
+  deviceId: string,
+): Promise<MemoryReading> {
+  const rows = await readHrStorageRowsByGet(session);
+  if (rows.length === 0) return {};
+
+  const now = new Date();
+  const metricRows: { sensorId: string; value: number }[] = [];
+
+  for (const row of rows) {
+    if (!row.size || row.used === undefined) continue;
+
+    if (row.type === HR_STORAGE_FIXED_DISK) {
+      const percent = Math.min(100, Math.round((row.used / row.size) * 1000) / 10);
+      const sensor = await prisma.sensor.upsert({
+        where: { deviceId_type_index: { deviceId, type: 'disk', index: `win-hr-${row.index}` } },
+        create: {
+          deviceId,
+          type: 'disk',
+          index: `win-hr-${row.index}`,
+          description: row.descr || `Disk ${row.index}`,
+          value: percent,
+          unit: '%',
+          status: percent > 90 ? 'warning' : 'ok',
+          lastPolled: now,
+        },
+        update: {
+          description: row.descr || `Disk ${row.index}`,
+          value: percent,
+          unit: '%',
+          status: percent > 90 ? 'warning' : 'ok',
+          lastPolled: now,
+        },
+      });
+      metricRows.push({ sensorId: sensor.id, value: percent });
+      continue;
+    }
+
+    if (row.type === HR_STORAGE_VIRTUAL_MEMORY) {
+      const percent = Math.min(100, Math.round((row.used / row.size) * 1000) / 10);
+      const sensor = await prisma.sensor.upsert({
+        where: { deviceId_type_index: { deviceId, type: 'memory', index: `win-hr-swap-${row.index}` } },
+        create: {
+          deviceId,
+          type: 'memory',
+          index: `win-hr-swap-${row.index}`,
+          description: row.descr || 'Virtual Memory',
+          value: percent,
+          unit: '%',
+          status: percent > 90 ? 'critical' : percent > 75 ? 'warning' : 'ok',
+          lastPolled: now,
+        },
+        update: {
+          description: row.descr || 'Virtual Memory',
+          value: percent,
+          unit: '%',
+          status: percent > 90 ? 'critical' : percent > 75 ? 'warning' : 'ok',
+          lastPolled: now,
+        },
+      });
+      metricRows.push({ sensorId: sensor.id, value: percent });
+    }
+  }
+
+  if (metricRows.length > 0) {
+    await prisma.sensorMetric.createMany({ data: metricRows.map((row) => ({ ...row, timestamp: now })) });
+  }
+
+  const ramRows = rows.filter((r) => r.type === HR_STORAGE_RAM && !!r.size && r.used !== undefined && !!r.allocationUnits);
+  if (ramRows.length > 0) {
+    const physical = ramRows.find((r) => /physical memory/i.test(r.descr));
+    const chosen = physical ? [physical] : ramRows;
+    let size = 0;
+    let used = 0;
+    let bytes = 0;
+    for (const r of chosen) {
+      const allocationUnits = r.allocationUnits ?? 1;
+      size += r.size ?? 0;
+      used += r.used ?? 0;
+      bytes += (r.size ?? 0) * allocationUnits;
+    }
+    if (size > 0) return { percent: Math.round((used / size) * 100), totalBytes: bytes };
+  }
+
+  return {};
 }
 
 /**
@@ -275,6 +406,33 @@ async function readMemoryUsage(
   deviceId: string,
   opts?: { sysDescr?: string; sysObjectId?: string; vendor?: string },
 ): Promise<MemoryReading> {
+  const isWindowsHost =
+    /windows/i.test(opts?.sysDescr ?? '') ||
+    /microsoft/i.test(opts?.vendor ?? '');
+
+  if (isWindowsHost) {
+    try {
+      const rows = await readHrStorageRowsByGet(session);
+      const ramRows = rows.filter((r) => r.type === HR_STORAGE_RAM && !!r.size && r.used !== undefined && !!r.allocationUnits);
+      if (ramRows.length > 0) {
+        const physical = ramRows.find((r) => /physical memory/i.test(r.descr));
+        const chosen = physical ? [physical] : ramRows;
+        let size = 0;
+        let used = 0;
+        let bytes = 0;
+        for (const r of chosen) {
+          const allocationUnits = r.allocationUnits ?? 1;
+          size += r.size ?? 0;
+          used += r.used ?? 0;
+          bytes += (r.size ?? 0) * allocationUnits;
+        }
+        if (size > 0) return { percent: Math.round((used / size) * 100), totalBytes: bytes };
+      }
+    } catch (err) {
+      logger.debug({ err, deviceId }, 'Windows indexed HOST-RESOURCES memory read failed; trying generic fallbacks');
+    }
+  }
+
   const isF5 =
     opts?.vendor === 'F5' ||
     (opts?.sysObjectId?.startsWith('1.3.6.1.4.1.3375') ?? false) ||
@@ -476,6 +634,7 @@ async function readMemoryUsage(
   } catch (err) {
     logger.debug({ err, deviceId }, 'HUAWEI memory read failed, trying HOST-RESOURCES-MIB');
   }
+  let hostResourcesWalkHadError = false;
   try {
     // HOST-RESOURCES-MIB hrStorageRam — universal RAM for Windows, Linux, Dell/IBM servers,
     // VMware, printers and appliances that only implement the standard MIB (LibreNMS HostResources).
@@ -501,8 +660,34 @@ async function readMemoryUsage(
     }
     if (size > 0) return { percent: Math.round((used / size) * 100), totalBytes: bytes };
   } catch (err) {
+    hostResourcesWalkHadError = true;
     logger.debug({ err, deviceId }, 'HOST-RESOURCES-MIB memory read failed, no more fallbacks');
   }
+
+  // Some Windows SNMP agents intermittently return empty/partial subtree walks for
+  // hrStorage, while indexed GETs still work. Try indexed probing whenever walk
+  // failed OR yielded no usable RAM rows.
+  try {
+    const rows = await readHrStorageRowsByGet(session);
+    const ramRows = rows.filter((r) => r.type === HR_STORAGE_RAM && !!r.size && r.used !== undefined && !!r.allocationUnits);
+    if (ramRows.length > 0) {
+      const physical = ramRows.find((r) => /physical memory/i.test(r.descr));
+      const chosen = physical ? [physical] : ramRows;
+      let size = 0;
+      let used = 0;
+      let bytes = 0;
+      for (const r of chosen) {
+        const allocationUnits = r.allocationUnits ?? 1;
+        size += r.size ?? 0;
+        used += r.used ?? 0;
+        bytes += (r.size ?? 0) * allocationUnits;
+      }
+      if (size > 0) return { percent: Math.round((used / size) * 100), totalBytes: bytes };
+    }
+  } catch (fallbackErr) {
+    logger.debug({ err: fallbackErr, deviceId, hostResourcesWalkHadError }, 'HOST-RESOURCES indexed memory fallback failed');
+  }
+
   return {};
 }
 

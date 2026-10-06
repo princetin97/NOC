@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.36] - 2026-10-06
+
+### Fixed
+- Khắc phục thu thập RAM/Disk cho một số Windows SNMP agent trả kết quả walk không ổn định:
+  - Poller ưu tiên nhánh thu thập HOST-RESOURCES theo indexed GET cho thiết bị Windows.
+  - Bổ sung luồng persist sensor Disk/Virtual Memory trực tiếp trong poll cycle cho Windows,
+    không phụ thuộc discovery walk tổng quát vốn dễ timeout trên một số host.
+  - Cập nhật fallback maxRepetitions trong SNMP walk để giảm lỗi timeout khi đọc bảng lớn.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Poll thủ công thiết bị Windows `192.168.60.11` thành công, DB cập nhật:
+  - `Device.memoryUsage = 57`, `Device.totalMemoryBytes = 8589410304`.
+  - Có sensor `disk` và `memory` với giá trị hợp lệ, thời gian cập nhật mới.
+
 ## [0.8.35] - 2026-10-06
 
 ### Performance

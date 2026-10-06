@@ -468,14 +468,68 @@ function mountCandidatesFromDescr(descr: string): string[] {
   return Array.from(candidates);
 }
 
+async function readHrStorageRowsByGet(
+  session: Session,
+  maxIndex = 32,
+): Promise<Array<{ index: number; type: string; descr: string; size?: number; used?: number }>> {
+  const rows: Array<{ index: number; type: string; descr: string; size?: number; used?: number }> = [];
+  let misses = 0;
+
+  for (let idx = 1; idx <= maxIndex; idx += 1) {
+    const type = varbindToString(await snmpGetSingle(session, `${OID.hrStorageType}.${idx}`));
+    if (!type) {
+      misses += 1;
+      if (rows.length > 0 && misses >= 4) break;
+      continue;
+    }
+
+    misses = 0;
+    rows.push({
+      index: idx,
+      type,
+      descr: varbindToString(await snmpGetSingle(session, `${OID.hrStorageDescr}.${idx}`)) ?? `Storage ${idx}`,
+      size: varbindToNumber(await snmpGetSingle(session, `${OID.hrStorageSize}.${idx}`)),
+      used: varbindToNumber(await snmpGetSingle(session, `${OID.hrStorageUsed}.${idx}`)),
+    });
+  }
+
+  return rows;
+}
+
 /** HOST-RESOURCES-MIB hrStorageTable: fixed-disk usage (Junos RE storage, Linux, appliances). */
 async function readStorageSensors(session: Session): Promise<DiscoveredSensor[]> {
-  const [storageTypes, descrs, sizes, useds] = await Promise.all([
-    snmpWalkColumn(session, OID.hrStorageType),
-    snmpWalkColumn(session, OID.hrStorageDescr),
-    snmpWalkColumn(session, OID.hrStorageSize),
-    snmpWalkColumn(session, OID.hrStorageUsed),
-  ]);
+  type Row = { idx: number; storageType: string; descr: string; size?: number; used?: number };
+  let rows: Row[] = [];
+
+  try {
+    const [storageTypes, descrs, sizes, useds] = await Promise.all([
+      snmpWalkColumn(session, OID.hrStorageType),
+      snmpWalkColumn(session, OID.hrStorageDescr),
+      snmpWalkColumn(session, OID.hrStorageSize),
+      snmpWalkColumn(session, OID.hrStorageUsed),
+    ]);
+
+    rows = Array.from(storageTypes.keys()).map((idx) => ({
+      idx,
+      storageType: varbindToString(storageTypes.get(idx)) ?? '',
+      descr: varbindToString(descrs.get(idx))?.trim() || `Disk ${idx}`,
+      size: varbindToNumber(sizes.get(idx)),
+      used: varbindToNumber(useds.get(idx)),
+    }));
+  } catch {
+    rows = [];
+  }
+
+  if (rows.length === 0) {
+    const byGet = await readHrStorageRowsByGet(session);
+    rows = byGet.map((r) => ({
+      idx: r.index,
+      storageType: r.type,
+      descr: r.descr,
+      size: r.size,
+      used: r.used,
+    }));
+  }
 
   let dskPercentByPath = new Map<string, number>();
   try {
@@ -495,26 +549,26 @@ async function readStorageSensors(session: Session): Promise<DiscoveredSensor[]>
   }
 
   const sensors: DiscoveredSensor[] = [];
-  for (const [idx, typeVb] of storageTypes) {
-    const storageType = varbindToString(typeVb);
-    const size = varbindToNumber(sizes.get(idx));
-    const used = varbindToNumber(useds.get(idx));
+  for (const row of rows) {
+    const storageType = row.storageType;
+    const size = row.size;
+    const used = row.used;
     if (storageType === HR_STORAGE_FIXED_DISK) {
       if (!size || used === undefined) continue;
-      const descr = varbindToString(descrs.get(idx))?.trim() || `Disk ${idx}`;
+      const descr = row.descr || 'Disk';
       const ucdPercent = mountCandidatesFromDescr(descr)
         .map((c) => dskPercentByPath.get(c))
         .find((v): v is number => v !== undefined);
       // Prefer dskPercent (matches Linux `df` semantics including reserved blocks),
       // fall back to hrStorageUsed/hrStorageSize for non-UCD agents.
       const percent = ucdPercent ?? Math.min(100, Math.round((used / size) * 1000) / 10);
-      sensors.push({ type: 'disk', index: `hr-${idx}`, description: descr, value: percent, unit: '%', status: percent > 90 ? 'warning' : 'ok' });
+      sensors.push({ type: 'disk', index: `hr-${row.idx}`, description: descr, value: percent, unit: '%', status: percent > 90 ? 'warning' : 'ok' });
     } else if (storageType === HR_STORAGE_VIRTUAL_MEMORY) {
       // Windows pagefile / Unix swap — shown as a separate "memory" gauge like LibreNMS.
       if (!size || used === undefined) continue;
       const percent = Math.min(100, Math.round((used / size) * 1000) / 10);
-      const descr = varbindToString(descrs.get(idx))?.trim() || 'Bộ nhớ ảo';
-      sensors.push({ type: 'memory', index: `hr-swap-${idx}`, description: descr, value: percent, unit: '%', status: percent > 90 ? 'critical' : percent > 75 ? 'warning' : 'ok' });
+      const descr = row.descr || 'Bộ nhớ ảo';
+      sensors.push({ type: 'memory', index: `hr-swap-${row.idx}`, description: descr, value: percent, unit: '%', status: percent > 90 ? 'critical' : percent > 75 ? 'warning' : 'ok' });
     }
   }
   return sensors;
@@ -821,6 +875,16 @@ export async function discoverSensors(session: Session, deviceId: string, ctx: D
       logger.debug({ err, deviceId, label }, 'Sensor source failed, continuing with others');
     }
   };
+
+  const isWindowsHost = /windows/i.test(ctx.sysDescr ?? '') || /microsoft/i.test(ctx.vendor ?? '');
+
+  // Windows hosts frequently expose only HOST-RESOURCES storage reliably while
+  // other sensor tables time out; prioritize the RAM/disk data path first.
+  if (isWindowsHost) {
+    await collect('storage', () => readStorageSensors(session));
+    await persistSensors(deviceId, sensors);
+    return;
+  }
 
   if (isFortinet(ctx)) await collect('fortinet', () => readFortiSensors(session));
   else if (isJuniper(ctx)) await collect('juniper', () => readJuniperSensors(session, ctx.processors));

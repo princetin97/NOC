@@ -3,7 +3,7 @@ import { NetworkAlert, AlertRule, EventLog, AlertSeverity, NetworkDevice, AlertR
 import { ShieldAlert, AlertTriangle, CheckCircle, Clock, Volume2, Plus, Filter, Search, Check, CheckCheck, RefreshCw, Trash2, Pencil, Copy, Server, Boxes, X } from 'lucide-react';
 import { api } from '../services/api';
 import { SyslogConsole } from './SyslogConsole';
-import { DevicePickerButton } from './DevicePortPicker';
+import { DevicePickerButton, MultiDevicePickerButton } from './DevicePortPicker';
 
 interface AlertConsoleProps {
   alerts: NetworkAlert[];
@@ -1011,11 +1011,20 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
   const [targetKind, setTargetKind] = useState<'all' | 'group' | 'device'>(
     existingRule?.groupId || (existingRule?.groupIds && existingRule.groupIds.length > 0)
       ? 'group'
-      : existingRule?.deviceId || prefillDeviceId
+      : (existingRule?.deviceIds && existingRule.deviceIds.length > 0) || existingRule?.deviceId || prefillDeviceId
       ? 'device'
       : 'all',
   );
   const [deviceId, setDeviceId] = useState(existingRule?.deviceId ?? prefillDeviceId ?? '');
+  const [deviceIds, setDeviceIds] = useState<string[]>(
+    existingRule?.deviceIds && existingRule.deviceIds.length > 0
+      ? existingRule.deviceIds
+      : existingRule?.deviceId
+      ? [existingRule.deviceId]
+      : prefillDeviceId
+      ? [prefillDeviceId]
+      : [],
+  );
   const [groupIds, setGroupIds] = useState<string[]>(
     existingRule?.groupIds && existingRule.groupIds.length > 0
       ? existingRule.groupIds
@@ -1079,6 +1088,17 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
     api.devices.get(deviceId).then((d) => { if (!cancelled) setFullDevice(d); });
     return () => { cancelled = true; };
   }, [deviceId, devices]);
+
+  useEffect(() => {
+    if (targetKind !== 'device') return;
+    if (isObject || isService) return;
+    const nextPrimary = deviceIds[0] ?? '';
+    if (nextPrimary !== deviceId) {
+      setDeviceId(nextPrimary);
+      setPortIds([]);
+      setSensorIds([]);
+    }
+  }, [targetKind, isObject, isService, deviceIds, deviceId]);
   const selectedDevice = (fullDevice?.id === deviceId ? fullDevice : undefined) ?? lightDevice;
   // Object rules may target multiple sensors, but ALL must share one unit (one threshold).
   const selectedUnit = sensorIds.length > 0 ? deviceSensors.find((s) => s.id === sensorIds[0])?.unit ?? null : null;
@@ -1202,6 +1222,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
+    if (!isService && !isObject && targetKind === 'device' && deviceIds.length === 0) return;
     if (isService && serviceTargetKind === 'service' && !serviceId) return;
     if (isObject && objectMode === 'specific' && objectTargetKind === 'device' && (!deviceId || sensorIds.length === 0)) return;
     if (isObject && objectMode === 'specific' && objectTargetKind === 'group' && (groupIds.length === 0 || sensorIds.length === 0)) return;
@@ -1230,8 +1251,16 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
         : config.unit,
       severity: effSeverity,
       scope: isService ? 'service' : isObject ? 'sensor' : isInterface ? 'interface' : 'device',
-      deviceId: isService ? null : isFleet ? null : isObject ? (objectTargetKind === 'device' ? deviceId || null : null) : targetKind === 'device' ? deviceId || null : null,
-      deviceIds: [],
+      deviceId: isService
+        ? null
+        : isFleet
+        ? null
+        : isObject
+        ? (objectTargetKind === 'device' ? deviceId || null : null)
+        : targetKind === 'device'
+        ? deviceIds[0] || null
+        : null,
+      deviceIds: !isService && !isObject && targetKind === 'device' ? deviceIds : [],
       groupId: isService ? null : isFleet ? null : isObject ? (objectTargetKind === 'group' ? groupIds[0] || null : null) : (!isObject && targetKind === 'group' ? groupIds[0] || null : null),
       groupIds: isService ? [] : isFleet ? [] : isObject ? (objectTargetKind === 'group' ? groupIds : []) : (!isObject && targetKind === 'group' ? groupIds : []),
       siteId: siteId || null,
@@ -1505,28 +1534,42 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({ devices, services,
             <div className={`grid ${isInterface ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
               <div>
                 <label className="block text-slate-300 mb-1">Thiết bị:</label>
-                <DevicePickerButton
+                <MultiDevicePickerButton
                   devices={devices}
                   darkMode={darkMode}
-                  value={deviceId}
-                  onChange={(id) => { setDeviceId(id); setPortIds([]); setSensorIds([]); }}
+                  values={deviceIds}
+                  onChange={(ids) => {
+                    setDeviceIds(ids);
+                    const first = ids[0] ?? '';
+                    setDeviceId(first);
+                    setPortIds([]);
+                    setSensorIds([]);
+                  }}
+                  placeholder="Chọn 1 hoặc nhiều thiết bị..."
                 />
+                <p className="text-xs text-slate-400 mt-1">Hỗ trợ chọn nhiều thiết bị, kể cả khác nhóm.</p>
               </div>
               {isInterface && (
                 <div>
                   <label className="block text-slate-300 mb-1">Cổng áp dụng:</label>
-                  <button
-                    type="button"
-                    onClick={() => selectedDevice && setShowPortPicker(true)}
-                    disabled={!selectedDevice}
-                    className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50`}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <Boxes className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      <span className="truncate">{portIds.length === 0 ? 'Mọi cổng của thiết bị' : `${portIds.length} cổng đã chọn`}</span>
-                    </span>
-                    <Search className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                  </button>
+                  {deviceIds.length === 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => selectedDevice && setShowPortPicker(true)}
+                      disabled={!selectedDevice}
+                      className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <Boxes className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span className="truncate">{portIds.length === 0 ? 'Mọi cổng của thiết bị' : `${portIds.length} cổng đã chọn`}</span>
+                      </span>
+                      <Search className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    </button>
+                  ) : (
+                    <div className={`${inputCls} text-slate-400`}>
+                      Đang chọn nhiều thiết bị: rule sẽ áp dụng mọi cổng của từng thiết bị.
+                    </div>
+                  )}
                 </div>
               )}
             </div>

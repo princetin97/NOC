@@ -87,21 +87,36 @@ export function snmpGetSingle(session: snmp.Session, oid: string): Promise<snmp.
 
 /** Walks a column OID and returns a map of index -> value. */
 export function snmpWalkColumn(session: snmp.Session, oid: string): Promise<Map<number, snmp.VarBind>> {
-  return new Promise((resolve, reject) => {
-    const result = new Map<number, snmp.VarBind>();
-    function feedCb(varbinds: snmp.VarBind[]) {
-      for (const vb of varbinds) {
-        if (snmp.isVarbindError(vb)) continue;
-        const parts = vb.oid.split('.');
-        const index = Number(parts[parts.length - 1]);
-        result.set(index, vb);
+  const reps = [20, 5, 1];
+  let attempt = 0;
+
+  const run = (): Promise<Map<number, snmp.VarBind>> =>
+    new Promise((resolve, reject) => {
+      const result = new Map<number, snmp.VarBind>();
+      function feedCb(varbinds: snmp.VarBind[]) {
+        for (const vb of varbinds) {
+          if (snmp.isVarbindError(vb)) continue;
+          const parts = vb.oid.split('.');
+          const index = Number(parts[parts.length - 1]);
+          result.set(index, vb);
+        }
       }
-    }
-    session.subtree(oid, 20, feedCb, (error: Error | null) => {
-      if (error) return reject(error);
-      resolve(result);
+      session.subtree(oid, reps[Math.min(attempt, reps.length - 1)], feedCb, (error: Error | null) => {
+        if (!error) {
+          resolve(result);
+          return;
+        }
+        const isTimeout = /timed out/i.test(error.message);
+        if (!isTimeout || attempt >= reps.length - 1) {
+          reject(error);
+          return;
+        }
+        attempt += 1;
+        resolve(run());
+      });
     });
-  });
+
+  return run();
 }
 
 /**
@@ -110,21 +125,36 @@ export function snmpWalkColumn(session: snmp.Session, oid: string): Promise<Map<
  * LLDP-MIB's lldpRemTable (timeMark.localPort.remIndex).
  */
 export function snmpWalkSuffix(session: snmp.Session, oid: string): Promise<Map<string, snmp.VarBind>> {
-  return new Promise((resolve, reject) => {
-    const result = new Map<string, snmp.VarBind>();
-    const base = oid.endsWith('.') ? oid : `${oid}.`;
-    function feedCb(varbinds: snmp.VarBind[]) {
-      for (const vb of varbinds) {
-        if (snmp.isVarbindError(vb)) continue;
-        const suffix = vb.oid.startsWith(base) ? vb.oid.slice(base.length) : vb.oid;
-        result.set(suffix, vb);
+  const reps = [20, 5, 1];
+  let attempt = 0;
+
+  const run = (): Promise<Map<string, snmp.VarBind>> =>
+    new Promise((resolve, reject) => {
+      const result = new Map<string, snmp.VarBind>();
+      const base = oid.endsWith('.') ? oid : `${oid}.`;
+      function feedCb(varbinds: snmp.VarBind[]) {
+        for (const vb of varbinds) {
+          if (snmp.isVarbindError(vb)) continue;
+          const suffix = vb.oid.startsWith(base) ? vb.oid.slice(base.length) : vb.oid;
+          result.set(suffix, vb);
+        }
       }
-    }
-    session.subtree(oid, 20, feedCb, (error: Error | null) => {
-      if (error) return reject(error);
-      resolve(result);
+      session.subtree(oid, reps[Math.min(attempt, reps.length - 1)], feedCb, (error: Error | null) => {
+        if (!error) {
+          resolve(result);
+          return;
+        }
+        const isTimeout = /timed out/i.test(error.message);
+        if (!isTimeout || attempt >= reps.length - 1) {
+          reject(error);
+          return;
+        }
+        attempt += 1;
+        resolve(run());
+      });
     });
-  });
+
+  return run();
 }
 
 export function varbindToString(vb: snmp.VarBind | undefined): string | undefined {
