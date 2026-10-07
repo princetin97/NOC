@@ -702,6 +702,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   // Device detail modal: active tab + interface search/pagination
   const [detailTab, setDetailTab] = useState<'system' | 'neighbors' | 'ports' | 'vlans' | 'alerts'>('system');
   const [portSearch, setPortSearch] = useState<string>('');
+  const [vlanSearch, setVlanSearch] = useState<string>('');
   const [portPage, setPortPage] = useState<number>(1);
   const [showVirtualInterfaces, setShowVirtualInterfaces] = useState<boolean>(true);
   const [detailSensors, setDetailSensors] = useState<DeviceSensor[]>([]);
@@ -2364,12 +2365,56 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               {/* ==== TAB: VLAN (LibreNMS-style: VLAN id/name + member ports) ==== */}
               {detailTab === 'vlans' && (() => {
                 const vlans = detailVlans;
+                const q = vlanSearch.trim().toLowerCase();
+                const vlanRows = vlans
+                  .slice()
+                  .sort((a, b) => a.vlanId - b.vlanId)
+                  .map((vlan) => {
+                    const accessPorts = vlan.ports
+                      .filter((p) => p.untagged)
+                      .map((p) => p.portName)
+                      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+                    const trunkPorts = vlan.ports
+                      .filter((p) => !p.untagged)
+                      .map((p) => p.portName)
+                      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+                    const vlanName = vlan.name?.trim() || `VLAN${vlan.vlanId}`;
+                    return { vlan, vlanName, accessPorts, trunkPorts };
+                  });
+                const filteredRows = q === ''
+                  ? vlanRows
+                  : vlanRows.filter(({ vlan, vlanName, accessPorts, trunkPorts }) =>
+                      [
+                        String(vlan.vlanId),
+                        vlanName,
+                        accessPorts.join(' '),
+                        trunkPorts.join(' '),
+                      ]
+                        .join(' ')
+                        .toLowerCase()
+                        .includes(q)
+                    );
+
                 return (
                   <div>
-                    <h4 className="font-bold text-sm font-mono flex items-center space-x-2 text-slate-200 mb-3">
-                      <Network className="w-4 h-4 text-emerald-400" />
-                      <span>VLAN được phát hiện qua SNMP (Q-BRIDGE-MIB) ({vlans.length})</span>
-                    </h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                      <h4 className="font-bold text-sm font-mono flex items-center space-x-2 text-slate-200">
+                        <Network className="w-4 h-4 text-emerald-400" />
+                        <span>VLAN được phát hiện qua SNMP (Q-BRIDGE-MIB) ({filteredRows.length}/{vlans.length})</span>
+                      </h4>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={vlanSearch}
+                          onChange={(e) => setVlanSearch(e.target.value)}
+                          placeholder="Tìm VLAN ID / tên / Access / Trunk..."
+                          className={`pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg border w-full sm:w-72 ${
+                            darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-white border-slate-300'
+                          }`}
+                        />
+                      </div>
+                    </div>
                     {vlans.length === 0 ? (
                       <div className="p-6 text-center text-sm text-slate-400 border border-dashed rounded-xl border-slate-700">
                         Chưa phát hiện VLAN nào trên thiết bị này. Hãy thử "Quét SNMP" lại, hoặc thiết bị có thể không hỗ trợ Q-BRIDGE-MIB.
@@ -2386,28 +2431,22 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                             </tr>
                           </thead>
                           <tbody className={`${darkMode ? 'divide-y divide-slate-800' : 'divide-y divide-slate-200'}`}>
-                            {vlans
-                              .slice()
-                              .sort((a, b) => a.vlanId - b.vlanId)
-                              .map((vlan) => {
-                                const accessPorts = vlan.ports
-                                  .filter((p) => p.untagged)
-                                  .map((p) => p.portName)
-                                  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-                                const trunkPorts = vlan.ports
-                                  .filter((p) => !p.untagged)
-                                  .map((p) => p.portName)
-                                  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-
+                            {filteredRows
+                              .map(({ vlan, vlanName, accessPorts, trunkPorts }) => {
                                 return (
                                   <tr key={vlan.id} className={`${darkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}`}>
                                     <td className="py-2.5 px-3 font-bold text-slate-100">{vlan.vlanId}</td>
-                                    <td className="py-2.5 px-3 text-slate-300">{vlan.name?.trim() || `VLAN${vlan.vlanId}`}</td>
+                                    <td className="py-2.5 px-3 text-slate-300">{vlanName}</td>
                                     <td className="py-2.5 px-3 text-emerald-400">{accessPorts.length > 0 ? accessPorts.join(', ') : '—'}</td>
                                     <td className="py-2.5 px-3 text-cyan-400">{trunkPorts.length > 0 ? trunkPorts.join(', ') : '—'}</td>
                                   </tr>
                                 );
                               })}
+                            {filteredRows.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="py-6 px-3 text-center text-slate-400">Không tìm thấy VLAN phù hợp.</td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>

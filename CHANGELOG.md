@@ -17,6 +17,18 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.38] - 2026-10-07
+
+### Added
+- Bổ sung ô tìm kiếm trong tab VLAN ở màn hình chi tiết thiết bị:
+  - Lọc trực tiếp theo VLAN ID, tên VLAN, danh sách cổng Access và Trunk.
+  - Header tab hiển thị dạng `filtered/total` để biết nhanh số VLAN khớp điều kiện tìm.
+  - Thêm trạng thái rỗng thân thiện khi không có VLAN nào khớp từ khóa.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Xác nhận `ui` build thành công và service khởi động ổn định.
+
 ## [0.8.37] - 2026-10-07
 
 ### Fixed
