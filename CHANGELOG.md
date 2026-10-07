@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.37] - 2026-10-07
+
+### Fixed
+- Khắc phục tình trạng mô tả interface (ifAlias/description) không tự cập nhật theo poll chu kỳ:
+  - Poller bổ sung nhịp làm mới metadata IF-MIB (`ifName`, `ifDescr`, `ifAlias`) ngay trong luồng poll định kỳ.
+  - Dữ liệu mô tả cổng trên tab Interfaces giờ sẽ tự đồng bộ theo chu kỳ, không còn phụ thuộc hoàn toàn vào thao tác "Quét SNMP" thủ công.
+
+### Config
+- Thêm biến môi trường mới cho backend/poller:
+  - `INTERFACE_METADATA_REFRESH_SECONDS` (mặc định `600`) để điều chỉnh chu kỳ làm mới metadata interface trong poll thường.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Xác nhận image `api` và `poller` build thành công, services khởi động lại ổn định.
+
 ## [0.8.36] - 2026-10-06
 
 ### Fixed

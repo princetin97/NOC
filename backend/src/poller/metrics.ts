@@ -30,6 +30,7 @@ import {
 } from '../lib/snmpAutoPause';
 
 const PING_ONLY_METRIC_WRITE_INTERVAL_MS = 5 * 60_000;
+const interfaceMetadataRefreshAtByDevice = new Map<string, number>();
 
 // Device liveness anti-flap: require N consecutive unreachable polls before
 // switching status to down, while recovering to up immediately on any success.
@@ -112,6 +113,10 @@ export async function pollDevice(deviceId: string): Promise<void> {
     /windows/i.test(device.os ?? '') ||
     /windows/i.test(device.sysDescr ?? '') ||
     /microsoft/i.test(device.vendor ?? '');
+  const nowMs = Date.now();
+  const metadataRefreshIntervalMs = Math.max(60_000, env.interfaceMetadataRefreshSeconds * 1000);
+  const lastMetadataRefreshAt = interfaceMetadataRefreshAtByDevice.get(deviceId) ?? 0;
+  const shouldRefreshInterfaceMetadata = nowMs - lastMetadataRefreshAt >= metadataRefreshIntervalMs;
 
   const snmpPromise = (async () => {
     try {
@@ -157,7 +162,8 @@ export async function pollDevice(deviceId: string): Promise<void> {
         device.vendor === 'Fortinet' || (device.sysObjectId?.startsWith('1.3.6.1.4.1.12356') ?? false);
       const tunnelStatus = isFortinet ? await readFortiVpnTunnelStatus(session, deviceId) : undefined;
 
-      await pollInterfaces(session, deviceId, device.ports, tunnelStatus);
+      await pollInterfaces(session, deviceId, device.ports, tunnelStatus, shouldRefreshInterfaceMetadata);
+      if (shouldRefreshInterfaceMetadata) interfaceMetadataRefreshAtByDevice.set(deviceId, nowMs);
 
         if (!isWindowsHost) {
           await discoverSensors(session, deviceId, {
@@ -863,7 +869,28 @@ async function pollInterfaces(
   deviceId: string,
   existingPorts: { id: string; ifIndex: number; ifName: string; inOctets: bigint; outOctets: bigint; lastPolled: Date | null; ifSpeed: bigint }[],
   tunnelStatus?: Map<string, string>,
+  refreshMetadata = false,
 ): Promise<void> {
+  const metadataByIndex = refreshMetadata
+    ? await (async () => {
+        const [ifName, ifDescr, ifAlias] = await Promise.all([
+          snmpWalkColumn(session, OID.ifName),
+          snmpWalkColumn(session, OID.ifDescr),
+          snmpWalkColumn(session, OID.ifAlias),
+        ]);
+        const byIndex = new Map<number, { ifName?: string; ifDescr?: string; ifAlias?: string }>();
+        const indexes = new Set<number>([...ifName.keys(), ...ifDescr.keys(), ...ifAlias.keys()]);
+        for (const ifIndex of indexes) {
+          byIndex.set(ifIndex, {
+            ifName: varbindToString(ifName.get(ifIndex)) ?? varbindToString(ifDescr.get(ifIndex)),
+            ifDescr: varbindToString(ifDescr.get(ifIndex)),
+            ifAlias: varbindToString(ifAlias.get(ifIndex)),
+          });
+        }
+        return byIndex;
+      })()
+    : undefined;
+
   const [hcInOctets, hcOutOctets, inOctets32, outOctets32, inErrors, outErrors, inDiscards, outDiscards, operStatus_] = await Promise.all([
     snmpWalkColumn(session, OID.ifHCInOctets),
     snmpWalkColumn(session, OID.ifHCOutOctets),
@@ -928,6 +955,13 @@ async function pollInterfaces(
     portUpdates.push({
       id: existing.id,
       data: {
+        ...(metadataByIndex?.has(ifIndex)
+          ? {
+              ifName: metadataByIndex.get(ifIndex)?.ifName ?? existing.ifName,
+              ifDescr: metadataByIndex.get(ifIndex)?.ifDescr,
+              ifAlias: metadataByIndex.get(ifIndex)?.ifAlias,
+            }
+          : {}),
         inOctets: newIn,
         outOctets: newOut,
         inErrors: varbindToBigInt(inErrors.get(ifIndex)),

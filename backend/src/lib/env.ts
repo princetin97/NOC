@@ -49,6 +49,9 @@ export const env = {
   pollQueueBufferMultiplier: parsePositiveInt(process.env.POLL_QUEUE_BUFFER_MULTIPLIER, 3),
   pollFastIntervalSeconds: parsePositiveInt(process.env.POLL_FAST_INTERVAL_SECONDS, 15),
   pollFastBatchSize: parsePositiveInt(process.env.POLL_FAST_BATCH_SIZE, 60),
+  // How often regular polling should refresh IF-MIB metadata (ifName/ifDescr/ifAlias)
+  // so interface description edits appear without manual SNMP scan/discovery.
+  interfaceMetadataRefreshSeconds: parsePositiveInt(process.env.INTERFACE_METADATA_REFRESH_SECONDS, 600),
   downFailStreakThreshold: parsePositiveInt(process.env.DOWN_FAIL_STREAK_THRESHOLD, 2),
   pollTransitionBoostWindowSeconds: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_WINDOW_SECONDS, 180),
   pollTransitionBoostStepSeconds: parsePositiveInt(process.env.POLL_TRANSITION_BOOST_STEP_SECONDS, 20),
