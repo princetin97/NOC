@@ -17,6 +17,18 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.40] - 2026-10-08
+
+### Fixed
+- Sửa logic cảnh báo FortiGate HA member để khớp dữ liệu thực tế:
+  - Rule HA hệ thống đổi từ `sensor_value > 1` sang `sensor_value != 1`, nên member trả giá trị `0` (không sync) sẽ được cảnh báo đúng.
+  - Bổ sung tự đồng bộ lại các rule HA đã tồn tại trong DB về điều kiện chuẩn `!= 1` để tránh lệch cấu hình giữa các site.
+  - Cập nhật mapping trạng thái HA: nhận diện `0` là `Unsynchronized` (critical).
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Kiểm tra DB xác nhận đã phát sinh alert `critical` cho `CCS-FIREWALL` với member `FGT61FTK22029749` có `sensor_value = 0`.
+
 ## [0.8.39] - 2026-10-08
 
 ### Added

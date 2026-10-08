@@ -240,9 +240,10 @@ async function readFortiSensors(session: Session): Promise<DiscoveredSensor[]> {
 }
 
 function decodeFortiHaSyncStatus(code: number | undefined): { label: string; status: string } {
+  if (code === 0) return { label: 'Unsynchronized', status: 'critical' };
   if (code === 1) return { label: 'Synchronized', status: 'ok' };
-  if (code === 2) return { label: 'Unsynchronized', status: 'critical' };
-  if (code === 3) return { label: 'In Progress', status: 'warning' };
+  if (code === 2) return { label: 'In Progress', status: 'warning' };
+  if (code === 3) return { label: 'Out of Sync', status: 'critical' };
   return { label: 'Unknown', status: 'unknown' };
 }
 
