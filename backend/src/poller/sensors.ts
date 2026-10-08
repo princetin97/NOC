@@ -239,6 +239,47 @@ async function readFortiSensors(session: Session): Promise<DiscoveredSensor[]> {
   return sensors;
 }
 
+function decodeFortiHaSyncStatus(code: number | undefined): { label: string; status: string } {
+  if (code === 1) return { label: 'Synchronized', status: 'ok' };
+  if (code === 2) return { label: 'Unsynchronized', status: 'critical' };
+  if (code === 3) return { label: 'In Progress', status: 'warning' };
+  return { label: 'Unknown', status: 'unknown' };
+}
+
+/**
+ * FORTINET-FORTIGATE-MIB fgHaStatsTable: per-member HA sync state (PRTG parity).
+ * Emits one sensor per HA node so alerts can target a specific cluster member.
+ */
+async function readFortiHaSensors(session: Session): Promise<DiscoveredSensor[]> {
+  const [serials, hostnames, syncStatuses] = await Promise.all([
+    snmpWalkColumn(session, OID.fgHaStatsSerial),
+    snmpWalkColumn(session, OID.fgHaStatsHostname),
+    snmpWalkColumn(session, OID.fgHaStatsSyncStatus),
+  ]);
+
+  const sensors: DiscoveredSensor[] = [];
+  const indexes = new Set<number>([...serials.keys(), ...hostnames.keys(), ...syncStatuses.keys()]);
+  for (const idx of indexes) {
+    const serial = varbindToString(serials.get(idx))?.trim();
+    const hostname = varbindToString(hostnames.get(idx))?.trim();
+    const syncRaw = varbindToNumber(syncStatuses.get(idx));
+    if (syncRaw === undefined && !serial && !hostname) continue;
+
+    const memberLabel = serial || hostname || `member-${idx}`;
+    const sync = decodeFortiHaSyncStatus(syncRaw);
+    sensors.push({
+      type: 'ha_member_sync',
+      index: `fg-ha-sync-${idx}`,
+      description: `FortiGate HA Member: ${memberLabel} (Sync: ${sync.label})`,
+      value: syncRaw ?? null,
+      unit: '',
+      status: sync.status,
+    });
+  }
+
+  return sensors;
+}
+
 /** JUNIPER-MIB jnxOperatingTable + SRX SPU monitoring: per-component temp/CPU/memory. */
 async function readJuniperSensors(session: Session, processors?: DiscoveredProcessor[]): Promise<DiscoveredSensor[]> {
   const sensors: DiscoveredSensor[] = [];
@@ -886,7 +927,10 @@ export async function discoverSensors(session: Session, deviceId: string, ctx: D
     return;
   }
 
-  if (isFortinet(ctx)) await collect('fortinet', () => readFortiSensors(session));
+  if (isFortinet(ctx)) {
+    await collect('fortinet', () => readFortiSensors(session));
+    await collect('fortinet-ha', () => readFortiHaSensors(session));
+  }
   else if (isJuniper(ctx)) await collect('juniper', () => readJuniperSensors(session, ctx.processors));
   else if (isPureStorage(ctx)) await collect('purestorage', () => readPureStorageSensors(session));
   else if (isCiscoSb(ctx)) await collect('ciscosb', () => readCiscoSbSensors(session));

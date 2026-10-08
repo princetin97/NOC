@@ -111,6 +111,11 @@ export const OID = {
   // logical IPsec interface up while the tunnel/SA is down, so we must read this instead.
   fgVpnTunEntPhase1Name: '1.3.6.1.4.1.12356.101.12.2.2.1.2', // walk, tunnel (phase1) name = ifName
   fgVpnTunEntStatus: '1.3.6.1.4.1.12356.101.12.2.2.1.20', // walk, down(1) / up(2)
+  // FORTINET-FORTIGATE-MIB fgHaStatsTable - per-member HA status used by PRTG-like
+  // cluster monitoring (sync state per node).
+  fgHaStatsSerial: '1.3.6.1.4.1.12356.101.13.2.1.1.2', // walk, HA member serial number
+  fgHaStatsHostname: '1.3.6.1.4.1.12356.101.13.2.1.1.11', // walk, HA member hostname
+  fgHaStatsSyncStatus: '1.3.6.1.4.1.12356.101.13.2.1.1.12', // walk, synchronized(1)/unsynchronized(2)
 
   // F5-BIGIP-SYSTEM-MIB memory counters. BIG-IP reports memory in split pools
   // (TMM and non-TMM "other") and a host-total aggregate; UCD memory can be misleading here.

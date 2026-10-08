@@ -17,6 +17,23 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.39] - 2026-10-08
+
+### Added
+- Bổ sung giám sát trạng thái HA member cho FortiGate (tương tự sensor HA trên PRTG):
+  - Thu thập `fgHaStatsTable` qua SNMP (serial/hostname + sync status của từng member).
+  - Persist thành sensor type `ha_member_sync` theo từng node HA để hiển thị và theo dõi lịch sử.
+  - Mapping trạng thái sync sang health: `Synchronized` -> `ok`, `Unsynchronized` -> `critical`, trạng thái trung gian -> `warning/unknown`.
+
+### Alerting
+- Tự tạo system rule mặc định `FortiGate HA Member Sync Status`:
+  - Scope `sensor`, metric `sensor_value`, target `sensorType=ha_member_sync`.
+  - Kích hoạt cảnh báo `critical` khi sync status > 1 (member không đồng bộ).
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Xác nhận image `api` và `poller` build thành công, services khởi động ổn định.
+
 ## [0.8.38] - 2026-10-07
 
 ### Added
