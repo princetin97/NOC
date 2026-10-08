@@ -224,53 +224,32 @@ async function ensurePortSecuritySystemRule(): Promise<void> {
 }
 
 async function ensureFortiHaSystemRule(): Promise<void> {
-  const existing = await prisma.alertRule.findMany({
+  const existing = await prisma.alertRule.findFirst({
     where: { metric: 'sensor_value', scope: 'sensor', sensorType: 'ha_member_sync' },
     select: { id: true },
   });
 
-  if (existing.length === 0) {
-    await prisma.alertRule.create({
-      data: {
-        name: 'FortiGate HA Member Sync Status',
-        metric: 'sensor_value',
-        condition: '!=',
-        threshold: 1,
-        unit: '',
-        severity: 'critical',
-        enabled: true,
-        description: 'System rule: alert when any FortiGate HA member is not synchronized',
-        scope: 'sensor',
-        sensorType: 'ha_member_sync',
-        siteId: null,
-        renotifyMinutes: 0,
-        conditions: {
-          create: [{ order: 0, condition: '!=', threshold: 1, severity: 'critical' }],
-        },
-      },
-    });
-    return;
-  }
+  if (existing) return;
 
-  await prisma.$transaction(
-    existing.map((rule) =>
-      prisma.alertRule.update({
-        where: { id: rule.id },
-        data: {
-          name: 'FortiGate HA Member Sync Status',
-          condition: '!=',
-          threshold: 1,
-          severity: 'critical',
-          enabled: true,
-          description: 'System rule: alert when any FortiGate HA member is not synchronized',
-          conditions: {
-            deleteMany: {},
-            create: [{ order: 0, condition: '!=', threshold: 1, severity: 'critical' }],
-          },
-        },
-      }),
-    ),
-  );
+  await prisma.alertRule.create({
+    data: {
+      name: 'FortiGate HA Member Sync Status',
+      metric: 'sensor_value',
+      condition: '!=',
+      threshold: 1,
+      unit: '',
+      severity: 'critical',
+      enabled: true,
+      description: 'System rule: alert when any FortiGate HA member is not synchronized',
+      scope: 'sensor',
+      sensorType: 'ha_member_sync',
+      siteId: null,
+      renotifyMinutes: 0,
+      conditions: {
+        create: [{ order: 0, condition: '!=', threshold: 1, severity: 'critical' }],
+      },
+    },
+  });
 }
 
 const ruleSchema = z.object({

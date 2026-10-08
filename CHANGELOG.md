@@ -17,6 +17,20 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.41] - 2026-10-08
+
+### Fixed
+- Sửa cơ chế tự tạo rule HA hệ thống để không còn ghi đè cấu hình người dùng:
+  - Backend chỉ tạo rule `FortiGate HA Member Sync Status` khi chưa tồn tại.
+  - Không còn tự reset `severity` về `critical` mỗi lần mở danh sách Alert Rules.
+
+### Changed
+- Đã áp dụng ngay trên dữ liệu hiện tại: toàn bộ rule `ha_member_sync` được chỉnh mức độ cảnh báo từ `critical` xuống `high` theo yêu cầu vận hành.
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Kiểm tra DB xác nhận tất cả rule `ha_member_sync` hiện có `severity = high`.
+
 ## [0.8.40] - 2026-10-08
 
 ### Fixed
