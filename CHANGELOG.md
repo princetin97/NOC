@@ -17,6 +17,22 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.42] - 2026-10-08
+
+### Added
+- Bổ sung tài liệu thiết kế chi tiết scale-up giám sát qua Docker cho 2 mode triển khai:
+  - `single-site`: giám sát tập trung cho 1 trụ sở.
+  - `multi-site`: mở rộng linh hoạt nhiều trụ sở với mô hình collector tại site + ingest/worker ở trung tâm.
+- Tài liệu mới gồm:
+  - Sơ đồ kiến trúc (Mermaid) cho từng mode.
+  - Luồng dữ liệu end-to-end.
+  - Cách tổ chức stack Docker theo profile.
+  - Lộ trình nâng cấp không phá vỡ hệ thống hiện tại.
+  - Checklist triển khai, HA/DR, bảo mật, sizing tham chiếu.
+
+### Docs
+- Thêm liên kết tài liệu scale-up vào `deploy/README.md` để dễ tra cứu khi triển khai.
+
 ## [0.8.41] - 2026-10-08
 
 ### Fixed

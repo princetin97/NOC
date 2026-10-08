@@ -107,3 +107,9 @@ docker compose exec postgres pg_dump -U monitor device_monitor > backup.sql
 - RRD/long-term rollup & retention cho dữ liệu time-series.
 - Module billing, config backup, distributed pollers, plugin system.
 - Cơ chế notification (email/Slack/webhook) khi có alert mới.
+
+## 9. Tài liệu thiết kế scale-up (single-site -> multi-site)
+
+Xem tài liệu chi tiết kiến trúc và cách triển khai Docker tại:
+
+- [SCALING-ARCHITECTURE-DOCKER.md](SCALING-ARCHITECTURE-DOCKER.md)
