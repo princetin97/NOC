@@ -303,18 +303,20 @@ async function collectWindowsStorageViaIndexedGet(
 
   const now = new Date();
   const metricRows: { sensorId: string; value: number }[] = [];
+  const seenStorageKeys = new Set<string>();
 
   for (const row of rows) {
     if (!row.size || row.used === undefined) continue;
 
     if (row.type === HR_STORAGE_FIXED_DISK) {
       const percent = Math.min(100, Math.round((row.used / row.size) * 1000) / 10);
+      const canonicalIndex = `hr-${row.index}`;
       const sensor = await prisma.sensor.upsert({
-        where: { deviceId_type_index: { deviceId, type: 'disk', index: `win-hr-${row.index}` } },
+        where: { deviceId_type_index: { deviceId, type: 'disk', index: canonicalIndex } },
         create: {
           deviceId,
           type: 'disk',
-          index: `win-hr-${row.index}`,
+          index: canonicalIndex,
           description: row.descr || `Disk ${row.index}`,
           value: percent,
           unit: '%',
@@ -329,18 +331,20 @@ async function collectWindowsStorageViaIndexedGet(
           lastPolled: now,
         },
       });
+      seenStorageKeys.add(`disk:${canonicalIndex}`);
       metricRows.push({ sensorId: sensor.id, value: percent });
       continue;
     }
 
     if (row.type === HR_STORAGE_VIRTUAL_MEMORY) {
       const percent = Math.min(100, Math.round((row.used / row.size) * 1000) / 10);
+      const canonicalIndex = `hr-swap-${row.index}`;
       const sensor = await prisma.sensor.upsert({
-        where: { deviceId_type_index: { deviceId, type: 'memory', index: `win-hr-swap-${row.index}` } },
+        where: { deviceId_type_index: { deviceId, type: 'memory', index: canonicalIndex } },
         create: {
           deviceId,
           type: 'memory',
-          index: `win-hr-swap-${row.index}`,
+          index: canonicalIndex,
           description: row.descr || 'Virtual Memory',
           value: percent,
           unit: '%',
@@ -355,12 +359,42 @@ async function collectWindowsStorageViaIndexedGet(
           lastPolled: now,
         },
       });
+      seenStorageKeys.add(`memory:${canonicalIndex}`);
       metricRows.push({ sensorId: sensor.id, value: percent });
     }
   }
 
   if (metricRows.length > 0) {
     await prisma.sensorMetric.createMany({ data: metricRows.map((row) => ({ ...row, timestamp: now })) });
+  }
+
+  // Cleanup stale/legacy Windows storage sensors so switching collector logic does
+  // not leave duplicated cards in UI (e.g. old win-hr-* plus current hr-* entries).
+  const existingStorageSensors = await prisma.sensor.findMany({
+    where: {
+      deviceId,
+      OR: [
+        { type: 'disk', index: { startsWith: 'hr-' } },
+        { type: 'disk', index: { startsWith: 'win-hr-' } },
+        { type: 'memory', index: { startsWith: 'hr-swap-' } },
+        { type: 'memory', index: { startsWith: 'win-hr-swap-' } },
+      ],
+    },
+    select: { id: true, type: true, index: true },
+  });
+  const staleIds = existingStorageSensors
+    .filter((s) => {
+      const canonicalIndex =
+        s.index.startsWith('win-hr-swap-')
+          ? `hr-swap-${s.index.slice('win-hr-swap-'.length)}`
+          : s.index.startsWith('win-hr-')
+            ? `hr-${s.index.slice('win-hr-'.length)}`
+            : s.index;
+      return !seenStorageKeys.has(`${s.type}:${canonicalIndex}`);
+    })
+    .map((s) => s.id);
+  if (staleIds.length > 0) {
+    await prisma.sensor.deleteMany({ where: { id: { in: staleIds } } });
   }
 
   const ramRows = rows.filter((r) => r.type === HR_STORAGE_RAM && !!r.size && r.used !== undefined && !!r.allocationUnits);

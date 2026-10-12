@@ -142,3 +142,11 @@ docker compose exec postgres pg_dump -U monitor device_monitor > backup.sql
 Xem tài liệu chi tiết kiến trúc và cách triển khai Docker tại:
 
 - [SCALING-ARCHITECTURE-DOCKER.md](SCALING-ARCHITECTURE-DOCKER.md)
+
+## 10. Hướng dẫn triển khai cho các site khác
+
+- [DEPLOY-OTHER-SITES.md](DEPLOY-OTHER-SITES.md)
+
+## 11. Lệnh cập nhật source và build lại các site
+
+- [UPDATE-SOURCE-AND-REDEPLOY.md](UPDATE-SOURCE-AND-REDEPLOY.md)
