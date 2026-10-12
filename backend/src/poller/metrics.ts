@@ -304,12 +304,26 @@ async function collectWindowsStorageViaIndexedGet(
   const now = new Date();
   const metricRows: { sensorId: string; value: number }[] = [];
   const seenStorageKeys = new Set<string>();
+  const seenDiskLabels = new Set<string>();
+  let virtualMemoryRecorded = false;
+
+  const normalizeDiskLabel = (descr: string, fallbackIndex: number): string => {
+    const clean = descr.trim();
+    const drive = clean.match(/^([a-zA-Z]):\\/);
+    if (drive) return `${drive[1].toUpperCase()}:`;
+    const volumePrefix = clean.match(/^([a-zA-Z]):/);
+    if (volumePrefix) return `${volumePrefix[1].toUpperCase()}:`;
+    return clean ? clean.toLowerCase() : `disk-${fallbackIndex}`;
+  };
 
   for (const row of rows) {
     if (!row.size || row.used === undefined) continue;
 
     if (row.type === HR_STORAGE_FIXED_DISK) {
       const percent = Math.min(100, Math.round((row.used / row.size) * 1000) / 10);
+      const labelKey = normalizeDiskLabel(row.descr || '', row.index);
+      if (seenDiskLabels.has(labelKey)) continue;
+      seenDiskLabels.add(labelKey);
       const canonicalIndex = `hr-${row.index}`;
       const sensor = await prisma.sensor.upsert({
         where: { deviceId_type_index: { deviceId, type: 'disk', index: canonicalIndex } },
@@ -337,6 +351,8 @@ async function collectWindowsStorageViaIndexedGet(
     }
 
     if (row.type === HR_STORAGE_VIRTUAL_MEMORY) {
+      if (virtualMemoryRecorded) continue;
+      virtualMemoryRecorded = true;
       const percent = Math.min(100, Math.round((row.used / row.size) * 1000) / 10);
       const canonicalIndex = `hr-swap-${row.index}`;
       const sensor = await prisma.sensor.upsert({
@@ -384,6 +400,10 @@ async function collectWindowsStorageViaIndexedGet(
   });
   const staleIds = existingStorageSensors
     .filter((s) => {
+      if (s.index.startsWith('win-hr-swap-') || s.index.startsWith('win-hr-')) {
+        // Always delete legacy Windows sensor keys after migrating to canonical hr-*.
+        return true;
+      }
       const canonicalIndex =
         s.index.startsWith('win-hr-swap-')
           ? `hr-swap-${s.index.slice('win-hr-swap-'.length)}`
