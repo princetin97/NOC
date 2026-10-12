@@ -131,10 +131,10 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
 fi
 
 echo "==> Resolving docker compose command"
-DC="docker compose"
+DC=(docker compose)
 if ! docker info >/dev/null 2>&1; then
   if sudo -n docker info >/dev/null 2>&1; then
-    DC="sudo docker compose"
+    DC=(sudo docker compose)
   else
     echo "Docker daemon is not accessible. Re-login or run with a user that can access Docker." >&2
     exit 1
@@ -182,7 +182,21 @@ EOF
 
 echo "==> Starting platform"
 cd "$INSTALL_DIR"
-$DC up -d --build
+COMPOSE_FILE=""
+for candidate in docker-compose.yml docker-compose.yaml compose.yml compose.yaml; do
+  if [[ -f "$INSTALL_DIR/$candidate" ]]; then
+    COMPOSE_FILE="$INSTALL_DIR/$candidate"
+    break
+  fi
+done
+
+if [[ -z "$COMPOSE_FILE" ]]; then
+  echo "No Docker Compose file found in $INSTALL_DIR" >&2
+  echo "Expected one of: docker-compose.yml, docker-compose.yaml, compose.yml, compose.yaml" >&2
+  exit 1
+fi
+
+"${DC[@]}" -f "$COMPOSE_FILE" up -d --build
 
 echo "==> Waiting for API health"
 for _ in $(seq 1 60); do
@@ -194,7 +208,7 @@ done
 
 if ! curl -fsS "http://127.0.0.1:${API_PORT}/api/health" >/dev/null 2>&1; then
   echo "API health check failed. Check logs:"
-  echo "  $DC logs --tail 200 api"
+  echo "  ${DC[*]} -f $COMPOSE_FILE logs --tail 200 api"
   exit 1
 fi
 
@@ -207,6 +221,6 @@ echo "Env file: ${ENV_FILE}"
 echo
 echo "Useful commands:"
 echo "  cd ${INSTALL_DIR}"
-echo "  $DC ps"
-echo "  $DC logs -f api"
-echo "  $DC logs -f poller"
+echo "  ${DC[*]} -f $COMPOSE_FILE ps"
+echo "  ${DC[*]} -f $COMPOSE_FILE logs -f api"
+echo "  ${DC[*]} -f $COMPOSE_FILE logs -f poller"
