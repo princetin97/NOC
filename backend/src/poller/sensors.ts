@@ -338,18 +338,8 @@ async function readCiscoSbSensors(session: Session): Promise<DiscoveredSensor[]>
 
   const sensors: DiscoveredSensor[] = [];
   for (const [idx, vb] of temps) {
-    const raw = varbindToNumber(vb);
-    if (raw === undefined || raw <= 0) continue;
-    // CISCOSB devices (e.g. SG/SF/CBS families) report rlEnvFanDataTemp in Fahrenheit.
-    const celsius = Math.round((((raw - 32) * 5) / 9) * 10) / 10;
-    sensors.push({
-      type: 'temperature',
-      index: `sb-temp-${idx}`,
-      description: `Temperature (unit ${idx})`,
-      value: celsius,
-      unit: '°C',
-      status: celsius > 75 ? 'critical' : celsius > 60 ? 'warning' : 'ok',
-    });
+    const t = varbindToNumber(vb);
+    if (t && t > 0) sensors.push({ type: 'temperature', index: `sb-temp-${idx}`, description: `Temperature (unit ${idx})`, value: t, unit: '°C', status: 'ok' });
   }
   for (const [idx, vb] of fans) {
     const s = varbindToNumber(vb);
