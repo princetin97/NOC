@@ -15,6 +15,7 @@ POSTGRES_USER="monitor"
 POSTGRES_DB="device_monitor"
 POSTGRES_PASSWORD=""
 JWT_SECRET=""
+AUTH_BOOTSTRAP_TOKEN=""
 ALLOW_INSECURE_DEFAULTS="false"
 
 print_usage() {
@@ -28,6 +29,7 @@ Usage:
     [--public-host noc.example.com] \
     [--ui-port 8080] \
     [--api-port 4000] \
+    [--bootstrap-token your-bootstrap-token] \
     [--env /opt/network-monitor/.env]
 
 Example:
@@ -36,6 +38,11 @@ Example:
     --branch main \
     --site-name site-a \
     --public-host 10.10.10.20
+
+Then bootstrap the first admin account:
+  curl -X POST http://10.10.10.20:4000/api/auth/bootstrap \
+    -H 'Content-Type: application/json' \
+    -d '{"token":"<AUTH_BOOTSTRAP_TOKEN>","username":"admin","password":"ChangeMe123!"}'
 USAGE
 }
 
@@ -82,6 +89,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --api-port)
       API_PORT="${2:-}"
+      shift 2
+      ;;
+    --bootstrap-token)
+      AUTH_BOOTSTRAP_TOKEN="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -158,6 +169,9 @@ fi
 if [[ -z "$JWT_SECRET" ]]; then
   JWT_SECRET="$(random_secret)"
 fi
+if [[ -z "$AUTH_BOOTSTRAP_TOKEN" ]]; then
+  AUTH_BOOTSTRAP_TOKEN="$(random_secret)"
+fi
 
 echo "==> Writing environment file"
 if [[ -f "$ENV_FILE" ]]; then
@@ -171,6 +185,7 @@ POSTGRES_USER=${POSTGRES_USER}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=${POSTGRES_DB}
 JWT_SECRET=${JWT_SECRET}
+AUTH_BOOTSTRAP_TOKEN=${AUTH_BOOTSTRAP_TOKEN}
 ALLOW_INSECURE_DEFAULTS=${ALLOW_INSECURE_DEFAULTS}
 CORS_ORIGIN=http://${PUBLIC_HOST}:${UI_PORT}
 API_PORT=${API_PORT}
@@ -216,8 +231,12 @@ echo
 echo "Deployment completed successfully."
 echo "UI URL:  http://${PUBLIC_HOST}:${UI_PORT}"
 echo "API URL: http://${PUBLIC_HOST}:${API_PORT}/api/health"
+echo "Bootstrap token: ${AUTH_BOOTSTRAP_TOKEN}"
 echo "Install dir: ${INSTALL_DIR}"
 echo "Env file: ${ENV_FILE}"
+echo
+echo "Bootstrap first admin (run once when there are no users yet):"
+echo "  curl -X POST http://${PUBLIC_HOST}:${API_PORT}/api/auth/bootstrap -H 'Content-Type: application/json' -d '{\"token\":\"${AUTH_BOOTSTRAP_TOKEN}\",\"username\":\"admin\",\"password\":\"ChangeMe123!\"}'"
 echo
 echo "Useful commands:"
 echo "  cd ${INSTALL_DIR}"

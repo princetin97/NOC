@@ -17,6 +17,21 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.44] - 2026-10-12
+
+### Fixed
+- Khắc phục lỗi deploy site mới không thể đăng nhập do chưa có user bootstrap:
+  - Cập nhật script [deploy/quick-deploy-site.sh](deploy/quick-deploy-site.sh) để tự sinh và ghi `AUTH_BOOTSTRAP_TOKEN` vào `.env` nếu chưa cung cấp.
+  - Bổ sung tham số `--bootstrap-token` để chủ động truyền token khi cần chuẩn hoá vận hành giữa nhiều site.
+  - In sẵn lệnh bootstrap admin đầu tiên sau khi deploy để thao tác nhanh, tránh kẹt tại màn hình login.
+
+### Docs
+- Cập nhật tài liệu [deploy/README.md](deploy/README.md) theo luồng bảo mật mới: tạo admin đầu tiên qua `POST /api/auth/bootstrap` thay vì auto tạo qua login.
+
+### Verified
+- Kiểm tra cú pháp script deploy: `bash -n deploy/quick-deploy-site.sh`.
+- Đã rebuild runtime bằng `docker compose up -d --build` và services khởi động bình thường.
+
 ## [0.8.43] - 2026-10-12
 
 ### Removed

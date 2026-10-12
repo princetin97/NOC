@@ -82,14 +82,16 @@ docker compose ps
 - UI: http://<server-ip>:8080
 - API: http://<server-ip>:4000/api/health
 
-## 4. Tạo tài khoản admin & thêm thiết bị (qua API)
+## 4. Bootstrap tài khoản admin đầu tiên & thêm thiết bị (qua API)
 
-Tài khoản admin đầu tiên được tạo tự động ở lần đăng nhập đầu tiên với username `admin`:
+Từ bản hardening mới, hệ thống yêu cầu bootstrap admin đầu tiên qua endpoint bảo mật.
+
+Lấy `AUTH_BOOTSTRAP_TOKEN` trong file `.env` của site, sau đó chạy:
 
 ```bash
-TOKEN=$(curl -s -X POST http://<server-ip>:4000/api/auth/login \
+TOKEN=$(curl -s -X POST http://<server-ip>:4000/api/auth/bootstrap \
   -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"ChangeMe123!"}' | jq -r .token)
+  -d '{"token":"<AUTH_BOOTSTRAP_TOKEN>","username":"admin","password":"ChangeMe123!"}' | jq -r .token)
 
 curl -s -X POST http://<server-ip>:4000/api/devices \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
