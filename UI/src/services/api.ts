@@ -62,6 +62,11 @@ export interface CreateServiceBatchInput {
   siteId?: string | null;
 }
 
+interface ApiHeartbeat {
+  status: string;
+  timestamp: string;
+}
+
 interface SubnetScanJobResponse {
   jobId: string;
   status: 'running' | 'completed' | 'failed';
@@ -74,6 +79,10 @@ async function delay(ms: number): Promise<void> {
 }
 
 export const api = {
+  system: {
+    heartbeat: (): Promise<ApiHeartbeat> => apiClient.get<ApiHeartbeat>('/health'),
+  },
+
   devices: {
     list: async (siteId?: string | null): Promise<NetworkDevice[]> => {
       const q = typeof siteId === 'string' && siteId.length > 0 ? `?siteId=${encodeURIComponent(siteId)}` : '';

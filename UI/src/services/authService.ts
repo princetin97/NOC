@@ -10,6 +10,19 @@ export interface AuthUser {
 
 const USER_KEY = 'auth_user';
 
+function readUserStorage(): string | null {
+  const sessionValue = sessionStorage.getItem(USER_KEY);
+  if (sessionValue) return sessionValue;
+
+  const legacyValue = localStorage.getItem(USER_KEY);
+  if (!legacyValue) return null;
+
+  // Migrate legacy persistent auth data to session scope.
+  sessionStorage.setItem(USER_KEY, legacyValue);
+  localStorage.removeItem(USER_KEY);
+  return legacyValue;
+}
+
 interface LoginResponse {
   token: string;
   user: AuthUser;
@@ -18,7 +31,8 @@ interface LoginResponse {
 export async function login(username: string, password: string): Promise<AuthUser> {
   const res = await apiClient.post<LoginResponse>('/auth/login', { username, password });
   setToken(res.token);
-  localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+  sessionStorage.setItem(USER_KEY, JSON.stringify(res.user));
+  localStorage.removeItem(USER_KEY);
   return res.user;
 }
 
@@ -29,7 +43,8 @@ export async function refreshSession(): Promise<AuthUser | null> {
   try {
     const res = await apiClient.post<LoginResponse>('/auth/refresh');
     setToken(res.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    sessionStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    localStorage.removeItem(USER_KEY);
     return res.user;
   } catch {
     return null;
@@ -38,6 +53,7 @@ export async function refreshSession(): Promise<AuthUser | null> {
 
 export function logout(): void {
   clearToken();
+  sessionStorage.removeItem(USER_KEY);
   localStorage.removeItem(USER_KEY);
 }
 
@@ -46,7 +62,7 @@ export function isAuthenticated(): boolean {
 }
 
 export function getStoredUser(): AuthUser | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = readUserStorage();
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthUser;

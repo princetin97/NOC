@@ -39,6 +39,34 @@ sudo ./setup-ubuntu-24.04.sh
 # đăng xuất/đăng nhập lại để áp dụng quyền docker group
 ```
 
+## 2.1 Triển khai nhanh cho site mới (một lệnh)
+
+Script này tự động:
+
+1. Cài Docker/Compose nếu thiếu.
+2. Clone hoặc cập nhật source code.
+3. Tạo file `.env` cho site.
+4. Chạy `docker compose up -d --build`.
+
+```bash
+chmod +x deploy/quick-deploy-site.sh
+./deploy/quick-deploy-site.sh \
+  --repo <repo-url> \
+  --branch main \
+  --site-name site-a \
+  --public-host <ip-hoac-domain>
+```
+
+Ví dụ:
+
+```bash
+./deploy/quick-deploy-site.sh \
+  --repo git@github.com:your-org/network-monitor.git \
+  --branch main \
+  --site-name hcm-site \
+  --public-host 10.10.10.20
+```
+
 ## 3. Triển khai
 
 ```bash

@@ -5,6 +5,19 @@
 
 const TOKEN_KEY = 'auth_token';
 
+function readStorage(key: string): string | null {
+  const sessionValue = sessionStorage.getItem(key);
+  if (sessionValue) return sessionValue;
+
+  const legacyValue = localStorage.getItem(key);
+  if (!legacyValue) return null;
+
+  // Migrate legacy persistent auth data to session scope.
+  sessionStorage.setItem(key, legacyValue);
+  localStorage.removeItem(key);
+  return legacyValue;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -15,14 +28,16 @@ export class ApiError extends Error {
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return readStorage(TOKEN_KEY);
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(TOKEN_KEY, token);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 export function clearToken(): void {
+  sessionStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_KEY);
 }
 

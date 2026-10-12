@@ -384,7 +384,7 @@ async function evaluateInterfaceRule(
     seenObjects.add(port.ifName);
     const metricValue = await readInterfaceMetric(rule.metric, port);
     if (metricValue === undefined) continue;
-    const interfaceDescription = rule.metric === 'interface_status' ? portDescription(port) : null;
+    const interfaceDescription = portDescription(port);
 
     const matchedCondition = pickMatchingCondition(rule, metricValue);
     const breached = !!matchedCondition;

@@ -9,7 +9,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ darkMode, onLoginSuccess }) => {
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +49,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ darkMode, onLoginSucce
           <p className="text-xs text-slate-400 text-center">Đăng nhập để truy cập Hệ thống Giám sát Mạng</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3 text-xs" autoComplete="off">
           <div>
             <label className="block text-slate-400 mb-1">Tên đăng nhập:</label>
             <div className="relative">
@@ -59,6 +59,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ darkMode, onLoginSucce
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className={`w-full pl-8 pr-3 py-2.5 rounded-lg border focus:ring-1 focus:ring-emerald-500 focus:outline-none ${
                   darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-300'
                 }`}
@@ -75,6 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ darkMode, onLoginSucce
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 className={`w-full pl-8 pr-3 py-2.5 rounded-lg border focus:ring-1 focus:ring-emerald-500 focus:outline-none ${
                   darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-300'
                 }`}

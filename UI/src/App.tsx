@@ -181,9 +181,9 @@ export default function App() {
     }
   }, [refreshDevices, refreshAlerts, refreshAlertRules, refreshServices, refreshEvents, refreshSites]);
 
-  const refreshHeartbeat = useCallback(async () => {
-    await Promise.all([refreshDevices(), refreshAlerts()]);
-  }, [refreshDevices, refreshAlerts]);
+  const refreshUiHeartbeat = useCallback(async () => {
+    await api.system.heartbeat();
+  }, []);
 
   const refreshByActiveTab = useCallback(async () => {
     const tasks: Array<Promise<unknown>> = [refreshDevices(), refreshAlerts()];
@@ -420,7 +420,7 @@ export default function App() {
       if (!isPageVisible) return;
       if (periodicRefreshInFlightRef.current) return;
       periodicRefreshInFlightRef.current = true;
-      const run = socketConnected ? refreshHeartbeat : refreshByActiveTab;
+      const run = socketConnected ? refreshUiHeartbeat : refreshByActiveTab;
       run()
         .then(() => setLastUpdatedTime(new Date().toLocaleTimeString()))
         .catch(() => undefined)
@@ -429,7 +429,7 @@ export default function App() {
         });
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [currentUser, autoRefreshInterval, socketConnected, devices.length, refreshHeartbeat, refreshByActiveTab, isPageVisible]);
+  }, [currentUser, autoRefreshInterval, socketConnected, devices.length, refreshUiHeartbeat, refreshByActiveTab, isPageVisible]);
 
   // Derive a rolling global traffic history point from live device/interface data
   const trafficSeedRef = useRef(false);
