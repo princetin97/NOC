@@ -870,12 +870,13 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
     logger.debug({ err, deviceId }, 'HH3C-ENTITY-EXT-MIB temperature read failed, trying CISCOSB-MIB');
   }
   try {
-    // Cisco Small Business / Catalyst 1200-1300 (ciscosb) rlEnvFanDataTemp (celsius, skip 0).
+    // Cisco Small Business / Catalyst 1200-1300 (ciscosb) rlEnvFanDataTemp
+    // is reported in Fahrenheit, so normalize to Celsius.
     const temps = await snmpWalkColumn(session, OID.ciscosbEnvTemp);
     const readings = Array.from(temps.values())
       .map((vb) => varbindToNumber(vb))
-      .filter((v): v is number => v !== undefined && v > 0 && v < 150)
-      .map((celsius) => ({ celsius }));
+      .filter((v): v is number => v !== undefined && v > 0 && v < 212)
+      .map((fahrenheit) => ({ celsius: ((fahrenheit - 32) * 5) / 9 }));
     const representative = pickRepresentativeTemperature(readings);
     if (representative !== undefined) return representative;
   } catch (err) {

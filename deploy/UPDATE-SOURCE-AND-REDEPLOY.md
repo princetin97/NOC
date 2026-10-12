@@ -119,7 +119,25 @@ cd /root/NOC
 git status
 ```
 
-Neu site khong duoc phep sua source local, dung cach an toan:
+Neu can GIU thay doi local tam thoi (de pull truoc):
+
+```bash
+cd /root/NOC
+git stash push -m "site-local-before-pull"
+git pull --ff-only origin main
+docker compose up -d --build --remove-orphans
+```
+
+Neu chi bi 1 file va muon bo file do de nhan source moi nhat:
+
+```bash
+cd /root/NOC
+git checkout -- backend/src/poller/metrics.ts
+git pull --ff-only origin main
+docker compose up -d --build --remove-orphans
+```
+
+Neu site khong duoc phep sua source local, dung cach reset toan bo:
 
 ```bash
 git reset --hard origin/main
