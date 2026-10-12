@@ -63,8 +63,8 @@ export const SyslogConsole: React.FC<SyslogConsoleProps> = ({ eventLogs, devices
       <div className="flex items-center gap-3">
         <ScrollText className="w-6 h-6 text-cyan-400" />
         <div>
-          <h2 className={`text-xl font-bold ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Nhật ký Syslog & SNMP Trap</h2>
-          <p className="text-sm text-slate-400">Chọn thiết bị để xem log riêng của thiết bị đó (Syslog UDP 514 / SNMP Trap UDP 162).</p>
+          <h2 className={`text-xl font-bold ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Nhật ký SNMP Trap</h2>
+          <p className="text-sm text-slate-400">Chọn thiết bị để xem log riêng của thiết bị đó (SNMP Trap UDP 162).</p>
         </div>
       </div>
 

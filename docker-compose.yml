@@ -108,23 +108,6 @@ services:
       api: { condition: service_healthy }
     networks: [monitor-net]
 
-  syslog-collector:
-    build: ./backend
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:-monitor}@postgres:5432/${POSTGRES_DB:-device_monitor}?schema=public
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
-      ALLOW_INSECURE_DEFAULTS: ${ALLOW_INSECURE_DEFAULTS:-false}
-      SYSLOG_UDP_PORT: 514
-      RUN_MIGRATIONS: "false"
-    command: ["node", "dist/collectors/syslog.js"]
-    ports:
-      - "514:514/udp"
-    depends_on:
-      api: { condition: service_healthy }
-    networks: [monitor-net]
-
   trap-collector:
     build: ./backend
     restart: unless-stopped

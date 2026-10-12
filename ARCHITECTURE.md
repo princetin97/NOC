@@ -13,15 +13,13 @@ Hệ thống giám sát thiết bị mạng kiểu LibreNMS, gồm 6 service ch�
 UI (React, :8080) --proxy /api,/socket.io--> api (Express, :4000) --+--> postgres (:5432)
                                                                      +--> redis (:6379) <-- BullMQ jobs/pubsub
 poller (SNMP/ping/discovery/alerting)  ---\
-syslog-collector (UDP :514)              ---> đều publish event qua Redis, ghi DB trực tiếp
 trap-collector (UDP :162)                ---/
 ```
 
 - **api**: REST API + JWT auth + WebSocket (Socket.IO) — nhận event realtime qua Redis
   pub/sub từ poller/collectors rồi re-broadcast cho client.
 - **poller**: BullMQ workers — discovery, polling (SNMP/ping), alerting, service checks.
-- **syslog-collector** / **trap-collector**: nhận syslog UDP 514 / SNMP trap UDP 162,
-  ghi vào `EventLog`.
+- **trap-collector**: nhận SNMP trap UDP 162, ghi vào `EventLog`.
 - **postgres**: datastore chính (Prisma ORM).
 - **redis**: job queue (BullMQ) + realtime pub/sub bus.
 - **ui**: React SPA (Vite), có server Express riêng để proxy `/api` và `/socket.io`
@@ -32,13 +30,12 @@ Chi tiết backend: [backend/README.md](backend/README.md).
 
 ## 2. Backend (`backend/`)
 
-Node.js + TypeScript, 4 process entry point dùng chung 1 codebase/image:
+Node.js + TypeScript, 3 process entry point dùng chung 1 codebase/image:
 
 | Process          | Entry point                | Trách nhiệm |
 |------------------|-----------------------------|-------------|
 | api              | `src/api/server.ts`         | REST API, JWT auth, WebSocket bridge |
 | poller           | `src/poller/index.ts`       | Scheduling, SNMP/ping polling, discovery, alerting |
-| syslog-collector | `src/collectors/syslog.ts`  | UDP 514 syslog receiver |
 | trap-collector   | `src/collectors/trap.ts`    | UDP 162 SNMP trap receiver |
 
 Stack: Express, Socket.IO, Zod, JWT+bcrypt, Prisma + PostgreSQL, BullMQ + Redis,
@@ -94,7 +91,7 @@ SensorMetric` (time-series thiết bị/cảm biến — `SensorMetric` lưu l�
 biến, ví dụ Tải UPS %, dùng bởi `GET /devices/:id/sensors/metrics?type=&hours=` và
 component `SensorHistoryPanel`) · `AlertRule, AlertRenotifySettings,
 NotificationChannel, Alert`
-· `EventLog` (syslog/trap/system) · `ServiceCheck, ServiceCheckHistory` ·
+· `EventLog` (trap/system) · `ServiceCheck, ServiceCheckHistory` ·
 `MapNode, MapLink` (topology map) · `Dashboard` (dashboard tuỳ biến) ·
 `VirtualizationManager, VirtualizationHost, VirtualMachine` (kết nối vCenter +
 inventory ESXi host/VM, giám sát tương tự `vmware_exporter`; model khớp với 2

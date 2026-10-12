@@ -39,7 +39,6 @@ export const env = {
   redisUrl: required('REDIS_URL', 'redis://localhost:6379'),
   jwtSecret: required('JWT_SECRET', 'dev-secret-change-me'),
   apiPort: Number(process.env.API_PORT ?? 4000),
-  syslogPort: Number(process.env.SYSLOG_UDP_PORT ?? 514),
   snmpTrapPort: Number(process.env.SNMPTRAP_UDP_PORT ?? 162),
   pollIntervalSeconds: Number(process.env.POLL_INTERVAL_SECONDS ?? 60),
   discoveryIntervalSeconds: Number(process.env.DISCOVERY_INTERVAL_SECONDS ?? 3600),

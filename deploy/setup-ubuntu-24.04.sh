@@ -43,7 +43,6 @@ echo "==> Opening firewall ports (if ufw is active)"
 if command -v ufw >/dev/null 2>&1; then
   ufw allow 8080/tcp  || true  # UI
   ufw allow 4000/tcp  || true  # API (optional, only if accessed directly)
-  ufw allow 514/udp   || true  # Syslog collector
   ufw allow 162/udp   || true  # SNMP trap collector
 fi
 

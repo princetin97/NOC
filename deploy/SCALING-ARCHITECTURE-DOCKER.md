@@ -34,13 +34,13 @@ flowchart LR
   subgraph DP1[Site Collector A]
     E1[Edge Collector A]
     D1[Thiết bị Site A]
-    D1 -->|SNMP, ICMP, Syslog, Trap| E1
+    D1 -->|SNMP, ICMP, Trap| E1
   end
 
   subgraph DP2[Site Collector B]
     E2[Edge Collector B]
     D2[Thiết bị Site B]
-    D2 -->|SNMP, ICMP, Syslog, Trap| E2
+    D2 -->|SNMP, ICMP, Trap| E2
   end
 
   E1 -->|mTLS, batch| ING[Ingestion Gateway]
@@ -71,20 +71,17 @@ Thành phần:
 1. `ui`
 2. `api`
 3. `poller`
-4. `syslog-collector`
-5. `trap-collector`
-6. `postgres`
-7. `redis`
+4. `trap-collector`
+5. `postgres`
+6. `redis`
 
 Sơ đồ:
 
 ```mermaid
 flowchart TD
   DEV[Thiết bị mạng/Server] --> POLL[poller]
-  DEV --> SYS[syslog-collector]
   DEV --> TRAP[trap-collector]
   POLL --> PG[(postgres)]
-  SYS --> PG
   TRAP --> PG
   POLL --> REDIS[(redis)]
   API[api] --> PG
@@ -156,7 +153,7 @@ flowchart LR
 
 1. API trung tâm quản lý cấu hình thiết bị/rule theo `siteId`.
 2. Collector site lấy cấu hình (pull định kỳ hoặc push event từ API).
-3. Collector poll SNMP/ICMP cục bộ, nhận syslog/trap cục bộ.
+3. Collector poll SNMP/ICMP cục bộ, nhận trap cục bộ.
 4. Collector chuẩn hóa payload, gắn `siteId`, nén và gửi về Gateway.
 5. Gateway xác thực mTLS, ghi vào BUS theo partition key `siteId:deviceId`.
 6. Worker đọc BUS, cập nhật status/metric/alert.
@@ -169,7 +166,7 @@ flowchart LR
 ### 5.1) Cấu trúc stack khuyến nghị
 
 1. `stack-core`: UI, API, Postgres, Redis (và TSDB khi cần).
-2. `stack-site-collector`: poller, syslog/trap collector tại site.
+2. `stack-site-collector`: poller, trap collector tại site.
 3. `stack-ingestion`: ingestion gateway + message bus + workers (cho multi-site).
 
 ### 5.2) Mô hình network
@@ -182,7 +179,7 @@ flowchart LR
 
 Dùng Docker Compose profile để bật/tắt mode:
 
-1. `single-site`: chạy `ui api poller syslog-collector trap-collector postgres redis`.
+1. `single-site`: chạy `ui api poller trap-collector postgres redis`.
 2. `multi-site-core`: chạy `ui api postgres redis gateway bus workers`.
 3. `site-collector`: chạy collector cục bộ tại từng site.
 

@@ -1,13 +1,12 @@
 # Backend (Device Monitor Engine)
 
-Node.js + TypeScript monitoring engine inspired by LibreNMS's architecture. Ships as four
+Node.js + TypeScript monitoring engine inspired by LibreNMS's architecture. Ships as three
 independently deployable processes sharing the same codebase/image:
 
 | Process           | Entry point                    | Responsibility                                      |
 |-------------------|---------------------------------|------------------------------------------------------|
 | api               | `src/api/server.ts`             | REST API, JWT auth, WebSocket realtime bridge         |
 | poller            | `src/poller/index.ts`           | Scheduling + SNMP/ping polling, discovery, alerting   |
-| syslog-collector  | `src/collectors/syslog.ts`      | UDP 514 syslog receiver                               |
 | trap-collector    | `src/collectors/trap.ts`        | UDP 162 SNMP trap receiver                            |
 
 ## Stack
@@ -19,7 +18,7 @@ independently deployable processes sharing the same codebase/image:
 ## Data model (see `prisma/schema.prisma`)
 
 `Device` → `Port` (interfaces) → `PortMetric` (time series); `Device` → `DeviceMetric`
-(time series); `AlertRule` → `Alert`; `EventLog` (syslog/trap/system events);
+(time series); `AlertRule` → `Alert`; `EventLog` (trap/system events);
 `ServiceCheck` → `ServiceCheckHistory`.
 
 ## Key modules
@@ -53,6 +52,6 @@ npm run dev:poller
 ## Known limitations / roadmap
 
 This covers the core LibreNMS-style monitoring loop (discovery, polling, alerting,
-syslog/traps, service checks) but not the full feature set of mature LibreNMS
+SNMP traps, service checks) but not the full feature set of mature LibreNMS
 (billing, config backup, distributed pollers, plugin system, LLDP-based topology,
 long-term RRD rollups). See [../deploy/README.md](../deploy/README.md#8-lộ-trình-mở-rộng-chưa-triển-khai-trong-bản-này).

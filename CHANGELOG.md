@@ -17,6 +17,26 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+## [0.8.43] - 2026-10-12
+
+### Removed
+- Loại bỏ hoàn toàn tính năng thu thập Syslog:
+  - Xóa process collector Syslog trong backend (`src/collectors/syslog.ts`).
+  - Xóa script chạy Syslog trong backend (`dev:syslog`, `start:syslog`).
+  - Xóa cấu hình môi trường `SYSLOG_UDP_PORT` khỏi backend.
+  - Gỡ service `syslog-collector` khỏi Docker Compose.
+
+### Changed
+- Chuẩn hóa runtime và tài liệu theo mô hình Trap-only:
+  - Cập nhật kiến trúc tổng quan chỉ còn 3 process backend (`api`, `poller`, `trap-collector`).
+  - Cập nhật tài liệu triển khai và scaling để bỏ toàn bộ mô tả/luồng Syslog collector.
+  - Cập nhật màn hình điều hướng và console sự kiện trên UI theo ngữ nghĩa SNMP Trap.
+  - Cập nhật script setup Ubuntu chỉ mở cổng UDP 162 (không mở UDP 514).
+
+### Verified
+- Đã rebuild full stack bằng `docker compose up -d --build`.
+- Xác nhận runtime không còn service `syslog-collector` trong `docker compose ps`.
+
 ## [0.8.42] - 2026-10-08
 
 ### Added

@@ -41,7 +41,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'syslog' as TabType,
-      label: 'Syslog & Trap',
+      label: 'SNMP Trap',
       icon: ScrollText,
     },
     {

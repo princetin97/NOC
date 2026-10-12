@@ -11,11 +11,9 @@
     "prisma:migrate": "prisma migrate deploy",
     "dev:api": "tsx watch src/api/server.ts",
     "dev:poller": "tsx watch src/poller/index.ts",
-    "dev:syslog": "tsx watch src/collectors/syslog.ts",
     "dev:trap": "tsx watch src/collectors/trap.ts",
     "start:api": "node dist/api/server.js",
     "start:poller": "node dist/poller/index.js",
-    "start:syslog": "node dist/collectors/syslog.js",
     "start:trap": "node dist/collectors/trap.js",
     "db:seed": "tsx prisma/seed.ts"
   },

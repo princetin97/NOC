@@ -15,17 +15,17 @@
        │  PostgreSQL │                │    Redis    │
        └─────────────┘                └──────┬──────┘
                                              │ BullMQ jobs
-                    ┌───────────────┬────────┴─────────┬───────────────┐
-             ┌──────▼──────┐ ┌──────▼──────┐      ┌───────▼──────┐ ┌─────▼──────┐
-             │   poller    │ │syslog-collec│      │trap-collector│ │  (workers) │
-             │(SNMP/ping/  │ │  :514/udp   │      │   :162/udp   │ │            │
-             │ discovery)  │ └─────────────┘      └──────────────┘ └────────────┘
-             └─────────────┘
+                          ┌───────────────┬────────┴─────────┬───────────────┐
+                        ┌──────▼──────┐                         ┌───────▼──────┐ ┌─────▼──────┐
+                        │   poller    │                         │trap-collector│ │  (workers) │
+                        │(SNMP/ping/  │                         │   :162/udp   │ │            │
+                        │ discovery)  │                         └──────────────┘ └────────────┘
+                        └─────────────┘
 ```
 
 - **api**: REST API, JWT auth, WebSocket bridge (re-broadcasts events published by poller/collectors via Redis pub/sub).
 - **poller**: schedules and runs SNMP polling, ICMP ping, discovery and service checks (BullMQ workers).
-- **syslog-collector** / **trap-collector**: receive syslog (UDP 514) and SNMP traps (UDP 162), store as events.
+- **trap-collector**: receive SNMP traps (UDP 162), store as events.
 - **postgres**: primary datastore (devices, interfaces, metrics, alerts, events).
 - **redis**: job queue (BullMQ) + realtime pub/sub bus.
 - **ui**: the React dashboard; its own Express server proxies `/api` and `/socket.io` to the `api` service (same-origin, no CORS).
@@ -105,12 +105,11 @@ curl -s -X POST http://<server-ip>:4000/api/devices \
 
 Thêm thiết bị sẽ tự động enqueue 1 lượt discovery + poll ngay lập tức; sau đó `poller` sẽ tự động polling định kỳ theo `POLL_INTERVAL_SECONDS`.
 
-## 5. Cấu hình thiết bị gửi syslog / SNMP trap về hệ thống
+## 5. Cấu hình thiết bị gửi SNMP trap về hệ thống
 
-Trên router/switch, trỏ syslog server và SNMP trap receiver về IP của host Docker:
+Trên router/switch, trỏ SNMP trap receiver về IP của host Docker:
 
 ```
-logging host <docker-host-ip>
 snmp-server host <docker-host-ip> version 2c public
 ```
 
@@ -119,7 +118,7 @@ snmp-server host <docker-host-ip> version 2c public
 ```bash
 docker compose logs -f api
 docker compose logs -f poller
-docker compose logs -f syslog-collector trap-collector
+docker compose logs -f trap-collector
 ```
 
 ## 7. Backup dữ liệu
