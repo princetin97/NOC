@@ -9,6 +9,7 @@ interface ProcessorDeviceContext {
   vendor?: string | null;
   sysDescr?: string | null;
   sysObjectId?: string | null;
+  model?: string | null;
 }
 
 function isCiscoSmallBusiness(ctx?: ProcessorDeviceContext): boolean {
@@ -26,6 +27,12 @@ function isHpe1910(ctx?: ProcessorDeviceContext): boolean {
     vendor === 'hpe' &&
     (oid.startsWith('1.3.6.1.4.1.25506.11.1.136') || /\b1910-\d+\b|\bjg540a\b/.test(descr))
   );
+}
+
+function isCiscoSg250(ctx?: ProcessorDeviceContext): boolean {
+  const descr = (ctx?.sysDescr ?? '').toLowerCase();
+  const model = (ctx?.model ?? '').toLowerCase();
+  return /\bsg250\b/.test(descr) || /\bsg250\b/.test(model);
 }
 
 // A processor must be missing from discovery for this long (not just one poll cycle)
@@ -70,7 +77,8 @@ export async function readProcessors(
   // 100% values on these platforms, so pin to CISCOSB when available.
   if (isCiscoSmallBusiness(ctx)) {
     try {
-      const cpus = await snmpWalkColumn(session, OID.ciscosbCpuLastMinute);
+      const ciscosbOid = isCiscoSg250(ctx) ? OID.ciscosbCpuLastFiveMinutes : OID.ciscosbCpuLastMinute;
+      const cpus = await snmpWalkColumn(session, ciscosbOid);
       if (cpus.size > 0) {
         const out: DiscoveredProcessor[] = [];
         for (const [suffix, vb] of cpus) {

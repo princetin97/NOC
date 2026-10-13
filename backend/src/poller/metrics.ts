@@ -135,6 +135,7 @@ export async function pollDevice(deviceId: string): Promise<void> {
         vendor: device.vendor ?? undefined,
         sysDescr: device.sysDescr ?? undefined,
         sysObjectId: device.sysObjectId ?? undefined,
+        model: device.model ?? undefined,
       });
       cpuUsage = cpuResult?.avgUsage ?? cpuUsage;
       cpuCount = cpuResult?.count ?? cpuCount;

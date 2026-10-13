@@ -174,6 +174,7 @@ export const OID = {
   ciscosbSerialNum: '1.3.6.1.4.1.9.6.1.101.53.14.1.5.1', // rlPhdUnitGenParamSerialNum.1
   ciscosbSoftwareVersion: '1.3.6.1.4.1.9.6.1.101.53.14.1.2.1', // rlPhdUnitGenParamSoftwareVersion.1 (firmware, e.g. 4.1.3.36)
   ciscosbCpuLastMinute: '1.3.6.1.4.1.9.6.1.101.1.8', // walk, per-unit CPU percentage
+  ciscosbCpuLastFiveMinutes: '1.3.6.1.4.1.9.6.1.101.1.9', // walk, per-unit CPU percentage (more stable on SG250)
   ciscosbEnvTemp: '1.3.6.1.4.1.9.6.1.101.83.5.1.1.2', // walk, celsius (skip 0)
   ciscosbEnvFanSpeed: '1.3.6.1.4.1.9.6.1.101.83.5.1.1.3', // walk, rpm
   ciscosbEnvFanState: '1.3.6.1.4.1.9.6.1.101.83.1.1.1.3', // walk, 1=normal..6
