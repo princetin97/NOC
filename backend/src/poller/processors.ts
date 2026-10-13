@@ -11,6 +11,13 @@ interface ProcessorDeviceContext {
   sysObjectId?: string | null;
 }
 
+function isCiscoSmallBusiness(ctx?: ProcessorDeviceContext): boolean {
+  const oid = ctx?.sysObjectId ?? '';
+  if (oid.startsWith('1.3.6.1.4.1.9.6.1.')) return true;
+  const descr = (ctx?.sysDescr ?? '').toLowerCase();
+  return /\bsg\d{2,4}\b|\bsf\d{2,4}\b|\bcbs\d{2,4}\b|catalyst\s+1[23]00|small\s+business/.test(descr);
+}
+
 function isHpe1910(ctx?: ProcessorDeviceContext): boolean {
   const descr = (ctx?.sysDescr ?? '').toLowerCase();
   const vendor = (ctx?.vendor ?? '').toLowerCase();
@@ -57,6 +64,26 @@ export async function readProcessors(
     if (!allZeroFallback) allZeroFallback = rows;
     return null;
   };
+
+  // Cisco Small Business/CBS/Catalyst 1200-1300 frequently exposes only the
+  // CISCOSB CPU OID reliably. Legacy Cisco CPU OIDs can produce sporadic bogus
+  // 100% values on these platforms, so pin to CISCOSB when available.
+  if (isCiscoSmallBusiness(ctx)) {
+    try {
+      const cpus = await snmpWalkColumn(session, OID.ciscosbCpuLastMinute);
+      if (cpus.size > 0) {
+        const out: DiscoveredProcessor[] = [];
+        for (const [suffix, vb] of cpus) {
+          const usage = pct(varbindToNumber(vb));
+          if (usage === undefined) continue;
+          out.push({ index: `sb-${suffix}`, description: cpus.size > 1 ? `CPU (unit ${suffix})` : 'CPU', usage });
+        }
+        if (out.length > 0) return out;
+      }
+    } catch (err) {
+      logger.debug({ err, deviceId }, 'CISCOSB-MIB processor priority read failed');
+    }
+  }
 
   // HPE 1910 (Comware) often exposes many placeholder hrProcessorLoad rows that stay at 0.
   // Prefer the vendor scalar CPU OID for a realistic single CPU reading.

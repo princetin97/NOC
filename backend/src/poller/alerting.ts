@@ -221,14 +221,30 @@ async function getEnabledRules(): Promise<RuleRow[]> {
  * This cleanup resolves legacy alerts created before template-only enforcement.
  */
 export async function resolveAlertsFromGlobalTemplateRules(): Promise<number> {
-  const result = await prisma.alert.updateMany({
-    where: {
-      status: { in: ['active', 'acknowledged'] },
-      rule: { siteId: null },
-    },
-    data: { status: 'resolved', resolvedAt: new Date() },
-  });
-  return result.count;
+  // Global rules (siteId=null) are template-only for site-assigned entities.
+  // Keep them active for entities that have no site assignment yet.
+  const now = new Date();
+  const [deviceResult, serviceResult] = await Promise.all([
+    prisma.alert.updateMany({
+      where: {
+        status: { in: ['active', 'acknowledged'] },
+        rule: { siteId: null },
+        deviceId: { not: null },
+        device: { siteId: { not: null } },
+      },
+      data: { status: 'resolved', resolvedAt: now },
+    }),
+    prisma.alert.updateMany({
+      where: {
+        status: { in: ['active', 'acknowledged'] },
+        rule: { siteId: null },
+        serviceId: { not: null },
+        service: { siteId: { not: null } },
+      },
+      data: { status: 'resolved', resolvedAt: now },
+    }),
+  ]);
+  return deviceResult.count + serviceResult.count;
 }
 
 /** Evaluates enabled alert rules against a device's latest metrics and creates/resolves alerts. */
@@ -253,8 +269,9 @@ export async function evaluateAlertsForDevice(deviceId: string): Promise<void> {
     // evaluation, otherwise they'll be treated as "orphan" object names and get
     // auto-resolved even while the port is still err-disabled.
     if (rule.metric === 'port_security_trap') continue;
-    // Global rules (siteId=null) are templates only and must not generate alerts.
-    if (!rule.siteId) continue;
+    // Global rules (siteId=null) act as templates for site-assigned devices,
+    // but still apply to devices not assigned to any site.
+    if (!rule.siteId && device.siteId) continue;
     // Multi-device target takes precedence over single deviceId
     if (rule.deviceIds && rule.deviceIds.length > 0) {
       if (!rule.deviceIds.includes(deviceId)) continue;
@@ -285,8 +302,9 @@ export async function evaluateAlertsForService(serviceId: string): Promise<void>
 
   for (const rule of rules) {
     if (!isServiceRule(rule)) continue;
-    // Global rules (siteId=null) are templates only and must not generate alerts.
-    if (!rule.siteId) continue;
+    // Global rules (siteId=null) act as templates for site-assigned services,
+    // but still apply to services not assigned to any site.
+    if (!rule.siteId && service.siteId) continue;
 
     if (rule.serviceIds && rule.serviceIds.length > 0) {
       if (!rule.serviceIds.includes(service.id)) continue;

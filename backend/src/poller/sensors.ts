@@ -60,6 +60,15 @@ export function isCiscoSb(ctx: DeviceContext): boolean {
   return ctx.sysObjectId?.startsWith('1.3.6.1.4.1.9.6.1.') ?? false;
 }
 
+function fahrenheitToCelsius(valueF: number): number {
+  return Math.round(((valueF - 32) * (5 / 9)) * 10) / 10;
+}
+
+function isSg350x(ctx?: DeviceContext): boolean {
+  const combined = `${ctx?.sysDescr ?? ''}`.toLowerCase();
+  return /\bsg350x\b/.test(combined);
+}
+
 /** ENTITY-SENSOR-MIB: standard temperature/voltage/current/power/fan sensors. */
 async function readEntitySensors(session: Session): Promise<DiscoveredSensor[]> {
   const [types, scales, precisions, values, statuses, names, descrs] = await Promise.all([
@@ -329,7 +338,7 @@ async function readJuniperSensors(session: Session, processors?: DiscoveredProce
 }
 
 /** CISCOSB rlEnv* tables: temperature, fan speed, per-unit CPU (Sx/CBS/Catalyst 1200-1300). */
-async function readCiscoSbSensors(session: Session): Promise<DiscoveredSensor[]> {
+async function readCiscoSbSensors(session: Session, ctx?: DeviceContext): Promise<DiscoveredSensor[]> {
   const [temps, fans, cpus] = await Promise.all([
     snmpWalkColumn(session, OID.ciscosbEnvTemp),
     snmpWalkColumn(session, OID.ciscosbEnvFanSpeed),
@@ -337,9 +346,19 @@ async function readCiscoSbSensors(session: Session): Promise<DiscoveredSensor[]>
   ]);
 
   const sensors: DiscoveredSensor[] = [];
+  const sg350x = isSg350x(ctx);
   for (const [idx, vb] of temps) {
     const t = varbindToNumber(vb);
-    if (t && t > 0) sensors.push({ type: 'temperature', index: `sb-temp-${idx}`, description: `Temperature (unit ${idx})`, value: t, unit: '°C', status: 'ok' });
+    if (t && t > 0) {
+      sensors.push({
+        type: 'temperature',
+        index: `sb-temp-${idx}`,
+        description: `Temperature (unit ${idx})`,
+        value: sg350x ? fahrenheitToCelsius(t) : t,
+        unit: '°C',
+        status: 'ok',
+      });
+    }
   }
   for (const [idx, vb] of fans) {
     const s = varbindToNumber(vb);
@@ -934,7 +953,7 @@ export async function discoverSensors(session: Session, deviceId: string, ctx: D
   }
   else if (isJuniper(ctx)) await collect('juniper', () => readJuniperSensors(session, ctx.processors));
   else if (isPureStorage(ctx)) await collect('purestorage', () => readPureStorageSensors(session));
-  else if (isCiscoSb(ctx)) await collect('ciscosb', () => readCiscoSbSensors(session));
+  else if (isCiscoSb(ctx)) await collect('ciscosb', () => readCiscoSbSensors(session, ctx));
   else await collect('entity', () => readEntitySensors(session));
 
   if (sensors.length === 0 && isHh3cFamily(ctx)) {

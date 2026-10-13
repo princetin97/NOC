@@ -153,7 +153,12 @@ export async function pollDevice(deviceId: string): Promise<void> {
         totalMemoryBytes = win.totalBytes ?? totalMemoryBytes;
       }
 
-      temperature = (await readTemperature(session, deviceId)) ?? temperature;
+      temperature = (await readTemperature(session, deviceId, {
+        vendor: device.vendor,
+        sysDescr: device.sysDescr,
+        sysObjectId: device.sysObjectId,
+        model: device.model,
+      })) ?? temperature;
 
       // FortiGate keeps IPsec interfaces up in IF-MIB even when the tunnel is down;
       // read the real per-tunnel state to correct the port status below. Detect by
@@ -754,6 +759,13 @@ async function readMemoryUsage(
 const AMBIENT_SENSOR_NAME_RE = /ambient|inlet|intake/i;
 const HOTSPOT_SENSOR_NAME_RE = /\bcpu\b|processor|\bdie\b|\bcore\b|asic/i;
 
+interface TemperatureContext {
+  vendor?: string | null;
+  sysDescr?: string | null;
+  sysObjectId?: string | null;
+  model?: string | null;
+}
+
 /**
  * Picks a single representative value out of several temperature sensor readings.
  * Prefers an explicitly named ambient/inlet/intake probe; otherwise averages the
@@ -772,8 +784,21 @@ function pickRepresentativeTemperature(readings: { name?: string; celsius: numbe
   return Math.round(avg * 10) / 10;
 }
 
+function fahrenheitToCelsius(valueF: number): number {
+  return (valueF - 32) * (5 / 9);
+}
+
+function isSg350xContext(ctx?: TemperatureContext): boolean {
+  const combined = `${ctx?.sysDescr ?? ''} ${ctx?.model ?? ''}`.toLowerCase();
+  return /\bsg350x\b/.test(combined);
+}
+
 /** Reads chassis/ambient temperature via ENTITY-SENSOR-MIB, falling back to CISCO-ENTITY-SENSOR-MIB / CISCO-ENVMON-MIB. */
-async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], deviceId: string): Promise<number | undefined> {
+async function readTemperature(
+  session: Parameters<typeof snmpWalkColumn>[0],
+  deviceId: string,
+  ctx?: TemperatureContext,
+): Promise<number | undefined> {
   try {
     const [types, scales, precisions, values] = await Promise.all([
       snmpWalkColumn(session, OID.entPhySensorType),
@@ -819,9 +844,11 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
   }
   try {
     const temps = await snmpWalkColumn(session, OID.ciscoEnvMonTemperatureStatusValue);
+    const sg350x = isSg350xContext(ctx);
     const readings = Array.from(temps.values())
       .map((vb) => varbindToNumber(vb))
-      .filter((v): v is number => v !== undefined && v > 0);
+      .filter((v): v is number => v !== undefined && v > 0)
+      .map((v) => (sg350x ? fahrenheitToCelsius(v) : v));
     if (readings.length > 0) return Math.round((readings.reduce((a, b) => a + b, 0) / readings.length) * 10) / 10;
   } catch (err) {
     logger.debug({ err, deviceId }, 'CISCO-ENVMON-MIB temperature read failed, trying FORTINET-FORTIGATE-MIB');
@@ -870,12 +897,15 @@ async function readTemperature(session: Parameters<typeof snmpWalkColumn>[0], de
     logger.debug({ err, deviceId }, 'HH3C-ENTITY-EXT-MIB temperature read failed, trying CISCOSB-MIB');
   }
   try {
-    // Cisco Small Business / Catalyst 1200-1300 (ciscosb) rlEnvFanDataTemp (celsius, skip 0).
+    // Cisco Small Business / Catalyst 1200-1300 (ciscosb) rlEnvFanDataTemp.
+    // SG350X reports this table in Fahrenheit; other CISCOSB models in this site
+    // are observed reporting Celsius, so convert only for SG350X.
     const temps = await snmpWalkColumn(session, OID.ciscosbEnvTemp);
+    const sg350x = isSg350xContext(ctx);
     const readings = Array.from(temps.values())
       .map((vb) => varbindToNumber(vb))
       .filter((v): v is number => v !== undefined && v > 0 && v < 150)
-      .map((celsius) => ({ celsius }));
+      .map((raw) => ({ celsius: sg350x ? fahrenheitToCelsius(raw) : raw }));
     const representative = pickRepresentativeTemperature(readings);
     if (representative !== undefined) return representative;
   } catch (err) {
