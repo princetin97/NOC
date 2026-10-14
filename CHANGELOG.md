@@ -17,6 +17,14 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+### Fixed
+- Cố định thanh menu điều hướng tab khi cuộn trang trên toàn bộ UI:
+  - Tăng thứ tự hiển thị (stacking) để menu chính luôn nằm trên nội dung tab.
+  - Sửa xung đột với thanh filter sticky trong tab Thiết bị khiến menu có lúc bị che mất khi kéo xuống.
+
+### Verified
+- Rebuild và deploy lại UI bằng `docker compose up -d --build ui`.
+
 ## [0.8.44] - 2026-10-12
 
 ### Fixed

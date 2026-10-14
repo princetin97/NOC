@@ -67,7 +67,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   return (
-    <nav className={`border-b transition-colors overflow-x-auto scrollbar-none ${
+    <nav className={`border-b sticky top-16 z-40 transition-colors overflow-x-auto scrollbar-none ${
       darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200'
     }`}>
       <div className="w-full px-4 sm:px-6 lg:px-8">

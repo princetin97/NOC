@@ -1224,7 +1224,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     <div className="space-y-6 pb-12">
       
       {/* Top Filter Bar */}
-      <div className={`sticky top-16 z-30 p-4 rounded-xl border shadow-sm space-y-3 ${
+      <div className={`sticky top-28 z-20 p-4 rounded-xl border shadow-sm space-y-3 ${
         darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
       }`}>
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
