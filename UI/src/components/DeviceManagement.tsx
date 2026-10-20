@@ -700,7 +700,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   };
 
   // Device detail modal: active tab + interface search/pagination
-  const [detailTab, setDetailTab] = useState<'system' | 'neighbors' | 'ports' | 'vlans' | 'alerts'>('system');
+  const [detailTab, setDetailTab] = useState<'system' | 'sensors' | 'neighbors' | 'ports' | 'vlans' | 'alerts'>('system');
   const [portSearch, setPortSearch] = useState<string>('');
   const [vlanSearch, setVlanSearch] = useState<string>('');
   const [portPage, setPortPage] = useState<number>(1);
@@ -1932,13 +1932,14 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             }`}>
               {([
                 { key: 'system', label: 'Trạng thái hệ thống', icon: Activity },
+                { key: 'sensors', label: `Cảm biến (${detailSensors.length})`, icon: Thermometer },
                 { key: 'neighbors', label: 'Thiết bị lân cận', icon: ShieldCheck },
                 { key: 'ports', label: `Interfaces (${getVisiblePorts(selectedDevice, showVirtualInterfaces).length})`, icon: Cable },
                 ...(showVlanTab
                   ? [{ key: 'vlans', label: `VLAN (${detailVlans.length})`, icon: Network }]
                   : []),
                 { key: 'alerts', label: 'Lịch sử cảnh báo', icon: History },
-              ] as { key: 'system' | 'neighbors' | 'ports' | 'vlans' | 'alerts'; label: string; icon: typeof Activity }[]).map((tab) => {
+              ] as { key: 'system' | 'sensors' | 'neighbors' | 'ports' | 'vlans' | 'alerts'; label: string; icon: typeof Activity }[]).map((tab) => {
                 const Icon = tab.icon;
                 const active = detailTab === tab.key;
                 return (
@@ -2134,9 +2135,6 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                         </p>
                       </div>
 
-                      {/* Health sensors (temperature/fan/voltage/power/CPU/memory/disk...) — LibreNMS parity */}
-                      <DeviceSensorsPanel sensors={detailSensors} />
-
                       {/* Technical Details Footer */}
                       <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
                         <div className="flex justify-between">
@@ -2167,6 +2165,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* ==== TAB: Cảm biến sức khỏe ==== */}
+              {detailTab === 'sensors' && (
+                <DeviceSensorsPanel sensors={detailSensors} />
               )}
 
               {/* ==== TAB: Thiết bị lân cận ==== */}
@@ -2383,13 +2386,8 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                   });
                 const filteredRows = q === ''
                   ? vlanRows
-                  : vlanRows.filter(({ vlan, vlanName, accessPorts, trunkPorts }) =>
-                      [
-                        String(vlan.vlanId),
-                        vlanName,
-                        accessPorts.join(' '),
-                        trunkPorts.join(' '),
-                      ]
+                  : vlanRows.filter(({ vlan, vlanName }) =>
+                      [String(vlan.vlanId), vlanName]
                         .join(' ')
                         .toLowerCase()
                         .includes(q)
@@ -2408,7 +2406,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           type="text"
                           value={vlanSearch}
                           onChange={(e) => setVlanSearch(e.target.value)}
-                          placeholder="Tìm VLAN ID / tên / Access / Trunk..."
+                          placeholder="Tìm VLAN ID / tên VLAN..."
                           className={`pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg border w-full sm:w-72 ${
                             darkMode ? 'bg-slate-800 border-slate-700 text-slate-100' : 'bg-white border-slate-300'
                           }`}

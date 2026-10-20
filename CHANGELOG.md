@@ -17,13 +17,46 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 
 ## [Unreleased]
 
+### Added
+- Them co che version hoa sau moi thay doi code de rollback nhanh:
+  - Script `deploy/version-tag.sh` tao annotated Git tag theo SemVer (`vX.Y.Z`) kem mo ta.
+  - Ho tro `--push` de day tag len remote sau khi tao.
+- Them co che "ghi nho du an" de mo lai source khong can phan tich lai tu dau:
+  - Tai lieu `docs/PROJECT-MEMORY.md` tong hop kien truc, tinh nang, file map can doc truoc khi code.
+  - Cap nhat huong dan workflow de bat buoc duy tri `CHANGELOG.md` + `PROJECT-MEMORY.md` sau cac thay doi co y nghia.
+- Tang cuong UX cho tinh nang Quet dai mang (Subnet Scan):
+  - Them bo loc ket qua theo loai phat hien: `Tat ca`, `Chi SNMP`, `Chi Ping-only`.
+  - Them thao tac `Bo tich tat ca` cho danh sach thiet bi da chon.
+  - Bo sung nut `Chon tat ca hien thi` de thao tac nhanh theo bo loc dang ap dung.
+- Bo sung ho tro thu thap du lieu SNMP cho thiet bi Hikvision (enterprise OID `1.3.6.1.4.1.50001`):
+  - Nhan dien vendor Hikvision theo enterprise OID khi discovery.
+  - Them fallback poll CPU (`.1.231.0`) va RAM (`.1.221.0`, tong RAM `.1.220.0`) cho thiet bi camera/NVR khong ho tro HOST-RESOURCES/UCD.
+- Bo sung monitor theo tung member cho FortiGate HA:
+  - Thu thap them CPU (%) va RAM (%) theo tung node trong `fgHaStatsTable`.
+  - Luu duoi dang sensor de hien thi/alert rieng theo tung member trong cluster.
+
+### Docs
+- Cap nhat `ARCHITECTURE.md` them link den `docs/PROJECT-MEMORY.md` cho context reload nhanh.
+- Cap nhat `deploy/UPDATE-SOURCE-AND-REDEPLOY.md` huong dan dung script tag version va quy tac cap nhat bo nho du an.
+
 ### Fixed
+- Tinh chỉnh tìm kiếm trong tab VLAN:
+  - Ô tìm kiếm chỉ còn lọc theo `VLAN ID` và `Tên VLAN`.
+  - Không còn match theo danh sách cổng `Access`/`Trunk` để kết quả đúng nhu cầu vận hành.
 - Cố định thanh menu điều hướng tab khi cuộn trang trên toàn bộ UI:
   - Tăng thứ tự hiển thị (stacking) để menu chính luôn nằm trên nội dung tab.
   - Sửa xung đột với thanh filter sticky trong tab Thiết bị khiến menu có lúc bị che mất khi kéo xuống.
+- Màn hình chi tiết thiết bị tách riêng cảm biến thành tab `Cảm biến` (đặt ngay cạnh tab `Trạng thái hệ thống`):
+  - Không còn hiển thị khối cảm biến trong tab `Trạng thái hệ thống`.
+  - Giữ nguyên dữ liệu cảm biến hiện có và chuyển sang tab mới để dễ theo dõi hơn.
+- Sửa alert multi-level để cập nhật đúng giá trị tại thời điểm nâng mức độ:
+  - Khi alert đang mở tăng severity (ví dụ `medium -> high`), hệ thống giờ cập nhật đồng thời `severity`, `message` và `metricValue` theo mẫu đo mới nhất.
+  - Tránh hiển thị giá trị cũ của lần raise đầu tiên khi ngưỡng cao hơn đã bị vượt.
+- Cải tiến thêm cho alert đang mở: kể cả khi severity không đổi, `message` và `metricValue` vẫn được đồng bộ theo giá trị đo mới nhất trong lúc còn vi phạm ngưỡng.
 
 ### Verified
 - Rebuild và deploy lại UI bằng `docker compose up -d --build ui`.
+- Rebuild và deploy lại poller bằng `docker compose up -d --build poller`.
 
 ## [0.8.44] - 2026-10-12
 

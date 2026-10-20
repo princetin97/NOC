@@ -472,6 +472,31 @@ async function readMemoryUsage(
   deviceId: string,
   opts?: { sysDescr?: string; sysObjectId?: string; vendor?: string },
 ): Promise<MemoryReading> {
+  const isHikvisionDevice =
+    opts?.vendor === 'Hikvision' ||
+    (opts?.sysObjectId?.startsWith('1.3.6.1.4.1.50001') ?? false) ||
+    /hikvision/i.test(opts?.sysDescr ?? '');
+
+  if (isHikvisionDevice) {
+    try {
+      const [usageVb, totalMbVb] = await snmpGet(session, [OID.hikvisionMemUsage, OID.hikvisionMemTotalMb]);
+      const usageRaw = varbindToNumber(usageVb);
+      const totalMb = varbindToNumber(totalMbVb);
+      const totalBytes = totalMb && totalMb > 0 ? totalMb * 1024 * 1024 : undefined;
+
+      if (usageRaw !== undefined && usageRaw >= 0) {
+        if (usageRaw <= 100) {
+          return { percent: Math.round(usageRaw), totalBytes };
+        }
+        if (totalMb && totalMb > 0 && usageRaw <= totalMb) {
+          return { percent: Math.round((usageRaw / totalMb) * 100), totalBytes };
+        }
+      }
+    } catch (err) {
+      logger.debug({ err, deviceId }, 'Hikvision memory read failed, trying generic fallbacks');
+    }
+  }
+
   const isWindowsHost =
     /windows/i.test(opts?.sysDescr ?? '') ||
     /microsoft/i.test(opts?.vendor ?? '');

@@ -11,6 +11,15 @@
 - Do not mix formatting-only edits with behavior changes.
 - Preserve existing conventions in neighboring files.
 
+## Release and memory discipline
+- After each meaningful code change, update `CHANGELOG.md` with a clear summary.
+- After committing, create an annotated SemVer tag for rollback:
+  - `./deploy/version-tag.sh vX.Y.Z "<short description>"`
+  - Add `--push` when the tag should be published.
+- Keep fast context docs up to date so future sessions do not need full rediscovery:
+  - Update `docs/PROJECT-MEMORY.md` for feature/module/entrypoint changes.
+  - If architecture changes, also update `ARCHITECTURE.md`.
+
 ## Safety boundaries
 - Always ask before destructive schema or data operations.
 - Always ask before introducing new external dependencies.

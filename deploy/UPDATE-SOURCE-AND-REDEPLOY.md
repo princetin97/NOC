@@ -34,8 +34,9 @@ git push -u origin main
 Neu can gan phien ban (khuyen nghi cho ban phat hanh):
 
 ```bash
-git tag v0.8.44
-git push origin v0.8.44
+chmod +x deploy/version-tag.sh
+./deploy/version-tag.sh v0.8.45 "release: mo ta thay doi"
+./deploy/version-tag.sh v0.8.45 "release: mo ta thay doi" --push
 ```
 
 Kiem tra commit va tag tren remote:
@@ -48,6 +49,11 @@ git ls-remote --tags origin v0.8.44
 Luu y xac thuc HTTPS:
 - Username: tai khoan GitHub.
 - Password: dung Personal Access Token (PAT), khong dung mat khau dang nhap web.
+
+Luu y quan trong ve "ghi nho du an":
+- Sau moi thay doi code co y nghia, cap nhat them:
+  - `CHANGELOG.md` (lich su thay doi)
+  - `docs/PROJECT-MEMORY.md` (tom tat context nhanh khi mo lai source)
 
 ## B) Cap nhat source moi nhat va build lai tren cac site
 

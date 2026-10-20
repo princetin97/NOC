@@ -4,6 +4,8 @@
 > quay lại dự án. Khi thay đổi cấu trúc lớn (thêm service, đổi luồng dữ liệu, đổi
 > model DB...), hãy cập nhật file này + thêm entry vào [CHANGELOG.md](CHANGELOG.md).
 
+Context reload nhanh khi mở lại source: xem thêm [docs/PROJECT-MEMORY.md](docs/PROJECT-MEMORY.md).
+
 ## 1. Tổng quan
 
 Hệ thống giám sát thiết bị mạng kiểu LibreNMS, gồm 6 service chạy trong Docker Compose

@@ -109,6 +109,38 @@ function formatMetricValue(metric: string, value: number, unit: string): string 
   return `${value}${unit}`;
 }
 
+function alertSnapshot(rule: RuleRow, metricValue: number, interfaceName: string | null): { message: string; valueLabel: string } {
+  const rounded = Math.round(metricValue * 100) / 100;
+  const portPart = interfaceName ? ` [${interfaceName}]` : '';
+  const isStatus = STATUS_METRICS.has(rule.metric);
+  const valueLabel = formatMetricValue(rule.metric, rounded, rule.unit);
+  const message = isStatus
+    ? `${rule.name}${portPart}: ${valueLabel}`
+    : `${rule.name}${portPart}: ${rule.metric} ${rule.condition} ${rule.threshold}${rule.unit} (hiện tại: ${rounded}${rule.unit})`;
+  return { message, valueLabel };
+}
+
+async function syncOpenAlertSnapshot(
+  alert: { id: string; severity: string; message: string; metricValue: string | null },
+  rule: RuleRow,
+  metricValue: number,
+  interfaceName: string | null,
+): Promise<void> {
+  const snapshot = alertSnapshot(rule, metricValue, interfaceName);
+  if (alert.severity === rule.severity && alert.message === snapshot.message && alert.metricValue === snapshot.valueLabel) {
+    return;
+  }
+
+  await prisma.alert.update({
+    where: { id: alert.id },
+    data: {
+      severity: rule.severity,
+      message: snapshot.message,
+      metricValue: snapshot.valueLabel,
+    },
+  });
+}
+
 // Coarse alert category used to route notifications to different Telegram topics/
 // channels (e.g. "temperature" vs "service"). Sensor-type rules use sensorType
 // directly; everything else falls back to scope or a handful of known metrics.
@@ -350,9 +382,7 @@ async function evaluateDeviceRule(
   } else if (!breached && existing) {
     await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue);
   } else if (breached && existing) {
-    if (existing.severity !== effectiveRule.severity) {
-      await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
-    }
+    await syncOpenAlertSnapshot(existing, effectiveRule, metricValue, null);
     await maybeRenotify(alertSource, effectiveRule, existing, metricValue, null);
   }
 }
@@ -414,9 +444,7 @@ async function evaluateInterfaceRule(
     } else if (!breached && existing) {
       await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue, interfaceDescription);
     } else if (breached && existing) {
-      if (existing.severity !== effectiveRule.severity) {
-        await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
-      }
+      await syncOpenAlertSnapshot(existing, effectiveRule, metricValue, port.ifName);
       await maybeRenotify(alertSource, effectiveRule, existing, metricValue, port.ifName, interfaceDescription);
     }
   }
@@ -507,9 +535,7 @@ async function evaluateSensorRule(
     } else if (!breached && existing) {
       await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, sensor.value);
     } else if (breached && existing) {
-      if (existing.severity !== effectiveRule.severity) {
-        await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
-      }
+      await syncOpenAlertSnapshot(existing, effectiveRule, sensor.value, sensor.description);
       await maybeRenotify(alertSource, effectiveRule, existing, sensor.value, sensor.description);
     }
   }
@@ -570,9 +596,7 @@ async function evaluateServiceRule(
   } else if (!breached && existing) {
     await resolveAlert(alertSource, existing.id, existing.status === 'acknowledged', rule, metricValue);
   } else if (breached && existing) {
-    if (existing.severity !== effectiveRule.severity) {
-      await prisma.alert.update({ where: { id: existing.id }, data: { severity: effectiveRule.severity } });
-    }
+    await syncOpenAlertSnapshot(existing, effectiveRule, metricValue, objectName);
     await maybeRenotify(alertSource, effectiveRule, existing, metricValue, objectName);
   }
 
@@ -660,26 +684,22 @@ async function raiseAlert(
   interfaceName: string | null,
   interfaceDescription: string | null = null,
 ): Promise<void> {
-  const rounded = Math.round(metricValue * 100) / 100;
-  const portPart = interfaceName ? ` [${interfaceName}]` : '';
-  const isStatus = STATUS_METRICS.has(rule.metric);
-  const valueLabel = formatMetricValue(rule.metric, rounded, rule.unit);
-  const message = isStatus
-    ? `${rule.name}${portPart}: ${valueLabel}`
-    : `${rule.name}${portPart}: ${rule.metric} ${rule.condition} ${rule.threshold}${rule.unit} (hiện tại: ${rounded}${rule.unit})`;
+  const snapshot = alertSnapshot(rule, metricValue, interfaceName);
   const alert = await prisma.alert.create({
     data: {
       deviceId: source.deviceId,
       serviceId: source.serviceId ?? null,
       ruleId: rule.id,
       interfaceName,
-      message,
+      message: snapshot.message,
       severity: rule.severity,
-      metricValue: valueLabel,
+      metricValue: snapshot.valueLabel,
       lastNotifiedAt: new Date(),
     },
   });
   await publishEvent('alert:new', alert);
+  const rounded = Math.round(metricValue * 100) / 100;
+  const isStatus = STATUS_METRICS.has(rule.metric);
   await dispatchAlertNotification({
     deviceName: source.name,
     deviceIp: source.ip,
@@ -691,7 +711,7 @@ async function raiseAlert(
     siteId: source.siteId ?? null,
     objectName: interfaceName,
     objectDescription: interfaceDescription,
-    currentValue: valueLabel,
+    currentValue: snapshot.valueLabel,
     threshold: isStatus ? undefined : `${rule.condition} ${rule.threshold}${rule.unit}`,
     category: alertCategory(rule),
   });

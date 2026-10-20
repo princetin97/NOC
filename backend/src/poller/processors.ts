@@ -35,6 +35,13 @@ function isCiscoSg250(ctx?: ProcessorDeviceContext): boolean {
   return /\bsg250\b/.test(descr) || /\bsg250\b/.test(model);
 }
 
+function isHikvision(ctx?: ProcessorDeviceContext): boolean {
+  const vendor = (ctx?.vendor ?? '').toLowerCase();
+  const descr = (ctx?.sysDescr ?? '').toLowerCase();
+  const oid = ctx?.sysObjectId ?? '';
+  return vendor === 'hikvision' || /hikvision/.test(descr) || oid.startsWith('1.3.6.1.4.1.50001');
+}
+
 // A processor must be missing from discovery for this long (not just one poll cycle)
 // before it's pruned — protects its historical trend from single-cycle SNMP hiccups.
 const STALE_PROCESSOR_GRACE_MS = 30 * 60 * 1000;
@@ -171,6 +178,21 @@ export async function readProcessors(
     }
   } catch (err) {
     logger.debug({ err, deviceId }, 'FORTINET-FORTIGATE-MIB processor read failed');
+  }
+
+  // 4.1) Hikvision enterprise MIB — camera/NVR devices exposing direct CPU scalar.
+  if (isHikvision(ctx)) {
+    try {
+      const [cpuUsageVb, cpuCoreVb] = await snmpGet(session, [OID.hikvisionCpuUsage, OID.hikvisionCpuCoreCount]);
+      const usage = pct(varbindToNumber(cpuUsageVb));
+      const cores = varbindToNumber(cpuCoreVb);
+      if (usage !== undefined) {
+        const picked = choose([{ index: 'hik-0', description: cores && cores > 1 ? `CPU (${cores} core)` : 'CPU', usage }]);
+        if (picked) return picked;
+      }
+    } catch (err) {
+      logger.debug({ err, deviceId }, 'Hikvision processor read failed');
+    }
   }
 
   // 5) JUNIPER-MIB jnxOperatingTable + SRX SPU — per Routing Engine / SPU CPU.

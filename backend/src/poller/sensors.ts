@@ -256,27 +256,64 @@ function decodeFortiHaSyncStatus(code: number | undefined): { label: string; sta
   return { label: 'Unknown', status: 'unknown' };
 }
 
+function decodeUtilizationStatus(value: number | undefined): 'ok' | 'warning' | 'critical' | 'unknown' {
+  if (value === undefined || Number.isNaN(value)) return 'unknown';
+  if (value >= 90) return 'critical';
+  if (value >= 75) return 'warning';
+  return 'ok';
+}
+
 /**
  * FORTINET-FORTIGATE-MIB fgHaStatsTable: per-member HA sync state (PRTG parity).
  * Emits one sensor per HA node so alerts can target a specific cluster member.
  */
 async function readFortiHaSensors(session: Session): Promise<DiscoveredSensor[]> {
-  const [serials, hostnames, syncStatuses] = await Promise.all([
+  const [serials, cpuUsages, memUsages, hostnames, syncStatuses] = await Promise.all([
     snmpWalkColumn(session, OID.fgHaStatsSerial),
+    snmpWalkColumn(session, OID.fgHaStatsCpuUsage),
+    snmpWalkColumn(session, OID.fgHaStatsMemUsage),
     snmpWalkColumn(session, OID.fgHaStatsHostname),
     snmpWalkColumn(session, OID.fgHaStatsSyncStatus),
   ]);
 
   const sensors: DiscoveredSensor[] = [];
-  const indexes = new Set<number>([...serials.keys(), ...hostnames.keys(), ...syncStatuses.keys()]);
+  const indexes = new Set<number>([
+    ...serials.keys(),
+    ...cpuUsages.keys(),
+    ...memUsages.keys(),
+    ...hostnames.keys(),
+    ...syncStatuses.keys(),
+  ]);
   for (const idx of indexes) {
     const serial = varbindToString(serials.get(idx))?.trim();
     const hostname = varbindToString(hostnames.get(idx))?.trim();
+    const memberCpu = varbindToNumber(cpuUsages.get(idx));
+    const memberMem = varbindToNumber(memUsages.get(idx));
     const syncRaw = varbindToNumber(syncStatuses.get(idx));
-    if (syncRaw === undefined && !serial && !hostname) continue;
+    if (syncRaw === undefined && memberCpu === undefined && memberMem === undefined && !serial && !hostname) continue;
 
     const memberLabel = serial || hostname || `member-${idx}`;
     const sync = decodeFortiHaSyncStatus(syncRaw);
+    if (memberCpu !== undefined && memberCpu >= 0 && memberCpu <= 100) {
+      sensors.push({
+        type: 'cpu',
+        index: `fg-ha-cpu-${idx}`,
+        description: `FortiGate HA Member: ${memberLabel} CPU`,
+        value: memberCpu,
+        unit: '%',
+        status: decodeUtilizationStatus(memberCpu),
+      });
+    }
+    if (memberMem !== undefined && memberMem >= 0 && memberMem <= 100) {
+      sensors.push({
+        type: 'memory',
+        index: `fg-ha-mem-${idx}`,
+        description: `FortiGate HA Member: ${memberLabel} Memory`,
+        value: memberMem,
+        unit: '%',
+        status: decodeUtilizationStatus(memberMem),
+      });
+    }
     sensors.push({
       type: 'ha_member_sync',
       index: `fg-ha-sync-${idx}`,

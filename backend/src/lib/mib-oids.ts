@@ -114,6 +114,8 @@ export const OID = {
   // FORTINET-FORTIGATE-MIB fgHaStatsTable - per-member HA status used by PRTG-like
   // cluster monitoring (sync state per node).
   fgHaStatsSerial: '1.3.6.1.4.1.12356.101.13.2.1.1.2', // walk, HA member serial number
+  fgHaStatsCpuUsage: '1.3.6.1.4.1.12356.101.13.2.1.1.3', // walk, HA member CPU usage (%)
+  fgHaStatsMemUsage: '1.3.6.1.4.1.12356.101.13.2.1.1.4', // walk, HA member memory usage (%)
   fgHaStatsHostname: '1.3.6.1.4.1.12356.101.13.2.1.1.11', // walk, HA member hostname
   fgHaStatsSyncStatus: '1.3.6.1.4.1.12356.101.13.2.1.1.12', // walk, synchronized(1)/unsynchronized(2)
 
@@ -329,6 +331,13 @@ export const OID = {
   ibmVoltReading: '1.3.6.1.4.1.2.3.51.3.1.2.2.1.3', // walk, millivolts
   ibmFanName: '1.3.6.1.4.1.2.3.51.3.1.3.2.1.2', // walk, fan name
   ibmFanSpeed: '1.3.6.1.4.1.2.3.51.3.1.3.2.1.3', // walk, percent of max
+
+  // Hikvision enterprise MIB (.1.3.6.1.4.1.50001) observed on IP camera/NVR devices.
+  // Provides direct CPU/RAM utilisation scalars where HOST-RESOURCES/UCD tables are absent.
+  hikvisionMemTotalMb: '1.3.6.1.4.1.50001.1.220.0', // total memory in MB
+  hikvisionMemUsage: '1.3.6.1.4.1.50001.1.221.0', // memory usage (percentage on tested devices)
+  hikvisionCpuCoreCount: '1.3.6.1.4.1.50001.1.230.0', // CPU core count
+  hikvisionCpuUsage: '1.3.6.1.4.1.50001.1.231.0', // CPU usage percentage
 } as const;
 
 export const ENTITY_SENSOR_TYPE_CELSIUS = 8;

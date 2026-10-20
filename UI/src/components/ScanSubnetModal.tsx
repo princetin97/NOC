@@ -33,6 +33,7 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SubnetScanResult[] | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [resultFilter, setResultFilter] = useState<'all' | 'snmp' | 'ping'>('all');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -73,6 +74,13 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
     return out;
   }, [groups]);
 
+  const filteredResults = useMemo(() => {
+    if (!results) return [];
+    if (resultFilter === 'snmp') return results.filter((r) => r.snmpAlive);
+    if (resultFilter === 'ping') return results.filter((r) => !r.snmpAlive);
+    return results;
+  }, [results, resultFilter]);
+
   if (!isOpen) return null;
 
   const inputCls = `w-full p-2 rounded-lg border text-sm ${
@@ -84,6 +92,7 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
     setError(null);
     setResults(null);
     setSelected({});
+    setResultFilter('all');
     try {
       const found = await api.devices.scanSubnet({ subnet, snmpVersion, snmpCommunity: community });
       setResults(found);
@@ -133,6 +142,7 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
   };
 
   const selectedCount = results ? results.filter((r) => selected[r.ip] && !r.alreadyAdded).length : 0;
+  const selectableVisibleCount = filteredResults.filter((r) => !r.alreadyAdded).length;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -207,7 +217,66 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
                 <span className="text-emerald-400">Đã chọn: {selectedCount}</span>
               </div>
 
-              {results.length === 0 ? (
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-slate-400 text-[11px]">Bộ lọc:</span>
+                <button
+                  onClick={() => setResultFilter('all')}
+                  className={`px-2.5 py-1 rounded border text-[11px] font-semibold ${
+                    resultFilter === 'all'
+                      ? 'border-emerald-500 text-emerald-300 bg-emerald-500/10'
+                      : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  Tất cả ({results.length})
+                </button>
+                <button
+                  onClick={() => setResultFilter('snmp')}
+                  className={`px-2.5 py-1 rounded border text-[11px] font-semibold ${
+                    resultFilter === 'snmp'
+                      ? 'border-cyan-500 text-cyan-300 bg-cyan-500/10'
+                      : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  Chỉ SNMP ({results.filter((r) => r.snmpAlive).length})
+                </button>
+                <button
+                  onClick={() => setResultFilter('ping')}
+                  className={`px-2.5 py-1 rounded border text-[11px] font-semibold ${
+                    resultFilter === 'ping'
+                      ? 'border-amber-500 text-amber-300 bg-amber-500/10'
+                      : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  Chỉ Ping-only ({results.filter((r) => !r.snmpAlive).length})
+                </button>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelected((prev) => {
+                        const next = { ...prev };
+                        filteredResults.forEach((r) => {
+                          if (!r.alreadyAdded) next[r.ip] = true;
+                        });
+                        return next;
+                      });
+                    }}
+                    disabled={selectableVisibleCount === 0}
+                    className="px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-50 text-[11px]"
+                  >
+                    Chọn tất cả hiển thị
+                  </button>
+                  <button
+                    onClick={() => setSelected({})}
+                    disabled={selectedCount === 0}
+                    className="px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-50 text-[11px]"
+                  >
+                    Bỏ tích tất cả
+                  </button>
+                </div>
+              </div>
+
+              {filteredResults.length === 0 ? (
                 <p className="text-slate-500 text-center py-6">Không có host nào phản hồi. Kiểm tra lại dải mạng/kết nối.</p>
               ) : (
                 <div className="border rounded-xl border-slate-800 overflow-hidden max-h-72 overflow-y-auto">
@@ -222,7 +291,7 @@ export const ScanSubnetModal: React.FC<ScanSubnetModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {results.map((r) => (
+                      {filteredResults.map((r) => (
                         <tr key={r.ip} className={r.alreadyAdded ? 'opacity-40' : 'hover:bg-slate-800/50'}>
                           <td className="py-2 px-3">
                             <input

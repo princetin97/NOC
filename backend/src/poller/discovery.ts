@@ -337,6 +337,7 @@ function guessVendor(sysDescr?: string, sysObjectId?: string): string {
     ['1.3.6.1.4.1.6574', 'Synology'],
     ['1.3.6.1.4.1.24681', 'QNAP'],
     ['1.3.6.1.4.1.40482', 'Pure Storage'],
+    ['1.3.6.1.4.1.50001', 'Hikvision'],
     ['1.3.6.1.4.1.318', 'APC'],
     ['1.3.6.1.4.1.534', 'Eaton'],
     ['1.3.6.1.4.1.476', 'Vertiv'],
@@ -411,6 +412,7 @@ function guessOs(vendor: string, sysDescr?: string): string | undefined {
   if (vendor === 'Pure Storage' || /purity|flasharray/i.test(descr)) return 'Purity';
   if (vendor === 'Arista' || /\beos\b/i.test(descr)) return 'Arista EOS';
   if (vendor === 'Palo Alto' || /pan-os/i.test(descr)) return 'PAN-OS';
+  if (vendor === 'Hikvision' || /hikvision/i.test(descr)) return 'Hikvision Embedded OS';
   if (/exos|extremexos/i.test(descr)) return 'ExtremeXOS';
   if (vendor === 'Huawei' || /\bvrp\b/i.test(descr)) return 'Huawei VRP';
   if (vendor === '3Com') return '3Com OS';
