@@ -325,7 +325,16 @@ export async function pollProcessors(
   ctx?: ProcessorDeviceContext,
 ): Promise<{ avgUsage: number; count: number; processors: DiscoveredProcessor[] } | undefined> {
   const processors = await readProcessors(session, deviceId, ctx);
-  if (processors.length === 0) return undefined;
+  if (processors.length === 0) {
+    const now = Date.now();
+    const staleCutoff = now - STALE_PROCESSOR_GRACE_MS;
+    const existing = await prisma.processor.findMany({ where: { deviceId }, select: { id: true, lastPolled: true } });
+    const stale = existing
+      .filter((e) => !e.lastPolled || e.lastPolled.getTime() < staleCutoff)
+      .map((e) => e.id);
+    if (stale.length > 0) await prisma.processor.deleteMany({ where: { id: { in: stale } } });
+    return undefined;
+  }
 
   const now = new Date();
   const seen = new Set<string>();

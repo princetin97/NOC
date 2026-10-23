@@ -34,6 +34,43 @@ git reset --hard v0.1.0           # (cẩn thận) quay hẳn repo về phiên b
 - Bo sung monitor theo tung member cho FortiGate HA:
   - Thu thap them CPU (%) va RAM (%) theo tung node trong `fgHaStatsTable`.
   - Luu duoi dang sensor de hien thi/alert rieng theo tung member trong cluster.
+- Bổ sung tạm dừng theo dõi thiết bị thủ công (PING + SNMP):
+  - Nút pause/resume trên danh sách thiết bị giờ áp dụng cho toàn bộ monitoring của thiết bị, không chỉ SNMP.
+  - Khi thiết bị đang paused, chặn thao tác "Quét SNMP ngay" để tránh chạy poll thủ công ngoài ý muốn.
+  - Bổ sung trạng thái paused rõ ràng hơn trong modal chi tiết thiết bị.
+  - Chuẩn hoá wording trên UI từ "SNMP" sang "Theo dõi/Monitoring" cho các thao tác pause/resume và quét thủ công.
+  - Tối ưu fast-recheck cho thiết bị đang `down`: bỏ qua cooldown trong vòng poll nhanh để thiết bị có thể chuyển lại `up` ngay khi ping hồi phục, không bị chờ cửa sổ retry SNMP/cooldown.
+  - Hiển thị badge `ONLINE (PING-ONLY)` khi SNMP auto-paused để tránh hiểu nhầm thiết bị online đầy đủ SNMP.
+  - Thiết bị cấu hình ping-only (SNMP port = 0) cũng hiển thị badge `ONLINE (PING-ONLY)` để phân biệt rõ với online đầy đủ SNMP.
+  - Sửa lỗi giữ lại interface cũ khi thay switch mới nhưng dùng lại IP cũ:
+    - Sau mỗi discovery IF-MIB, hệ thống tự xóa các port `ifIndex` không còn tồn tại trên thiết bị hiện tại.
+    - Tránh trộn lẫn danh sách interface giữa switch cũ và switch mới trên UI.
+  - Sửa lỗi bộ lọc "ẩn interface ảo" làm mất một số cổng switch có trạng thái down:
+    - Cổng vật lý đặt tên dạng số (`1`, `2`, `3`...) vẫn được coi là physical kể cả khi `speed=0`.
+    - Tránh tình trạng chỉ còn thấy cổng up nhưng cổng down bị ẩn nhầm như interface ảo.
+  - Mở rộng nhận diện cổng physical khi down cho nhiều dòng switch (bao gồm 3Com/H3C/Comware/Cisco/HP/Juniper...):
+    - Bổ sung tập regex tên cổng phổ biến (GigabitEthernet/FastEthernet/Ethernet/XGigE/Port-channel/Bridge-Aggregation/trk...).
+    - Giảm rủi ro ẩn nhầm cổng vật lý có `speed=0` chỉ vì naming khác chuẩn.
+  - Sửa hồi quy trên một số Cisco (ví dụ SF300) hiển thị nhầm interface VLAN dạng số trong tab Interfaces:
+    - Bộ lọc cổng dạng số giờ đối chiếu trực tiếp với VLAN ID đã tải trong modal chi tiết thiết bị.
+    - Các interface đại diện VLAN (tên `1`, `10`, `1009`...) được ẩn đúng, không bị xem là physical port.
+  - Tách biệt rõ Cisco SF300 và HPE 1920S khi tên interface dạng số:
+    - Nếu interface dạng số có mặt trong membership VLAN theo `portId`, hệ thống coi đó là cổng vật lý và không ẩn.
+    - Chỉ ẩn interface dạng số khi thực sự là VLAN-backed (trùng VLAN ID nhưng không phải member port vật lý), tránh ảnh hưởng lẫn nhau giữa 2 dòng thiết bị.
+  - Vá thêm cho HPE 1920S bị ẩn nhầm `port1`:
+    - Không còn ẩn interface tên số nếu `ifType` là physical/LAG (`ethernetCsmacd`, `ieee8023adlag`, `fibrechannel`) dù trùng VLAN ID.
+    - Giữ nguyên việc ẩn interface VLAN dạng số trên Cisco/SMB vì các interface đó dùng `ifType=propVirtual/l2vlan`.
+    - Sửa nguồn đọc loại interface ở UI: ưu tiên field `type` (đang được adapter map từ `ifType` backend), tránh trường hợp logic lọc dùng nhầm `ifType` undefined và ẩn sai cổng vật lý.
+  - Làm rõ trạng thái CPU/RAM khi thiết bị không trả về OID giám sát:
+    - UI hiển thị `N/A` thay vì `0%` khi không có telemetry hợp lệ (không có `cpuCount` hoặc `totalMemoryBytes` và giá trị usage = 0),
+      tránh hiểu nhầm là có dữ liệu nhưng bằng 0.
+  - Sửa lệch dữ liệu CPU/RAM giữa các thiết bị cùng model do cache cũ:
+    - Khi SNMP vẫn reachable nhưng không đọc được OID CPU/RAM trong vòng poll hiện tại, backend không giữ mãi giá trị cũ; chuyển về trạng thái unknown (`cpuUsage=0,cpuCount=null`, `memoryUsage=0,totalMemoryBytes=null`) để UI hiển thị `N/A`.
+    - Nếu bảng Processor không còn trả dữ liệu trong thời gian grace, backend tự dọn processor stale để tránh giữ số liệu lịch sử gây hiểu nhầm.
+  - Chuẩn hoá hiển thị nhiệt độ khi thiếu telemetry:
+    - Không còn map `temperature=null` thành `0°C` ở frontend; thiết bị không có dữ liệu nhiệt độ sẽ hiển thị `N/A`.
+    - Poller không giữ nhiệt độ cũ khi vòng SNMP hiện tại không đọc được OID nhiệt độ (gán về unknown), tránh kẹt số liệu cũ.
+    - Thiết bị ping-only (`snmpPort=0`) luôn hiển thị nhiệt độ `N/A` vì không có nguồn SNMP để lấy nhiệt độ.
 
 ### Docs
 - Cap nhat `ARCHITECTURE.md` them link den `docs/PROJECT-MEMORY.md` cho context reload nhanh.

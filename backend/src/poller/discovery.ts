@@ -158,9 +158,11 @@ export async function discoverDevice(deviceId: string): Promise<void> {
       }
 
       const portUpserts: ReturnType<typeof prisma.port.upsert>[] = [];
+      const discoveredIfIndexes: number[] = [];
       for (const ifIndex of indexes) {
         if (ghostStackIndexes.has(ifIndex)) continue;
         if (bogusIndexes.has(ifIndex)) continue;
+        discoveredIfIndexes.push(ifIndex);
         const speedMbps = varbindToNumber(ifHighSpeed.get(ifIndex));
         const speedBps = speedMbps ? speedMbps * 1_000_000 : (varbindToNumber(ifSpeed.get(ifIndex)) ?? 0);
         const portData = {
@@ -180,6 +182,18 @@ export async function discoverDevice(deviceId: string): Promise<void> {
         }));
       }
       if (portUpserts.length > 0) await prisma.$transaction(portUpserts);
+      // When a physical switch is replaced but keeps the same management IP,
+      // the new device can expose a completely different ifIndex/ifName set.
+      // Remove stale ports that are no longer present in the latest IF-MIB walk
+      // so old interfaces do not remain mixed in UI.
+      if (discoveredIfIndexes.length > 0) {
+        await prisma.port.deleteMany({
+          where: {
+            deviceId,
+            ifIndex: { notIn: discoveredIfIndexes },
+          },
+        });
+      }
 
       await discoverNeighbors(session, deviceId);
       await discoverVlans(session, deviceId);

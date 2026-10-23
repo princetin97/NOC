@@ -51,11 +51,19 @@ function byPollPriority(
   return aTs - bTs;
 }
 
-function pickEligibleDevices<T extends { id: string }>(candidates: T[], maxCount: number): { picked: T[]; skippedCooldown: number } {
+function pickEligibleDevices<T extends { id: string }>(
+  candidates: T[],
+  maxCount: number,
+  options?: { bypassCooldown?: (device: T) => boolean },
+): { picked: T[]; skippedCooldown: number } {
   const picked: T[] = [];
   let skippedCooldown = 0;
   for (const device of candidates) {
     if (picked.length >= maxCount) break;
+    if (options?.bypassCooldown?.(device)) {
+      picked.push(device);
+      continue;
+    }
     if (!shouldPollDeviceNow(device.id)) {
       skippedCooldown += 1;
       continue;
@@ -128,7 +136,12 @@ async function scheduleFastPollCycle(): Promise<void> {
   });
 
   const sorted = candidates.sort(byPollPriority);
-  const { picked: devices, skippedCooldown } = pickEligibleDevices(sorted, env.pollFastBatchSize);
+  const { picked: devices, skippedCooldown } = pickEligibleDevices(sorted, env.pollFastBatchSize, {
+    // Recovery-first behavior: devices currently marked DOWN are always eligible for
+    // fast rechecks, even during cooldown, so they can flip back to UP immediately
+    // when ping is back (without waiting for SNMP/cooldown windows).
+    bypassCooldown: (device) => device.status === 'down',
+  });
   if (devices.length > 0) {
     await pollQueue.addBulk(
       devices.map((device) => ({

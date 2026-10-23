@@ -15,8 +15,11 @@ import { parseInventorySummary } from '../utils/inventorySummary';
 const getAllPorts = (device: NetworkDevice): NetworkInterface[] =>
   [...device.interfaces].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
+const getInterfaceType = (iface: NetworkInterface): string =>
+  ((((iface as unknown as { ifType?: string }).ifType) ?? iface.type) || '').toLowerCase();
+
 const isVlanInterface = (iface: NetworkInterface): boolean => {
-  const type = (iface.ifType || '').toLowerCase();
+  const type = getInterfaceType(iface);
   if (type === 'l2vlan' || type === 'l3ipvlan' || type === 'propvirtual' || type === 'bridge') return true;
   const name = (iface.name || '').toLowerCase();
   const desc = (iface.description || '').toLowerCase();
@@ -33,7 +36,7 @@ const isVlanInterface = (iface: NetworkInterface): boolean => {
 };
 
 const isPhysicalOrLagInterface = (iface: NetworkInterface): boolean => {
-  const type = (iface.ifType || '').toLowerCase();
+  const type = getInterfaceType(iface);
   if (type === 'ethernetcsmacd' || type === 'ieee8023adlag' || type === 'fibrechannel') return true;
   const name = (iface.name || '').toLowerCase();
   const numericOnly = /^\d+$/.test(name);
@@ -43,26 +46,53 @@ const isPhysicalOrLagInterface = (iface: NetworkInterface): boolean => {
   const isVirtualByType = /^(l2vlan|l3ipvlan|propvirtual|softwareloopback|bridge|tunnel|mplstunnel|type-136|type-53|type-24|type-209)$/.test(type);
   if (isVirtualByType) return false;
   if (!isVirtualByName && (iface.speedBps ?? 0) > 0) return true;
-  if (numericOnly) return false;
-  return /^(fc\d+\/\d+|gi|fa|te|et|eth|xe|ge|po\d+|port-channel|bridge-aggregation|bagg|trk\d*|[a-z]\d+|\d+)$/.test(name);
+  // Some switches label physical ports as plain numbers (1,2,3...). When such a
+  // port is down it can report speed=0, so it must still be treated as physical.
+  if (numericOnly) return true;
+  // Some vendors (notably 3Com/H3C/Comware and older Cisco/HP lines) may report
+  // down physical interfaces with speed=0 and non-standard/long labels, so rely on
+  // common physical naming families before falling back to virtual-pattern exclusion.
+  const looksLikePhysicalByName =
+    /^(?:gi|gigabitethernet|fa|fastethernet|te|tengigabitethernet|twentyfivegige|fortygige|hundredgige|et|eth|ethernet|xe|xge|ge|se|fo)\S*/.test(name) ||
+    /^(?:po\d+|port-channel\d*|bridge-aggregation\d*|bagg\d*|trk\d*)$/.test(name) ||
+    /^(?:e\d+|s\d+|x\d+|c\d+|[a-z]\d+)(?:\/\d+){0,3}$/.test(name) ||
+    /^\d+(?:\/\d+){1,3}$/.test(name);
+  if (looksLikePhysicalByName) return true;
+  return !isVirtualByName;
 };
 
-const isNumericInterfaceBackedByVlanId = (device: NetworkDevice, iface: NetworkInterface): boolean => {
+const isNumericInterfaceBackedByVlanId = (
+  device: NetworkDevice,
+  iface: NetworkInterface,
+  vlanIdsOverride?: Set<number>,
+  physicalMemberPortIdsOverride?: Set<string>,
+): boolean => {
   if (device.type !== 'switch') return false;
   const name = (iface.name || '').trim();
   if (!/^\d+$/.test(name)) return false;
+  const type = getInterfaceType(iface);
+  // Keep real physical/LAG ports even if they are numbered like VLAN IDs.
+  if (type === 'ethernetcsmacd' || type === 'ieee8023adlag' || type === 'fibrechannel') return false;
+  // If this interface is present in VLAN member mappings (portId), it is a real
+  // switch port and must not be treated as a synthetic VLAN interface.
+  if (physicalMemberPortIdsOverride?.has(iface.id)) return false;
   const asVlanId = Number(name);
   if (!Number.isFinite(asVlanId) || asVlanId <= 0) return false;
-  const vlanIds = new Set((device.vlans ?? []).map((v) => v.vlanId));
+  const vlanIds = vlanIdsOverride ?? new Set((device.vlans ?? []).map((v) => v.vlanId));
   return vlanIds.has(asVlanId);
 };
 
-const getVisiblePorts = (device: NetworkDevice, includeVirtual: boolean): NetworkInterface[] =>
+const getVisiblePorts = (
+  device: NetworkDevice,
+  includeVirtual: boolean,
+  vlanIdsOverride?: Set<number>,
+  physicalMemberPortIdsOverride?: Set<string>,
+): NetworkInterface[] =>
   {
     const ports = getAllPorts(device)
     // For switches, hide SVI/l2vlan interfaces from the interface list.
     .filter((iface) => device.type !== 'switch' || !isVlanInterface(iface))
-    .filter((iface) => !isNumericInterfaceBackedByVlanId(device, iface))
+    .filter((iface) => !isNumericInterfaceBackedByVlanId(device, iface, vlanIdsOverride, physicalMemberPortIdsOverride))
     .filter((iface) => includeVirtual || isPhysicalOrLagInterface(iface));
 
     // If strict physical detection filtered everything out, fall back to showing
@@ -209,7 +239,7 @@ const DeviceSensorsPanel: React.FC<{ sensors: DeviceSensor[] }> = ({ sensors }) 
   if (!sensors || sensors.length === 0) {
     return (
       <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/60 text-xs text-slate-300 font-mono">
-        Chưa có dữ liệu cảm biến sức khỏe. Nhấn "Quét SNMP" và chờ một chu kỳ thu thập.
+        Chưa có dữ liệu cảm biến sức khỏe. Nhấn "Quét thiết bị" và chờ một chu kỳ thu thập.
       </div>
     );
   }
@@ -296,7 +326,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'priority' | 'normal'>('all');
-  const [snmpPauseFilter, setSnmpPauseFilter] = useState<'all' | 'paused' | 'active'>('all');
+  const [monitoringPauseFilter, setMonitoringPauseFilter] = useState<'all' | 'paused' | 'active'>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [groups, setGroups] = useState<DeviceGroup[]>([]);
   const [selectedPort, setSelectedPort] = useState<NetworkInterface | null>(null);
@@ -641,6 +671,8 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       await Promise.resolve(onPollDevice(id));
       setScanDone(id);
       setTimeout(() => setScanDone((cur) => (cur === id ? null : cur)), 2500);
+    } catch (err) {
+      setGroupMessage({ ok: false, text: err instanceof Error ? err.message : 'Quét thiết bị thất bại.' });
     } finally {
       setPollingId((cur) => (cur === id ? null : cur));
     }
@@ -707,6 +739,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   const [showVirtualInterfaces, setShowVirtualInterfaces] = useState<boolean>(true);
   const [detailSensors, setDetailSensors] = useState<DeviceSensor[]>([]);
   const [detailVlans, setDetailVlans] = useState<DeviceVlan[]>([]);
+  const detailVlanIdSet = useMemo(() => new Set(detailVlans.map((v) => v.vlanId)), [detailVlans]);
 
   // Access (untagged) VLAN per port, derived from the freshly-fetched device detail
   // (the devices list payload omits VLANs, so selectedDevice itself never has this).
@@ -737,6 +770,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     }
     return map;
   }, [detailVlans]);
+  const detailVlanMemberPortIdSet = useMemo(
+    () => new Set(Array.from(detailVlanMembershipByPortId.keys())),
+    [detailVlanMembershipByPortId],
+  );
 
   const showVlanTab = useMemo(() => {
     if (!selectedDevice) return false;
@@ -865,13 +902,15 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     const matchesPriority =
       priorityFilter === 'all' ||
       (priorityFilter === 'priority' ? dev.isPriority === true : dev.isPriority !== true);
-    const matchesSnmpPause =
-      snmpPauseFilter === 'all' ||
-      (snmpPauseFilter === 'paused' ? dev.snmpAutoPaused === true : dev.snmpAutoPaused !== true);
+    const matchesMonitoringPause =
+      monitoringPauseFilter === 'all' ||
+      (monitoringPauseFilter === 'paused'
+        ? dev.disabled === true || dev.snmpAutoPaused === true
+        : dev.disabled !== true && dev.snmpAutoPaused !== true);
     const validGroupIds = groupFilter === 'all' ? null : groupDescendants.get(groupFilter) ?? new Set<string>([groupFilter]);
     const matchesGroup = validGroupIds ? (dev.groupId ? validGroupIds.has(dev.groupId) : false) : true;
 
-    return matchesSearch && matchesVendor && matchesType && matchesStatus && matchesPriority && matchesSnmpPause && matchesGroup;
+    return matchesSearch && matchesVendor && matchesType && matchesStatus && matchesPriority && matchesMonitoringPause && matchesGroup;
   });
 
   useEffect(() => {
@@ -886,7 +925,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
   }, [devices]);
 
   const UNGROUPED_BUCKET_ID = '__ungrouped__';
-  const filtersActive = !!searchQuery || vendorFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || snmpPauseFilter !== 'all' || groupFilter !== 'all';
+  const filtersActive = !!searchQuery || vendorFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all' || monitoringPauseFilter !== 'all' || groupFilter !== 'all';
 
   const allGroupTree = useMemo(() => buildGroupTree(groups, []), [groups]);
   const groupOptions = useMemo(() => flattenGroupOptions(allGroupTree), [allGroupTree]);
@@ -973,7 +1012,16 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     setShowEditGroupModal(false);
   };
 
-  const getStatusBadge = (status: DeviceStatus) => {
+  const isPingOnlyDevice = (device: NetworkDevice): boolean => (device.snmpPort ?? 161) <= 0;
+
+  const getStatusBadge = (status: DeviceStatus, opts?: { pingOnly?: boolean }) => {
+    if (status === 'up' && opts?.pingOnly) {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-sky-500/20 text-sky-300 border border-sky-500/30">
+          ● ONLINE (PING-ONLY)
+        </span>
+      );
+    }
     switch (status) {
       case 'up':
         return <span className="px-2 py-0.5 rounded text-xs font-bold uppercase font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">● ONLINE</span>;
@@ -994,6 +1042,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
     if (value >= 50) return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
     return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
   };
+  const hasCpuTelemetry = (device: NetworkDevice): boolean =>
+    (device.cpuCount ?? 0) > 0 || device.cpuUsage > 0;
+  const hasMemoryTelemetry = (device: NetworkDevice): boolean =>
+    (device.totalMemoryBytes ?? 0) > 0 || device.memoryUsage > 0;
 
   const renderDeviceRow = (dev: NetworkDevice, depth: number) => (
     <tr
@@ -1036,7 +1088,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       {visibleColumns.status && (
         <td className="py-3 px-3">
           <div className="flex flex-col gap-1">
-            {getStatusBadge(dev.status)}
+            {getStatusBadge(dev.status, { pingOnly: dev.snmpAutoPaused || isPingOnlyDevice(dev) })}
             {dev.snmpAutoPaused ? (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
                 SNMP AUTO-PAUSED
@@ -1047,12 +1099,20 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
       )}
       {visibleColumns.cpu && (
         <td className="py-3 px-3">
-          <span className={`inline-flex px-2 py-0.5 rounded font-bold ${metricHeatClass(dev.cpuUsage)}`}>{dev.cpuUsage}%</span>
+          {hasCpuTelemetry(dev) ? (
+            <span className={`inline-flex px-2 py-0.5 rounded font-bold ${metricHeatClass(dev.cpuUsage)}`}>{dev.cpuUsage}%</span>
+          ) : (
+            <span className="text-slate-500 font-mono text-xs">N/A</span>
+          )}
         </td>
       )}
       {visibleColumns.ram && (
         <td className="py-3 px-3">
-          <span className={`inline-flex px-2 py-0.5 rounded font-bold ${metricHeatClass(dev.memoryUsage)}`}>{dev.memoryUsage}%</span>
+          {hasMemoryTelemetry(dev) ? (
+            <span className={`inline-flex px-2 py-0.5 rounded font-bold ${metricHeatClass(dev.memoryUsage)}`}>{dev.memoryUsage}%</span>
+          ) : (
+            <span className="text-slate-500 font-mono text-xs">N/A</span>
+          )}
         </td>
       )}
       {visibleColumns.temperature && <td className={`py-3 px-3 font-bold ${(dev.temperature ?? 0) > 65 ? 'text-red-400' : 'text-orange-400'}`}>{dev.temperature != null ? `${dev.temperature}°C` : 'N/A'}</td>}
@@ -1114,10 +1174,10 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             }`}
             title={
               dev.snmpAutoPaused
-                ? 'Thiết bị đang SNMP auto-pause. Bấm để bật lại query SNMP ngay.'
+                ? 'Thiết bị đang auto-pause (chỉ ping). Bấm để bật lại theo dõi đầy đủ ngay.'
                 : dev.disabled
-                ? 'Thiết bị đang tạm dừng query SNMP. Bấm để bật lại.'
-                : 'Thiết bị đang bật query SNMP. Bấm để tạm dừng.'
+                ? 'Thiết bị đang tạm dừng theo dõi (PING + SNMP). Bấm để bật lại.'
+                : 'Thiết bị đang được theo dõi (PING + SNMP). Bấm để tạm dừng.'
             }
           >
             {togglingSnmpId === dev.id ? (
@@ -1135,7 +1195,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
             }}
             disabled={pollingId === dev.id || dev.disabled}
             className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-60"
-            title={dev.disabled ? 'Thiết bị đang tạm dừng theo dõi SNMP' : 'Quét SNMP ngay'}
+            title={dev.disabled ? 'Thiết bị đang tạm dừng theo dõi (PING + SNMP)' : 'Quét thiết bị ngay'}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${pollingId === dev.id ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
@@ -1303,15 +1363,15 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
               </select>
 
               <select
-                value={snmpPauseFilter}
-                onChange={(e) => setSnmpPauseFilter(e.target.value as 'all' | 'paused' | 'active')}
+                value={monitoringPauseFilter}
+                onChange={(e) => setMonitoringPauseFilter(e.target.value as 'all' | 'paused' | 'active')}
                 className={`text-xs py-1.5 px-3 rounded-lg border focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer ${
                   darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-700'
                 }`}
               >
-                <option value="all">SNMP pause: Tất cả</option>
-                <option value="paused">SNMP pause: Đang pause</option>
-                <option value="active">SNMP pause: Bình thường</option>
+                <option value="all">Theo dõi: Tất cả</option>
+                <option value="paused">Theo dõi: Đang tạm dừng</option>
+                <option value="active">Theo dõi: Đang hoạt động</option>
               </select>
 
               {groups.length > 0 && (
@@ -1866,7 +1926,12 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                 <div>
                   <div className="flex items-center space-x-2">
                     <h2 className="text-lg font-black font-mono tracking-tight">{selectedDevice.name}</h2>
-                    {getStatusBadge(selectedDevice.status)}
+                    {getStatusBadge(selectedDevice.status, { pingOnly: selectedDevice.snmpAutoPaused || isPingOnlyDevice(selectedDevice) })}
+                    {selectedDevice.disabled ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-red-500/20 text-red-300 border border-red-500/30">
+                        MONITORING PAUSED
+                      </span>
+                    ) : null}
                     {selectedDevice.snmpAutoPaused ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
                         SNMP AUTO-PAUSED
@@ -1885,20 +1950,21 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     onClick={() => void resumeSnmpAutoPause(selectedDevice.id)}
                     disabled={togglingSnmpId === selectedDevice.id}
                     className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-colors disabled:opacity-60"
-                    title="Bật lại query SNMP cho thiết bị đang auto-pause"
+                    title="Bật lại theo dõi đầy đủ cho thiết bị đang auto-pause"
                   >
                     <PlayCircle className="w-3.5 h-3.5" />
-                    <span>{togglingSnmpId === selectedDevice.id ? 'Đang bật lại...' : 'Bật lại SNMP'}</span>
+                    <span>{togglingSnmpId === selectedDevice.id ? 'Đang bật lại...' : 'Bật lại theo dõi'}</span>
                   </button>
                 ) : null}
                 <button
                   onClick={() => runPoll(selectedDevice.id)}
-                  disabled={pollingId === selectedDevice.id}
+                  disabled={pollingId === selectedDevice.id || selectedDevice.disabled}
                   className={`px-3 py-1.5 text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-colors ${
                     scanDone === selectedDevice.id
                       ? 'bg-emerald-700'
                       : 'bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-700/70'
                   }`}
+                  title={selectedDevice.disabled ? 'Thiết bị đang tạm dừng theo dõi (PING + SNMP)' : 'Quét thiết bị ngay'}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${pollingId === selectedDevice.id ? 'animate-spin' : ''}`} />
                   <span>
@@ -1906,7 +1972,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                       ? 'Đang quét...'
                       : scanDone === selectedDevice.id
                       ? 'Đã cập nhật ✓'
-                      : 'Quét SNMP'}
+                      : 'Quét thiết bị'}
                   </span>
                 </button>
                 <button
@@ -1934,7 +2000,11 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                 { key: 'system', label: 'Trạng thái hệ thống', icon: Activity },
                 { key: 'sensors', label: `Cảm biến (${detailSensors.length})`, icon: Thermometer },
                 { key: 'neighbors', label: 'Thiết bị lân cận', icon: ShieldCheck },
-                { key: 'ports', label: `Interfaces (${getVisiblePorts(selectedDevice, showVirtualInterfaces).length})`, icon: Cable },
+                {
+                  key: 'ports',
+                  label: `Interfaces (${getVisiblePorts(selectedDevice, showVirtualInterfaces, detailVlanIdSet, detailVlanMemberPortIdSet).length})`,
+                  icon: Cable,
+                },
                 ...(showVlanTab
                   ? [{ key: 'vlans', label: `VLAN (${detailVlans.length})`, icon: Network }]
                   : []),
@@ -2037,28 +2107,46 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           <>
                             <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
                               <span className="text-xs text-slate-300 uppercase tracking-wider">Mức tải CPU{selectedDevice.cpuCount ? ` (${selectedDevice.cpuCount} lõi)` : ''}</span>
-                              <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                {selectedDevice.cpuUsage}%
-                              </p>
-                              <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                                <div className="bg-emerald-400 h-full" style={{ width: `${selectedDevice.cpuUsage}%` }}></div>
-                              </div>
+                              {hasCpuTelemetry(selectedDevice) ? (
+                                <>
+                                  <p className={`text-xl font-black mt-1 ${selectedDevice.cpuUsage > 80 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {selectedDevice.cpuUsage}%
+                                  </p>
+                                  <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                    <div className="bg-emerald-400 h-full" style={{ width: `${selectedDevice.cpuUsage}%` }}></div>
+                                  </div>
+                                </>
+                              ) : (
+                                <p className="text-xl font-black mt-1 text-slate-500">N/A</p>
+                              )}
                             </div>
 
                             <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
                               <span className="text-xs text-slate-300 uppercase tracking-wider">Bộ nhớ RAM{selectedDevice.totalMemoryBytes ? ` (${(selectedDevice.totalMemoryBytes / 1024 ** 3).toFixed(1)} GB)` : ''}</span>
-                              <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
-                                {selectedDevice.memoryUsage}%
-                              </p>
-                              <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                                <div className="bg-amber-400 h-full" style={{ width: `${selectedDevice.memoryUsage}%` }}></div>
-                              </div>
+                              {hasMemoryTelemetry(selectedDevice) ? (
+                                <>
+                                  <p className={`text-xl font-black mt-1 ${selectedDevice.memoryUsage > 80 ? 'text-amber-400' : 'text-slate-200'}`}>
+                                    {selectedDevice.memoryUsage}%
+                                  </p>
+                                  <div className="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                    <div className="bg-amber-400 h-full" style={{ width: `${selectedDevice.memoryUsage}%` }}></div>
+                                  </div>
+                                </>
+                              ) : (
+                                <p className="text-xl font-black mt-1 text-slate-500">N/A</p>
+                              )}
                             </div>
 
                             <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
                               <span className="text-xs text-slate-300 uppercase tracking-wider">Nhiệt độ Ambient</span>
-                              <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
-                              <p className="text-xs text-slate-400 mt-1">Ngưỡng &lt;65°C</p>
+                              {selectedDevice.temperature != null ? (
+                                <>
+                                  <p className="text-xl font-black mt-1 text-orange-400">{selectedDevice.temperature} °C</p>
+                                  <p className="text-xs text-slate-400 mt-1">Ngưỡng &lt;65°C</p>
+                                </>
+                              ) : (
+                                <p className="text-xl font-black mt-1 text-slate-500">N/A</p>
+                              )}
                             </div>
 
                             <div className="p-3.5 rounded-xl border bg-slate-800/40 border-slate-700/60 text-center">
@@ -2146,9 +2234,21 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                           <span className="text-slate-200">{selectedDevice.snmpVersion} ({selectedDevice.community || 'SNMPv3 User'})</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>SNMP Polling trạng thái:</span>
-                          <span className={selectedDevice.snmpAutoPaused ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold'}>
-                            {selectedDevice.snmpAutoPaused ? 'Auto-paused (ping-only)' : 'Đang hoạt động'}
+                          <span>Theo dõi thiết bị:</span>
+                          <span
+                            className={
+                              selectedDevice.disabled
+                                ? 'text-red-300 font-bold'
+                                : selectedDevice.snmpAutoPaused
+                                ? 'text-amber-300 font-bold'
+                                : 'text-emerald-400 font-bold'
+                            }
+                          >
+                            {selectedDevice.disabled
+                              ? 'Tạm dừng thủ công (PING + SNMP)'
+                              : selectedDevice.snmpAutoPaused
+                              ? 'Auto-paused (chỉ ping)'
+                              : 'Đang hoạt động'}
                           </span>
                         </div>
                         {selectedDevice.snmpAutoPausedAt ? (
@@ -2197,7 +2297,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
 
                   return fallbackVlan ? String(fallbackVlan) : '—';
                 };
-                const allPorts = getVisiblePorts(selectedDevice, showVirtualInterfaces)
+                const allPorts = getVisiblePorts(selectedDevice, showVirtualInterfaces, detailVlanIdSet, detailVlanMemberPortIdSet)
                   .map((iface) => ({ ...iface, vlan: detailVlanByPortId.get(iface.id) ?? iface.vlan }))
                   .filter((iface) =>
                   q === '' ||
@@ -2415,7 +2515,7 @@ export const DeviceManagement: React.FC<DeviceManagementProps> = ({
                     </div>
                     {vlans.length === 0 ? (
                       <div className="p-6 text-center text-sm text-slate-400 border border-dashed rounded-xl border-slate-700">
-                        Chưa phát hiện VLAN nào trên thiết bị này. Hãy thử "Quét SNMP" lại, hoặc thiết bị có thể không hỗ trợ Q-BRIDGE-MIB.
+                        Chưa phát hiện VLAN nào trên thiết bị này. Hãy thử "Quét thiết bị" lại, hoặc thiết bị có thể không hỗ trợ Q-BRIDGE-MIB.
                       </div>
                     ) : (
                       <div className={`rounded-xl border overflow-x-auto ${darkMode ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-white'}`}>

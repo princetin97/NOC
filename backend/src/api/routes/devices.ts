@@ -282,9 +282,19 @@ devicesRouter.delete('/:id', async (req: AuthedRequest, res) => {
 devicesRouter.post('/:id/poll-now', async (req: AuthedRequest, res) => {
   // Re-run discovery (interfaces, sysDescr, vendor MIBs) then poll, so a manual
   // "SNMP scan" picks up newly exposed interfaces/metrics, not just fresh counters.
-  const dev = await prisma.device.findFirst({ where: { id: req.params.id, ...deviceSiteWhere(req) }, select: { snmpPort: true } });
+  const dev = await prisma.device.findFirst({
+    where: { id: req.params.id, ...deviceSiteWhere(req) },
+    select: { snmpPort: true, disabled: true },
+  });
   if (!dev) {
     res.status(404).json({ error: 'Device not found' });
+    return;
+  }
+  if (dev.disabled) {
+    res.status(409).json({
+      error: 'Thiết bị đang tạm dừng theo dõi (PING + SNMP).',
+      hint: 'Bật lại theo dõi thiết bị trước khi chạy quét thủ công.',
+    });
     return;
   }
   if (dev?.snmpPort && dev.snmpPort > 0) await discoveryQueue.add('discover', { deviceId: req.params.id });
@@ -727,4 +737,3 @@ devicesRouter.post('/bulk', async (req: AuthedRequest, res) => {
   if (created.length > 0) invalidateDeviceListCache();
   res.status(201).json({ created, skipped });
 });
-

@@ -62,6 +62,7 @@ export interface RawDevice {
   status: string;
   uptimeSeconds: number;
   snmpVersion: string;
+  snmpPort?: number | null;
   snmpCommunity?: string | null;
   snmpAutoPaused?: boolean;
   snmpAutoPausedAt?: string | null;
@@ -298,6 +299,7 @@ export function mapDevice(raw: RawDevice): NetworkDevice {
     uptime: formatUptime(raw.uptimeSeconds),
     uptimeSeconds: raw.uptimeSeconds ?? 0,
     snmpVersion: (raw.snmpVersion as 'v1' | 'v2c' | 'v3') ?? 'v2c',
+    snmpPort: raw.snmpPort ?? undefined,
     community: raw.snmpCommunity ?? undefined,
     snmpAutoPaused: raw.snmpAutoPaused ?? false,
     snmpAutoPausedAt: raw.snmpAutoPausedAt ?? null,
@@ -305,7 +307,7 @@ export function mapDevice(raw: RawDevice): NetworkDevice {
     cpuCount: raw.cpuCount ?? undefined,
     memoryUsage: raw.memoryUsage ?? 0,
     totalMemoryBytes: raw.totalMemoryBytes ?? undefined,
-    temperature: raw.temperature ?? 0,
+    temperature: raw.temperature ?? undefined,
     pingLatencyMs: raw.pingLatencyMs ?? 0,
     packetLoss: raw.packetLoss ?? 0,
     disabled: raw.disabled ?? false,

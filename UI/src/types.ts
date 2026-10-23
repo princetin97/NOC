@@ -194,6 +194,7 @@ export interface NetworkDevice {
   uptime: string; // e.g., '142 days, 06:12:45'
   uptimeSeconds: number;
   snmpVersion: 'v1' | 'v2c' | 'v3';
+  snmpPort?: number;
   community?: string;
   snmpAutoPaused?: boolean;
   snmpAutoPausedAt?: string | null;
@@ -201,10 +202,10 @@ export interface NetworkDevice {
   cpuCount?: number;
   memoryUsage: number; // percentage
   totalMemoryBytes?: number;
-  temperature: number; // Celsius
+  temperature?: number; // Celsius
   pingLatencyMs: number;
   packetLoss: number; // percentage
-  disabled: boolean;
+  disabled: boolean; // manual pause for device monitoring (PING + SNMP)
   isPriority?: boolean;
   interfacesCount: number;
   interfaces: NetworkInterface[];
@@ -619,4 +620,3 @@ export interface DashboardInput {
   siteId?: string | null;
   widgets?: DashboardWidget[];
 }
-

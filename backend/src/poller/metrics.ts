@@ -102,7 +102,7 @@ export async function pollDevice(deviceId: string): Promise<void> {
   let memoryUsage = device.memoryUsage;
   let cpuCount = device.cpuCount;
   let totalMemoryBytes = device.totalMemoryBytes;
-  let temperature = device.temperature ?? undefined;
+  let temperature: number | null | undefined = device.temperature ?? undefined;
   let uptimeSeconds = device.uptimeSeconds;
   let snmpReachable = false;
   let snmpPaused = device.snmpPort > 0 ? await isSnmpAutoPaused(deviceId) : false;
@@ -137,16 +137,29 @@ export async function pollDevice(deviceId: string): Promise<void> {
         sysObjectId: device.sysObjectId ?? undefined,
         model: device.model ?? undefined,
       });
-      cpuUsage = cpuResult?.avgUsage ?? cpuUsage;
-      cpuCount = cpuResult?.count ?? cpuCount;
+      if (cpuResult) {
+        cpuUsage = cpuResult.avgUsage;
+        cpuCount = cpuResult.count;
+      } else {
+        // SNMP was reachable but no CPU OID returned telemetry in this cycle.
+        // Clear stale cached CPU values to avoid showing old percentages forever.
+        cpuUsage = 0;
+        cpuCount = null;
+      }
 
       const memResult = await readMemoryUsage(session, deviceId, {
         sysDescr: device.sysDescr ?? undefined,
         sysObjectId: device.sysObjectId ?? undefined,
         vendor: device.vendor ?? undefined,
       });
-      memoryUsage = memResult.percent ?? memoryUsage;
-      totalMemoryBytes = memResult.totalBytes ?? totalMemoryBytes;
+      if (memResult.percent !== undefined || memResult.totalBytes !== undefined) {
+        memoryUsage = memResult.percent ?? memoryUsage;
+        totalMemoryBytes = memResult.totalBytes ?? totalMemoryBytes;
+      } else {
+        // Same rationale as CPU: reachable SNMP + no memory telemetry means unknown.
+        memoryUsage = 0;
+        totalMemoryBytes = null;
+      }
 
       if (isWindowsHost) {
         const win = await collectWindowsStorageViaIndexedGet(session, deviceId);
@@ -159,7 +172,7 @@ export async function pollDevice(deviceId: string): Promise<void> {
         sysDescr: device.sysDescr,
         sysObjectId: device.sysObjectId,
         model: device.model,
-      })) ?? temperature;
+      })) ?? null;
 
       // FortiGate keeps IPsec interfaces up in IF-MIB even when the tunnel is down;
       // read the real per-tunnel state to correct the port status below. Detect by
@@ -204,6 +217,7 @@ export async function pollDevice(deviceId: string): Promise<void> {
   })();
 
   const [pingResult] = await Promise.all([pingPromise, snmpPromise]);
+  if (device.snmpPort <= 0) temperature = null;
 
   const reachable = snmpReachable || pingResult.alive;
   let status: DeviceStatus;

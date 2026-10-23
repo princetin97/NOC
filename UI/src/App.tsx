@@ -531,6 +531,7 @@ export default function App() {
       .catch((err) => {
         console.error('Failed to poll device', err);
         setIsPolling(false);
+        throw err;
       });
   };
 
@@ -571,14 +572,14 @@ export default function App() {
       })
       .catch((err) => console.error('Failed to assign device group', err));
 
-  // Toggle per-device SNMP monitoring (pause/resume polling + discovery scheduling).
+  // Toggle per-device monitoring (pause/resume polling + discovery scheduling for PING + SNMP).
   const handleToggleSnmpMonitoring = (deviceId: string, disabled: boolean): Promise<void> =>
     api.devices
       .update(deviceId, { disabled })
       .then(() => {
         refreshDevices();
       })
-      .catch((err) => console.error('Failed to toggle SNMP monitoring', err));
+      .catch((err) => console.error('Failed to toggle device monitoring', err));
 
   const handleTogglePriorityDevice = (deviceId: string, isPriority: boolean): Promise<void> =>
     api.devices
@@ -893,4 +894,3 @@ export default function App() {
     </div>
   );
 }
-
